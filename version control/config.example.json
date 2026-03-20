@@ -1,0 +1,21 @@
+{
+  "base_dir": "./versions",
+  "current_version_file": "./current_version.json",
+  "version_list_file": "./version_list.json",
+  "server_base_path": "/var/www/frontend",
+  "upload_method": "local",
+  "sftp": {
+    "host": "your-server.com",
+    "port": 22,
+    "username": "your-username",
+    "password": "your-password",
+    "key_file": null
+  },
+  "ftp": {
+    "host": "your-ftp-server.com",
+    "port": 21,
+    "username": "your-username",
+    "password": "your-password"
+  }
+}
+

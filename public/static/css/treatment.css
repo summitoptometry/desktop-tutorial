@@ -1,0 +1,62 @@
+
+
+/* 右侧和左侧的 section */
+#left, #right {
+    width: 48%;  /* 设定两个 section 占据 48% 的宽度，留出一些间隙 */
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 调整标题 */
+h2, h3, h4 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+/* 按钮样式 */
+button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-right: 10px;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* 每个表单行 */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+/* 输入框、选择框样式 */
+input[type="number"], input[type="date"], select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #fff;
+    font-size: 14px;
+}
+
+/* 输入框获得焦点时的效果 */
+input:focus, select:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+

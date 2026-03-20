@@ -1,0 +1,177 @@
+/* 全局样式 */
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* 顶部导航栏 */
+.top-bar {
+    background-color: #ff6b4b;
+    color: white;
+    display: flex;
+    justify-content: center; /* 居中对齐 */
+    align-items: center;
+    padding: 10px 0;
+    position: relative; /* 使左侧的“档案查询”固定 */
+}
+
+/* 左侧“档案查询”字样 */
+.top-bar .title {
+    position: absolute;
+    left: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+}
+
+/* 顶部按钮样式 */
+.top-bar button {
+    background: linear-gradient(135deg, #ffbf47, #ff9247); /* 渐变背景色 */
+    border: none;
+    padding: 10px 20px;
+    margin: 0 10px; /* 设置按钮间距为20px（两边各10px） */
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    color: white;
+    transition: background 0.3s, transform 0.2s; /* 渐变和放大效果 */
+}
+
+/* 选中状态的按钮样式 */
+.top-bar button.active {
+    background: #4d9ed7 !important; /* 使用纯色背景 */
+    color: white;
+}
+
+/* 鼠标悬停效果 */
+.top-bar button:hover {
+    transform: scale(1.05); /* 鼠标悬停时微放大 */
+    background: linear-gradient(135deg, #ff6b4b, #ff9247); /* 悬停时加深渐变 */
+}
+
+
+/* 页面布局 */
+.content-layout {
+    display: flex;
+    flex: 1;
+}
+
+
+/* 左侧检查记录区 */
+.side-bar {
+    width: 200px;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+.side-bar h3 {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+/* 年份项样式 */
+.year-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    font-size: 15px;
+    cursor: pointer;
+    color: #333;
+    transition: background-color 0.2s;
+    position: relative;
+    border-bottom: 1px solid #ddd;
+}
+
+/* 年份前的图标 */
+.year-item .year-icon {
+    font-size: 16px;
+    margin-right: 8px;
+}
+
+/* 下箭头 */
+.year-item .arrow {
+    font-size: 12px;
+    color: #888;
+    transition: transform 0.2s;
+}
+
+/* 年份项悬停效果 */
+.year-item:hover {
+    background-color: #e6f2ff;
+}
+
+/* 日期列表 */
+.date-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background-color: #f0f0f0;
+    border-left: 2px solid #007bff;
+}
+
+/* 日期项样式 */
+.date-item {
+    font-size: 14px;
+    padding: 6px 12px;
+    color: #333;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+/* 悬浮效果 */
+.date-item:hover {
+    background-color: #e1eaff;
+}
+
+/* 选中的日期项 */
+.date-item.selected {
+    background-color: #007bff;
+    color: #fff;
+}
+
+
+
+
+
+/* 主内容区域容器 */
+.main-area {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+/* 患者基础信息栏 */
+.patient-info {
+    background-color: #f9f9f9;
+    padding: 10px 20px;
+    font-size: 16px;
+    color: #555;
+    display: flex;
+    gap: 6%;
+    border-bottom: 1px solid #ddd;
+}
+
+/* 主内容区域 */
+.main-content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background-color: #ffffff;
+}
+
+/* 底部信息栏 */
+.footer {
+    background-color: #f2f4f8;
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+    color: #888;
+}

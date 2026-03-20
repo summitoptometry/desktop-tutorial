@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <meta name="theme-color" content="#1890ff" />
+  <title>近视匹配分析 - 手机版 - 胜密软件</title>
+  <script>
+    (function () {
+      if (typeof window !== 'undefined' && window.innerWidth > 768) {
+        window.location.replace('index-desktop.html');
+      }
+    })();
+  </script>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,0,0,0.06); }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; color: #262626; line-height: 1.5; min-height: 100vh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+    .container { max-width: 100%; padding: 12px 10px 24px; }
+    h1 { font-size: 1.25rem; margin: 0 0 6px; }
+    .subtitle { font-size: 0.85rem; color: #8c8c8c; margin-bottom: 16px; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 14px 12px; margin-bottom: 14px; }
+    .card-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; }
+    .form-row { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+    .form-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-bottom: 12px; }
+    .form-row-3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 10px; margin-bottom: 12px; }
+    .form-group { width: 100%; }
+    .form-group label { display: block; font-size: 0.85rem; color: #666; margin-bottom: 6px; }
+    .form-row-3col .form-group label { font-size: 0.78rem; margin-bottom: 4px; }
+    .form-group input, .form-group select { width: 100%; padding: 12px 14px; font-size: 16px; min-height: 44px; border: 1px solid #e8e8e8; border-radius: 6px; }
+    .form-group input:focus { outline: none; border-color: #1890ff; }
+    .eye-section { margin-bottom: 16px; }
+    .eye-section .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 10px; }
+    .advanced-toggle { padding: 10px 0; min-height: 44px; display: flex; align-items: center; font-size: 0.9rem; color: #1890ff; cursor: pointer; }
+    .advanced-params { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e8e8e8; }
+    .btn-row { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+    .btn { width: 100%; min-height: 44px; padding: 12px 20px; font-size: 1rem; border-radius: 6px; border: none; cursor: pointer; }
+    .btn-primary { background: #1890ff; color: #fff; }
+    .btn-default { background: #fff; color: #262626; border: 1px solid #e8e8e8; }
+    .error-msg { background: #fff2f0; border: 1px solid #ffccc7; color: #cf1322; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
+    .loading { text-align: center; padding: 40px 20px; color: #8c8c8c; }
+    .spinner { width: 36px; height: 36px; border: 3px solid #e8e8e8; border-top-color: #E27244; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .no-results-card { text-align: center; padding: 40px 20px; min-height: 300px; display: flex; align-items: center; justify-content: center; }
+    .no-results-content { text-align: center; }
+    .no-results-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.6; }
+    .no-results-title { font-size: 1rem; font-weight: 500; color: #666; margin-bottom: 8px; }
+    .no-results-tip { font-size: 0.9rem; color: #999; }
+    .no-results-detail { font-size: 12px; color: #8c8c8c; margin-top: 12px; }
+    .no-axial-data-card .no-results-content { padding: 20px 0; }
+    .results-tabs-label { font-size: 13px; color: #666; margin-bottom: 8px; }
+    .pagination-nav { margin-bottom: 16px; }
+    .pagination-tabs { display: flex; flex-direction: column; gap: 6px; }
+    .pagination-tab { padding: 14px 12px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #f8f9fa; border-radius: 8px; cursor: pointer; font-weight: 500; color: #666; }
+    .pagination-tab.active { background: #E27244; color: #fff; box-shadow: 0 2px 4px rgba(226,114,68,0.3); }
+    .pagination-tab .tab-icon { font-size: 16px; }
+    .tab-panel { display: block; }
+    .stats-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 14px; }
+    .stats-card .card-header { padding: 14px 12px 0; }
+    .stats-card .card-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .stats-card .card-title .title-icon { font-size: 0.95rem; }
+    .stats-card .card-subtitle { font-size: 0.8rem; color: #8c8c8c; margin-bottom: 12px; }
+    .stats-section { padding: 14px 12px; border-bottom: 1px solid #f0f0f0; }
+    .stats-section:last-child { border-bottom: none; }
+    .stats-section-title { font-size: 14px; font-weight: 600; color: #333; margin: 0 0 12px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat-card { background: #f8f9fa; border-radius: 8px; padding: 12px 10px; text-align: center; border: 2px solid transparent; }
+    .stat-card.high-rate { border-color: #E27244; background: #fff5f5; }
+    .stat-icon { font-size: 20px; margin-bottom: 4px; }
+    .stat-content .stat-title { font-size: 12px; color: #666; }
+    .stat-content .stat-value { font-size: 18px; font-weight: 600; color: #333; }
+    .stat-content .stat-detail { font-size: 11px; color: #999; }
+    .detailed-stats-row { display: flex; flex-direction: column; gap: 16px; }
+    .top3-section { margin-bottom: 12px; }
+    .top3-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; padding-left: 8px; border-left: 3px solid #1890ff; }
+    .top3-list { display: flex; flex-direction: column; gap: 8px; }
+    .top3-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e8e8e8; }
+    .top3-rank { background: #1890ff; color: #fff; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 4px; }
+    .top3-name { flex: 1; font-size: 13px; }
+    .top3-rate { font-size: 14px; font-weight: 600; color: #52c41a; }
+    .top3-count { font-size: 12px; color: #999; }
+    .distribution-row { display: flex; flex-direction: column; gap: 16px; }
+    .distribution-item { width: 100%; }
+    .cycle-chart { display: flex; flex-direction: column; gap: 10px; }
+    .cycle-bar-item { display: flex; align-items: center; gap: 8px; }
+    .cycle-bar-item .cycle-label { min-width: 60px; font-size: 13px; color: #666; }
+    .cycle-bar { flex: 1; height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden; }
+    .cycle-fill { height: 100%; background: linear-gradient(90deg, #E27244, #ff8c69); }
+    .cycle-count { min-width: 70px; font-size: 11px; color: #666; text-align: right; }
+    .age-info { display: flex; flex-direction: column; gap: 8px; }
+    .age-item { display: flex; justify-content: space-between; padding: 10px 12px; background: #f8f9fa; border-radius: 8px; }
+    .age-item .age-label { font-size: 13px; color: #666; }
+    .age-item .age-value { font-size: 13px; font-weight: 600; color: #333; }
+    .treatment-comparison { display: flex; flex-direction: column; gap: 12px; }
+    .treatment-group { background: #f8f9fa; border-radius: 8px; padding: 12px; margin-bottom: 0; border: 1px solid #e8e8e8; }
+    .group-header { display: flex; align-items: center; gap: 8px; padding: 10px 0; min-height: 44px; border-bottom: 1px solid #e0e0e0; cursor: pointer; }
+    .group-count { background: #1890ff; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    .group-title { flex: 1; font-size: 14px; font-weight: 600; }
+    .expand-icon { margin-left: auto; transition: transform 0.2s ease; font-size: 12px; color: #666; }
+    .expand-icon.expanded { transform: rotate(180deg); }
+    .group-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 12px 0; }
+    .group-stats .stat-item { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+    .group-stats .stat-label { font-size: 11px; color: #666; }
+    .group-stats .stat-value { font-size: 14px; font-weight: 600; }
+    .group-chart { margin-top: 10px; }
+    .chart-bar { display: flex; height: 36px; border-radius: 6px; overflow: hidden; border: 1px solid #e0e0e0; }
+    .bar-segment { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; font-size: 10px; width: 50%; }
+    .bar-segment.initial { background: linear-gradient(135deg, #1890ff, #40a9ff); color: white; }
+    .bar-segment.final { background: linear-gradient(135deg, #52c41a, #73d13d); color: white; }
+    .bar-label { font-size: 9px; }
+    .bar-value { font-size: 11px; font-weight: 600; }
+    .group-details { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e8e8e8; }
+    .details-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+    .axial-cases { display: flex; flex-direction: column; gap: 10px; }
+    .axial-case { background: #fff; border-radius: 6px; padding: 10px; border: 1px solid #f0f0f0; }
+    .case-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; color: #666; }
+    .case-patient { font-weight: 500; flex: 1; }
+    .case-months { background: #e6f7ff; color: #1890ff; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+    .case-axial-timeline { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 12px; margin: 6px 0; background: #fafafa; border-radius: 8px; }
+    .timeline-item { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 80px; padding: 8px 10px; border-radius: 6px; font-size: 11px; }
+    .timeline-item.initial { background: #e6f7ff; border: 2px solid #1890ff; }
+    .timeline-item.followup { background: #f6ffed; border: 2px solid #52c41a; }
+    .timeline-arrow { margin: 0 2px; }
+    .timeline-arrow .arrow-head { font-size: 14px; color: #1890ff; }
+    .timeline-date, .timeline-al, .timeline-label, .timeline-change, .timeline-months { font-size: 10px; }
+    .timeline-al { font-weight: 700; font-size: 12px; }
+    .sample-size-warning { display: flex; align-items: center; gap: 6px; padding: 8px 12px; margin-bottom: 10px; background: #fff7e6; border: 1px solid #ffd591; border-radius: 6px; font-size: 12px; color: #d46b08; }
+    .sample-size-warning .warning-icon { font-size: 14px; }
+    .sample-size-warning .warning-text { flex: 1; }
+    .stats-section-header { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+    .stats-section-header .stats-section-title { margin: 0; }
+    .grouping-options { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+    .axial-radio-group { display: flex; border-radius: 6px; overflow: hidden; border: 1px solid #d9d9d9; }
+    .axial-radio-group label { flex: 1; margin: 0; padding: 10px 12px; font-size: 13px; cursor: pointer; background: #fff; text-align: center; border-right: 1px solid #d9d9d9; }
+    .axial-radio-group label:last-child { border-right: none; }
+    .axial-radio-group input { display: none; }
+    .axial-radio-group label.checked { background: #E27244; color: #fff; border-color: #E27244; }
+    .axial-checkbox-wrap { display: flex; align-items: center; font-size: 13px; cursor: pointer; min-height: 44px; }
+    .axial-sort-select { padding: 10px 12px; font-size: 14px; border-radius: 6px; border: 1px solid #d9d9d9; width: 100%; -webkit-appearance: none; appearance: none; background: #fff; }
+    .params-card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; min-height: 44px; cursor: pointer; font-size: 0.95rem; font-weight: 600; user-select: none; }
+    .params-card-header .params-card-arrow { font-size: 12px; color: #1890ff; transition: transform 0.2s ease; }
+    .params-card-body { overflow: hidden; }
+    .params-card.collapsed .params-card-body { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>近视匹配分析</h1>
+    <p class="subtitle">手机版 · 输入出生日期、性别及双眼眼轴曲率，获取相似案例分析</p>
+
+    <div class="card params-card" id="paramsCard">
+      <div class="params-card-header" id="paramsCardHeader">
+        <span class="params-card-title">匹配参数</span>
+        <span class="params-card-arrow" id="paramsCardArrow">▲</span>
+      </div>
+      <div class="params-card-body" id="paramsCardBody">
+      <form id="analysisForm">
+        <div class="form-row form-row-2col">
+          <div class="form-group">
+            <label>出生日期</label>
+            <input type="date" id="birthDate" required />
+          </div>
+          <div class="form-group">
+            <label>性别</label>
+            <select id="gender">
+              <option value="male">男</option>
+              <option value="female">女</option>
+            </select>
+          </div>
+        </div>
+        <div class="eye-section">
+          <div class="section-title">右眼</div>
+          <div class="form-row form-row-3col">
+            <div class="form-group"><label>眼轴长度(mm)</label><input type="number" id="rightAl" min="20" max="30" step="0.01" placeholder="如 24.5" /></div>
+            <div class="form-group"><label>K1(D)</label><input type="number" id="rightK1" min="35" max="50" step="0.01" placeholder="如 43.0" /></div>
+            <div class="form-group"><label>K2(D)</label><input type="number" id="rightK2" min="35" max="50" step="0.01" placeholder="可选" /></div>
+          </div>
+        </div>
+        <div class="eye-section">
+          <div class="section-title">左眼</div>
+          <div class="form-row form-row-3col">
+            <div class="form-group"><label>眼轴长度(mm)</label><input type="number" id="leftAl" min="20" max="30" step="0.01" placeholder="如 24.5" /></div>
+            <div class="form-group"><label>K1(D)</label><input type="number" id="leftK1" min="35" max="50" step="0.01" placeholder="如 43.0" /></div>
+            <div class="form-group"><label>K2(D)</label><input type="number" id="leftK2" min="35" max="50" step="0.01" placeholder="可选" /></div>
+          </div>
+        </div>
+        <div class="advanced-toggle" id="advancedToggle">▼ 高级参数</div>
+        <div class="advanced-params" id="advancedParams" style="display:none;">
+          <div class="form-row form-row-2col">
+            <div class="form-group"><label>眼轴容差(mm)</label><input type="number" id="alTol" min="0" max="2" step="0.1" value="0.5" /></div>
+            <div class="form-group"><label>K1 容差(D)</label><input type="number" id="k1Tol" min="0" max="5" step="0.1" value="0.5" /></div>
+            <div class="form-group"><label>散光容差(D)</label><input type="number" id="astTol" min="0" max="2" step="0.1" value="0.5" /></div>
+            <div class="form-group"><label>年龄容差(月，空=不限制)</label><input type="number" id="ageMonthsTol" min="1" max="24" placeholder="不填即不限制" /></div>
+            <div class="form-group"><label>结果数量(条，空=不限制)</label><input type="number" id="limit" min="1" max="10000" placeholder="不填即不限制" /></div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn btn-primary" id="submitBtn">查找相似案例</button>
+          <button type="button" class="btn btn-default" id="resetBtn">重置</button>
+        </div>
+      </form>
+      </div>
+    </div>
+
+    <div id="errorBox" class="error-msg" style="display:none;"></div>
+    <div id="loadingBox" class="card loading" style="display:none;"><div class="spinner"></div><div>正在查找相似案例...</div></div>
+
+    <div id="resultsArea" style="display:none;">
+      <div class="results-tabs-label">切换查看：</div>
+      <div class="pagination-nav">
+        <div class="pagination-tabs">
+          <div class="pagination-tab active" data-tab="stats"><span class="tab-icon">📊</span><span>治疗手段统计</span></div>
+          <div class="pagination-tab" data-tab="axial"><span class="tab-icon">📈</span><span>眼轴变化分析</span></div>
+        </div>
+      </div>
+      <div id="tabStats" class="tab-panel">
+        <div class="stats-card">
+          <div class="card-header">
+            <div class="card-title"><span class="title-icon">📊</span><span>相似案例匹配结果</span></div>
+            <div class="card-subtitle" id="statsSubtitle"></div>
+          </div>
+          <div class="stats-section">
+            <div class="stats-section-title">治疗手段选择率</div>
+            <div class="stats-grid" id="statsGrid"></div>
+          </div>
+          <div class="stats-section" id="detailStatsSection">
+            <div class="stats-section-title">详细分类统计</div>
+            <div class="detailed-stats-row" id="detailStats"></div>
+          </div>
+          <div class="stats-section" id="distributionSection">
+            <div class="distribution-row">
+              <div class="distribution-item" id="reviewCycleDist"></div>
+              <div class="distribution-item" id="ageDist"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="tabAxial" class="tab-panel" style="display:none;">
+        <div class="stats-card">
+          <div class="card-header" id="axialCardHeader" style="display:none;">
+            <div class="card-title"><span class="title-icon">📈</span><span>眼轴变化分析</span></div>
+            <div class="card-subtitle" id="axialSubtitle"></div>
+          </div>
+          <div id="axialContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="noResultsBox" class="card no-results-card" style="display:none;">
+      <div class="no-results-icon">🔍</div>
+      <div class="no-results-title">未找到匹配的案例</div>
+      <div class="no-results-tip">请尝试放宽容差或调整参数</div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var API_BASE = 'https://aiforoptometry.com';
+      var lastMatchResults = [];
+      var groupingMode = 'type';
+      var showNoTreatment = false;
+      var sortBy = 'monthlyChange';
+      function formatDate(date) {
+        if (!date) return '-';
+        var d = new Date(date);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      }
+      function getMonthsDifference(s, e) { return Math.round((new Date(e) - new Date(s)) / (1000 * 60 * 60 * 24 * 30)); }
+      function getTreatmentKey(td, mode) {
+        td = td || {};
+        var t = [];
+        if (td.阿托品 === '是') t.push('阿托品');
+        if (td.配镜手段 && td.配镜手段 !== '无' && td.配镜手段 !== '否') {
+          if (mode === 'brand') {
+            var brand = td.眼镜品牌;
+            if (brand && brand !== '无' && brand !== '否' && brand !== '') t.push(td.配镜手段 + '(' + brand + ')');
+            else t.push(td.配镜手段);
+          } else t.push(td.配镜手段);
+        }
+        var p = td.哺光仪 || td.低强度红光;
+        if (p && p !== '无' && p !== '否') {
+          if (mode === 'brand') {
+            var gear = (td.档位 && td.档位 !== '无' && td.档位 !== '否') ? td.档位 : '未知档位';
+            t.push('低强度红光(' + p + '-' + gear + ')');
+          } else t.push('低强度红光');
+        }
+        if (td.理疗 === '是') t.push('理疗');
+        if (td.视觉训练 === '是') t.push('视觉训练');
+        return t.length ? t.join(' + ') : '无治疗';
+      }
+      function hasValidValue(v) { return v != null && v !== '' && v !== '无' && v !== '否'; }
+      function calculateAnalysisStats(results) {
+        if (!results || !results.length) return null;
+        var total = results.length, at = 0, gl = 0, ph = 0, py = 0, vt = 0, gb = {}, pg = {}, rc = {}, ad = [];
+        results.forEach(function (r) {
+          var td = r.治疗手段详情 || {};
+          if (hasValidValue(td.阿托品) && td.阿托品 !== '否') at++;
+          if (hasValidValue(td.配镜手段)) { gl++; if (hasValidValue(td.眼镜品牌)) gb[td.眼镜品牌] = (gb[td.眼镜品牌] || 0) + 1; }
+          var pv = td.哺光仪 || td.低强度红光;
+          if (hasValidValue(pv)) { ph++; var gear = hasValidValue(td.档位) ? td.档位 : '未知'; pg[pv + '-' + gear] = (pg[pv + '-' + gear] || 0) + 1; }
+          if (hasValidValue(td.理疗) && td.理疗 !== '否') py++;
+          if (hasValidValue(td.视觉训练) && td.视觉训练 !== '否') vt++;
+          var cy = r['复查间隔(月)'];
+          if (cy != null && cy !== '' && !isNaN(cy)) { rc[cy] = rc[cy] || { count: 0 }; rc[cy].count++; }
+          if (r['年龄差(天)'] != null) ad.push(r['年龄差(天)']);
+        });
+        function top3(o, tot) { return Object.entries(o).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 3).map(function (e) { return { name: e[0], count: e[1], rate: Math.round((e[1] / tot) * 100) }; }); }
+        Object.keys(rc).forEach(function (k) { rc[k].percentage = Math.round((rc[k].count / total) * 100); });
+        var avg = ad.length ? Math.round(ad.reduce(function (a, b) { return a + b; }, 0) / ad.length) : 0, min = ad.length ? Math.min.apply(null, ad) : 0, max = ad.length ? Math.max.apply(null, ad) : 0;
+        return { totalCases: total, atropineCount: at, atropineRate: Math.round((at / total) * 100), glassesCount: gl, glassesRate: Math.round((gl / total) * 100), phototherapyCount: ph, phototherapyRate: Math.round((ph / total) * 100), physiotherapyCount: py, physiotherapyRate: Math.round((py / total) * 100), visualTrainingCount: vt, visualTrainingRate: Math.round((vt / total) * 100), glassesBrandsTop3: top3(gb, total), phototherapyGearsTop3: top3(pg, total), reviewCycles: rc, avgAgeDiff: avg, minAgeDiff: min, maxAgeDiff: max };
+      }
+      function buildAxialAnalysis(results, mode, showNo, sortBy) {
+        mode = mode || 'type'; showNo = !!showNo; sortBy = sortBy || 'monthlyChange';
+        var gr = {};
+        results.forEach(function (r) {
+          var td = r.治疗手段详情 || r.treatment_details || {}, key = getTreatmentKey(td, mode);
+          if (!gr[key]) gr[key] = { treatment: key, cases: [], caseCount: 0, avgInitialAL: 0, avgFinalAL: 0, avgChange: 0, avgFollowUpMonths: 0 };
+          var idx = r.index || {};
+          var ial = parseFloat(r.初始眼轴) || parseFloat(r.AL) || parseFloat(r.al) || parseFloat(r.axial_length) || parseFloat(idx.初始眼轴) || parseFloat(idx.AL) || parseFloat(idx.al) || parseFloat(idx.axial_length) || 0;
+          var idate = r.检查日期 || r.examination_date || r.date || idx.检查日期 || idx.examination_date || idx.date;
+          var fu = r.后续检查 || r.follow_up || r.followUp || idx.后续检查 || [], recs = [];
+          if (Array.isArray(fu) && fu.length && idate) fu.forEach(function (f) {
+            var fa = parseFloat(f.AL) || parseFloat(f.眼轴) || parseFloat(f.al) || 0, fd = f.检查日期 || f.examination_date || f.date;
+            if (fa > 0 && fd) recs.push({ date: fd, al: fa, monthsFromInitial: getMonthsDifference(idate, fd) });
+          });
+          if (ial > 0 && recs.length) {
+            recs.sort(function (a, b) { return new Date(a.date) - new Date(b.date); });
+            var fal = recs[recs.length - 1].al, mon = recs[recs.length - 1].monthsFromInitial, ch = mon > 0 ? (fal - ial) / mon : 0;
+            gr[key].cases.push({ patientId: r.患者id || r.patient_id || r.id, eye: r.眼别 || r.eye || '未知', initialAL: ial, initialDate: idate, finalAL: fal, followUpMonths: mon, monthlyChange: ch, followUpRecords: recs });
+          }
+        });
+        Object.keys(gr).forEach(function (k) {
+          var g = gr[k];
+          if (g.cases.length) { g.caseCount = g.cases.length; g.avgInitialAL = g.cases.reduce(function (s, c) { return s + c.initialAL; }, 0) / g.caseCount; g.avgFinalAL = g.cases.reduce(function (s, c) { return s + c.finalAL; }, 0) / g.caseCount; g.avgChange = g.cases.reduce(function (s, c) { return s + c.monthlyChange; }, 0) / g.caseCount; g.avgFollowUpMonths = g.cases.reduce(function (s, c) { return s + c.followUpMonths; }, 0) / g.caseCount; }
+        });
+        var list = Object.values(gr).filter(function (g) { return g.caseCount > 0 && (showNo || g.treatment !== '无治疗'); });
+        list.sort(function (a, b) {
+          switch (sortBy) {
+            case 'monthlyChange': return (a.avgChange || 0) - (b.avgChange || 0);
+            case 'monthlyChangeDesc': return (b.avgChange || 0) - (a.avgChange || 0);
+            case 'caseCount': return a.caseCount - b.caseCount;
+            case 'caseCountDesc': return b.caseCount - a.caseCount;
+            case 'initialAL': return (a.avgInitialAL || 0) - (b.avgInitialAL || 0);
+            case 'initialALDesc': return (b.avgInitialAL || 0) - (a.avgInitialAL || 0);
+            default: return (a.avgChange || 0) - (b.avgChange || 0);
+          }
+        });
+        return list;
+      }
+      function showError(msg) { var el = document.getElementById('errorBox'); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
+      function formatALChange(v) {
+        if (v == null || isNaN(v)) return '-';
+        return (v >= 0 ? '+' : '') + (Number(v).toFixed(3)) + 'mm/月';
+      }
+      function getChangeColor(v) {
+        if (v == null || isNaN(v)) return '#333';
+        return v < 0 ? '#52c41a' : (v > 0 ? '#ff4d4f' : '#333');
+      }
+      function renderStats(stats) {
+        document.getElementById('statsSubtitle').textContent = '基于' + stats.totalCases + '个相似案例的治疗手段分析';
+        var grid = document.getElementById('statsGrid'); grid.innerHTML = '';
+        [{ icon: '💊', title: '阿托品', rate: stats.atropineRate, count: stats.atropineCount }, { icon: '👓', title: '配镜', rate: stats.glassesRate, count: stats.glassesCount }, { icon: '💡', title: '低强度红光', rate: stats.phototherapyRate, count: stats.phototherapyCount }, { icon: '🏥', title: '理疗', rate: stats.physiotherapyRate, count: stats.physiotherapyCount }, { icon: '🎯', title: '视觉训练', rate: stats.visualTrainingRate, count: stats.visualTrainingCount }].forEach(function (c) {
+          var d = document.createElement('div'); d.className = 'stat-card' + (c.rate > 50 ? ' high-rate' : ''); d.innerHTML = '<div class="stat-icon">' + c.icon + '</div><div class="stat-content"><div class="stat-title">' + c.title + '</div><div class="stat-value">' + c.rate + '%</div><div class="stat-detail">' + c.count + '/' + stats.totalCases + '</div></div>'; grid.appendChild(d);
+        });
+        var det = document.getElementById('detailStats'); det.innerHTML = '';
+        var hasDetail = stats.glassesBrandsTop3.length > 0 || stats.phototherapyGearsTop3.length > 0;
+        document.getElementById('detailStatsSection').style.display = hasDetail ? 'block' : 'none';
+        if (stats.glassesBrandsTop3.length) {
+          var w = document.createElement('div'); w.className = 'top3-section';
+          w.innerHTML = '<div class="top3-title">配镜品牌Top3</div><div class="top3-list"></div>';
+          var ul = w.querySelector('.top3-list');
+          stats.glassesBrandsTop3.forEach(function (b, i) {
+            var li = document.createElement('div'); li.className = 'top3-item';
+            li.innerHTML = '<span class="top3-rank">#' + (i + 1) + '</span><span class="top3-name">' + b.name + '</span><span class="top3-rate">' + b.rate + '%</span><span class="top3-count">(' + b.count + '例)</span>';
+            ul.appendChild(li);
+          });
+          det.appendChild(w);
+        }
+        if (stats.phototherapyGearsTop3.length) {
+          var w2 = document.createElement('div'); w2.className = 'top3-section';
+          w2.innerHTML = '<div class="top3-title">低强度红光Top3</div><div class="top3-list"></div>';
+          var ul2 = w2.querySelector('.top3-list');
+          stats.phototherapyGearsTop3.forEach(function (g, i) {
+            var li = document.createElement('div'); li.className = 'top3-item';
+            li.innerHTML = '<span class="top3-rank">#' + (i + 1) + '</span><span class="top3-name">' + g.name + '</span><span class="top3-rate">' + g.rate + '%</span><span class="top3-count">(' + g.count + '例)</span>';
+            ul2.appendChild(li);
+          });
+          det.appendChild(w2);
+        }
+        var rcEl = document.getElementById('reviewCycleDist');
+        var rc = stats.reviewCycles && Object.keys(stats.reviewCycles).length ? stats.reviewCycles : null;
+        if (rc) {
+          rcEl.innerHTML = '<div class="stats-section-title">复查周期分布</div><div class="cycle-chart"></div>';
+          var chart = rcEl.querySelector('.cycle-chart');
+          Object.keys(rc).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (months) {
+            var cycle = rc[months];
+            var it = document.createElement('div'); it.className = 'cycle-bar-item';
+            it.innerHTML = '<span class="cycle-label">' + months + '个月</span><div class="cycle-bar"><div class="cycle-fill" style="width:' + (cycle.percentage || 0) + '%"></div></div><span class="cycle-count">' + cycle.count + '例 (' + (cycle.percentage || 0) + '%)</span>';
+            chart.appendChild(it);
+          });
+          rcEl.style.display = 'block';
+        } else { rcEl.innerHTML = ''; rcEl.style.display = 'none'; }
+        var ageEl = document.getElementById('ageDist');
+        ageEl.innerHTML = '<div class="stats-section-title">年龄分布</div><div class="age-info"><div class="age-item"><span class="age-label">平均年龄差</span><span class="age-value">' + (stats.avgAgeDiff != null ? stats.avgAgeDiff + '天' : '-') + '</span></div><div class="age-item"><span class="age-label">年龄差范围</span><span class="age-value">' + (stats.minAgeDiff != null && stats.maxAgeDiff != null ? stats.minAgeDiff + ' - ' + stats.maxAgeDiff + '天' : '-') + '</span></div></div>';
+        ageEl.style.display = 'block';
+      }
+      function renderAxialGroups(list, container) {
+        container.innerHTML = '';
+        if (!list || !list.length) return;
+        list.forEach(function (g, idx) {
+          var wrap = document.createElement('div'); wrap.className = 'treatment-group'; wrap.setAttribute('data-group-index', idx);
+          var changeStr = g.avgChange != null ? formatALChange(g.avgChange) : '-';
+          var changeColor = g.avgChange != null ? getChangeColor(g.avgChange) : '#333';
+          var headerHtml = '<div class="group-header"><div class="group-count">' + g.caseCount + '例</div><div class="group-title">' + g.treatment + '</div><div class="expand-icon"><span>▼</span></div></div>';
+          var warnHtml = g.caseCount < 10 ? '<div class="sample-size-warning"><span class="warning-icon">⚠️</span><span class="warning-text">样本量太少可能存在偏倚，建议酌情采纳</span></div>' : '';
+          var statsHtml = '<div class="group-stats"><div class="stat-item"><span class="stat-label">平均初始眼轴</span><span class="stat-value">' + (g.avgInitialAL || 0).toFixed(2) + 'mm</span></div><div class="stat-item"><span class="stat-label">平均最终眼轴</span><span class="stat-value">' + (g.avgFinalAL || 0).toFixed(2) + 'mm</span></div><div class="stat-item"><span class="stat-label">平均月化变化</span><span class="stat-value" style="color:' + changeColor + '">' + changeStr + '</span></div><div class="stat-item"><span class="stat-label">平均随访时间</span><span class="stat-value">' + (g.avgFollowUpMonths || 0).toFixed(1) + '个月</span></div></div>';
+          var chartHtml = '<div class="group-chart"><div class="chart-bar"><div class="bar-segment initial"><span class="bar-label">初始</span><span class="bar-value">' + (g.avgInitialAL || 0).toFixed(2) + 'mm</span></div><div class="bar-segment final"><span class="bar-label">最终</span><span class="bar-value">' + (g.avgFinalAL || 0).toFixed(2) + 'mm</span></div></div></div>';
+          var detailsHtml = '<div class="group-details" style="display:none;"><div class="details-title">详细案例眼轴变化</div><div class="axial-cases"></div></div>';
+          wrap.innerHTML = headerHtml + warnHtml + statsHtml + chartHtml + detailsHtml;
+          var axialCases = wrap.querySelector('.axial-cases');
+          (g.cases || []).forEach(function (c) {
+            var caseEl = document.createElement('div'); caseEl.className = 'axial-case';
+            var timelineHtml = '<div class="timeline-item initial"><div class="timeline-date">' + formatDate(c.initialDate) + '</div><div class="timeline-al">' + (c.initialAL || 0).toFixed(2) + 'mm</div><div class="timeline-label">初始</div></div>';
+            (c.followUpRecords || []).forEach(function (rec, ri) {
+              var monthlyCh = rec.monthsFromInitial > 0 ? (rec.al - c.initialAL) / rec.monthsFromInitial : 0;
+              timelineHtml += '<div class="timeline-arrow"><span class="arrow-head">→</span></div><div class="timeline-item followup"><div class="timeline-date">' + formatDate(rec.date) + '</div><div class="timeline-al">' + (rec.al || 0).toFixed(2) + 'mm</div><div class="timeline-change" style="color:' + getChangeColor(monthlyCh) + '">' + formatALChange(monthlyCh) + '</div><div class="timeline-months">' + (rec.monthsFromInitial || 0) + '个月</div></div>';
+            });
+            caseEl.innerHTML = '<div class="case-info"><span class="case-patient">患者' + (c.patientId || '-') + ' - ' + (c.eye || '未知') + '</span><span class="case-months">' + (c.followUpMonths || 0) + '个月随访</span></div><div class="case-axial-timeline">' + timelineHtml + '</div>';
+            axialCases.appendChild(caseEl);
+          });
+          wrap.querySelector('.group-header').onclick = function () {
+            var details = wrap.querySelector('.group-details');
+            var icon = wrap.querySelector('.expand-icon');
+            var show = details.style.display === 'none';
+            details.style.display = show ? 'block' : 'none';
+            icon.classList.toggle('expanded', show);
+          };
+          container.appendChild(wrap);
+        });
+      }
+      function refreshAxialGroups() {
+        var list = buildAxialAnalysis(lastMatchResults, groupingMode, showNoTreatment, sortBy);
+        var container = document.getElementById('axialGroupsContainer');
+        if (container) renderAxialGroups(list, container);
+      }
+      function renderAxial(list, totalMatchCount) {
+        var con = document.getElementById('axialContent');
+        var header = document.getElementById('axialCardHeader');
+        var sub = document.getElementById('axialSubtitle');
+        totalMatchCount = totalMatchCount || (list && list.length) || 0;
+        sub.textContent = '基于' + totalMatchCount + '个相似案例的治疗效果分析';
+        header.style.display = 'block';
+        if (!list || !list.length) {
+          con.innerHTML = '<div class="no-axial-data-card"><div class="no-results-content"><div class="no-results-icon">📈</div><div class="no-results-title">暂无眼轴变化追踪数据</div><div class="no-results-tip">匹配的案例中没有包含眼轴变化追踪数据(需要初始检查和后续复查记录)</div><div class="no-results-detail">当前匹配结果数：' + totalMatchCount + ' 个案例</div></div></div>';
+          return;
+        }
+        con.innerHTML = '';
+        var section = document.createElement('div');
+        section.className = 'stats-section';
+        section.innerHTML = '<div class="stats-section-header"><div class="stats-section-title">治疗方案组合效果对比</div><div class="grouping-options"><div class="axial-radio-group" id="axialRadioGroup"><label class="' + (groupingMode === 'type' ? 'checked' : '') + '"><input type="radio" name="axialGroup" value="type"' + (groupingMode === 'type' ? ' checked' : '') + '><span>按方案类型</span></label><label class="' + (groupingMode === 'brand' ? 'checked' : '') + '"><input type="radio" name="axialGroup" value="brand"' + (groupingMode === 'brand' ? ' checked' : '') + '><span>按品牌</span></label></div><label class="axial-checkbox-wrap"><input type="checkbox" id="axialShowNo"' + (showNoTreatment ? ' checked' : '') + '> 显示无治疗</label><select class="axial-sort-select" id="axialSortBy"><option value="monthlyChange"' + (sortBy === 'monthlyChange' ? ' selected' : '') + '>月变化 ↑</option><option value="monthlyChangeDesc"' + (sortBy === 'monthlyChangeDesc' ? ' selected' : '') + '>月变化 ↓</option><option value="caseCount"' + (sortBy === 'caseCount' ? ' selected' : '') + '>案例数 ↑</option><option value="caseCountDesc"' + (sortBy === 'caseCountDesc' ? ' selected' : '') + '>案例数 ↓</option><option value="initialAL"' + (sortBy === 'initialAL' ? ' selected' : '') + '>初始眼轴 ↑</option><option value="initialALDesc"' + (sortBy === 'initialALDesc' ? ' selected' : '') + '>初始眼轴 ↓</option></select></div></div>';
+        con.appendChild(section);
+        var radioGroup = section.querySelector('#axialRadioGroup');
+        radioGroup.querySelectorAll('label').forEach(function (lbl) {
+          lbl.onclick = function () {
+            var val = lbl.querySelector('input').value;
+            groupingMode = val;
+            radioGroup.querySelectorAll('label').forEach(function (l) { l.classList.remove('checked'); });
+            lbl.classList.add('checked');
+            lbl.querySelector('input').checked = true;
+            refreshAxialGroups();
+          };
+        });
+        section.querySelector('#axialShowNo').onchange = function () {
+          showNoTreatment = this.checked;
+          refreshAxialGroups();
+        };
+        section.querySelector('#axialSortBy').onchange = function () {
+          sortBy = this.value;
+          refreshAxialGroups();
+        };
+        var groupsContainer = document.createElement('div');
+        groupsContainer.id = 'axialGroupsContainer';
+        groupsContainer.className = 'treatment-comparison';
+        con.appendChild(groupsContainer);
+        renderAxialGroups(list, groupsContainer);
+      }
+      document.getElementById('advancedToggle').onclick = function () { var el = document.getElementById('advancedParams'); el.style.display = el.style.display === 'none' ? 'block' : 'none'; this.textContent = el.style.display === 'none' ? '▼ 高级参数' : '▲ 高级参数'; };
+      function setParamsCardCollapsed(collapsed) {
+        var card = document.getElementById('paramsCard'); var body = document.getElementById('paramsCardBody'); var arrow = document.getElementById('paramsCardArrow');
+        if (collapsed) { card.classList.add('collapsed'); body.style.display = 'none'; arrow.textContent = '▼'; } else { card.classList.remove('collapsed'); body.style.display = 'block'; arrow.textContent = '▲'; }
+      }
+      document.getElementById('paramsCardHeader').onclick = function () {
+        var card = document.getElementById('paramsCard'); var body = document.getElementById('paramsCardBody'); var arrow = document.getElementById('paramsCardArrow');
+        if (card.classList.contains('collapsed')) { setParamsCardCollapsed(false); } else { setParamsCardCollapsed(true); }
+      };
+      document.getElementById('analysisForm').onsubmit = async function (e) {
+        e.preventDefault(); showError('');
+        var birth = document.getElementById('birthDate').value.trim();
+        if (!birth) { showError('请选择出生日期'); return; }
+        var gender = document.getElementById('gender').value;
+        var rAl = parseFloat(document.getElementById('rightAl').value), rK1 = parseFloat(document.getElementById('rightK1').value), rK2 = document.getElementById('rightK2').value.trim();
+        var lAl = parseFloat(document.getElementById('leftAl').value), lK1 = parseFloat(document.getElementById('leftK1').value), lK2 = document.getElementById('leftK2').value.trim();
+        var rAst = rK2 ? (parseFloat(rK2) - rK1) : 0, lAst = lK2 ? (parseFloat(lK2) - lK1) : 0;
+        var rOk = !isNaN(rAl) && !isNaN(rK1), lOk = !isNaN(lAl) && !isNaN(lK1);
+        if (!rOk && !lOk) { showError('请至少填写一眼的眼轴和K1'); return; }
+        var alTol = parseFloat(document.getElementById('alTol').value) || 0.5, k1Tol = parseFloat(document.getElementById('k1Tol').value) || 0.5, astTol = parseFloat(document.getElementById('astTol').value) || 0.5;
+        var ageInput = document.getElementById('ageMonthsTol').value.trim(), ageMonths = ageInput ? parseInt(ageInput, 10) : null;
+        var limitInput = document.getElementById('limit').value.trim(), limit = limitInput ? parseInt(limitInput, 10) : null;
+        var refDate = formatDate(new Date());
+        function body(side, al, k1, ast) {
+          var b = { side: side, gender: gender, reference_examination_date: refDate, reference_birth_date: birth, al: al, al_tol: alTol, k1: k1, k1_tol: k1Tol, ast: ast, ast_tol: astTol, exclude_patient_ids: [] };
+          if (ageMonths != null) b.age_months_tolerance = ageMonths; if (limit != null) b.limit = limit; return b;
+        }
+        var btn = document.getElementById('submitBtn'), loading = document.getElementById('loadingBox'), results = document.getElementById('resultsArea'), noRes = document.getElementById('noResultsBox');
+        btn.disabled = true; loading.style.display = 'block'; results.style.display = 'none'; noRes.style.display = 'none';
+        try {
+          var reqs = []; if (rOk) reqs.push(body('right', rAl, rK1, rAst)); if (lOk) reqs.push(body('left', lAl, lK1, lAst));
+          var resps = await Promise.all(reqs.map(function (b) { return fetch(API_BASE + '/cases/match-by-side/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': localStorage.getItem('csrftoken') || '' }, body: JSON.stringify(b), credentials: 'include' }); }));
+          var list = [];
+          for (var i = 0; i < resps.length; i++) {
+            if (!resps[i].ok) throw new Error('请求失败: ' + resps[i].status);
+            var data = await resps[i].json(); var part = Array.isArray(data) ? data : (data.results || data.data || []); list = list.concat(part);
+          }
+          if (!list.length) noRes.style.display = 'block'; else { lastMatchResults = list; var stats = calculateAnalysisStats(list); var axial = buildAxialAnalysis(list, groupingMode, showNoTreatment, sortBy); renderStats(stats); renderAxial(axial, list.length); results.style.display = 'block'; document.getElementById('tabStats').style.display = 'block'; document.getElementById('tabAxial').style.display = 'none'; setParamsCardCollapsed(true); }
+        } catch (err) { showError('请求出错: ' + (err.message || err)); noRes.style.display = 'block'; }
+        finally { btn.disabled = false; loading.style.display = 'none'; }
+      };
+      document.getElementById('resetBtn').onclick = function () {
+        document.getElementById('birthDate').value = ''; document.getElementById('gender').value = 'female';
+        ['rightAl','rightK1','rightK2','leftAl','leftK1','leftK2'].forEach(function (id) { document.getElementById(id).value = ''; });
+        document.getElementById('alTol').value = '0.5'; document.getElementById('k1Tol').value = '0.5'; document.getElementById('astTol').value = '0.5'; document.getElementById('ageMonthsTol').value = ''; document.getElementById('limit').value = '';
+        showError(''); document.getElementById('resultsArea').style.display = 'none'; document.getElementById('noResultsBox').style.display = 'none';
+      };
+      document.querySelectorAll('.pagination-tab').forEach(function (tab) {
+        tab.onclick = function () {
+          document.querySelectorAll('.pagination-tab').forEach(function (t) { t.classList.remove('active'); }); this.classList.add('active');
+          var name = this.getAttribute('data-tab');
+          document.getElementById('tabStats').style.display = name === 'stats' ? 'block' : 'none';
+          document.getElementById('tabAxial').style.display = name === 'axial' ? 'block' : 'none';
+        };
+      });
+      var bd = document.getElementById('birthDate');
+      if (bd && !bd.value) { var d = new Date(); d.setFullYear(d.getFullYear() - 8); bd.value = formatDate(d); }
+    })();
+  </script>
+</body>
+</html>

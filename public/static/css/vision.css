@@ -1,0 +1,107 @@
+#visualExaminationPage {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+#textExaminationData h2,
+#chartContainer h2 {
+    font-size: 20px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+/* 表格样式 */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+table th,
+table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+    font-size: 14px;
+}
+
+/* 表头样式 */
+table thead th {
+    font-weight: bold;
+    color: #555;
+}
+
+/* 主觉验光背景色 */
+thead th:nth-child(2),
+thead th:nth-child(3),
+thead th:nth-child(4),
+thead th:nth-child(5),
+thead th:nth-child(6) {
+    background-color: #e0f7fa; /* 浅蓝色 */
+}
+
+/* 电脑验光背景色 */
+thead th:nth-child(7),
+thead th:nth-child(8),
+thead th:nth-child(9),
+thead th:nth-child(10) {
+    background-color: #e8f5e9; /* 浅绿色 */
+}
+
+/* 旧镜参数背景色 */
+thead th:nth-child(11),
+thead th:nth-child(12),
+thead th:nth-child(13),
+thead th:nth-child(14),
+thead th:nth-child(15) {
+    background-color: #f1f8e9; /* 浅灰蓝色 */
+}
+
+/* 配镜处方背景色 */
+thead th:nth-child(16),
+thead th:nth-child(17),
+thead th:nth-child(18),
+thead th:nth-child(19),
+thead th:nth-child(20) {
+    background-color: #fff9c4; /* 浅黄色 */
+}
+
+/* 行样式 */
+tbody tr:nth-child(1) td {
+    background-color: #f9f9f9; /* 浅灰色 */
+}
+
+tbody tr:nth-child(2) td {
+    background-color: #f3f3f3; /* 稍微深一点的灰色 */
+}
+
+tbody tr:nth-child(3) td {
+    background-color: #f9f9f9; /* 浅灰色 */
+}
+
+/* 图表容器和图例样式 */
+#chartContainer {
+    margin-top: 20px;
+}
+
+.legend {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.legend .circle {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.primary {
+    background-color: #42a5f5; /* 蓝色 */
+}
+
+.secondary {
+    background-color: #66bb6a; /* 绿色 */
+}

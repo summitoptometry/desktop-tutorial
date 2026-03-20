@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>近视匹配分析 - 胜密软件</title>
+  <script>
+    (function () {
+      var MOBILE_BREAKPOINT = 768;
+      function isMobile() {
+        if (typeof window === 'undefined') return false;
+        var ua = navigator.userAgent || navigator.vendor || '';
+        var mobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile/i.test(ua);
+        var narrowView = window.innerWidth <= MOBILE_BREAKPOINT;
+        return mobileUA || narrowView;
+      }
+      if (isMobile()) {
+        window.location.replace('index-mobile.html');
+      } else {
+        window.location.replace('index-desktop.html');
+      }
+    })();
+  </script>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; text-align: center; }
+    p { color: #666; }
+  </style>
+</head>
+<body>
+  <p>正在根据设备跳转…</p>
+  <p>若未自动跳转，请点击：<a href="index-desktop.html">电脑版</a> | <a href="index-mobile.html">手机版</a></p>
+</body>
+</html>

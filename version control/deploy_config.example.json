@@ -1,0 +1,8 @@
+{
+  "server_host": "47.108.224.128",
+  "server_port": 22,
+  "server_username": "admin",
+  "server_password": "your-password-here",
+  "server_path": "/home/admin/eye/media/exehtml"
+}
+

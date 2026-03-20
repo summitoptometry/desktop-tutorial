@@ -1,0 +1,110 @@
+<div id="visualExaminationPage">
+    <!-- 文本检查数据区域 -->
+    <div id="textExaminationData">
+        <h2>视光检查</h2>
+        <table>
+                <!-- 添加编辑、提交和取消按钮 -->
+                <div style="margin-bottom: 10px;">
+                    <button id="editvisionButton" style="background-color: green; color: white;" onclick="enterroutineEditMode()">编辑</button>
+                    <button id="submitvisionButton" style="display: none; background-color: blue; color: white;" onclick="submitroutineEditMode()">提交</button>
+                    <button id="cancelvisionButton" style="display: none; background-color: red; color: white;" onclick="cancelroutineEditMode()">取消</button>
+                </div>
+            <thead>
+                <tr>
+                    <th>检查日期</th>
+                    <th colspan="5">主觉验光</th>
+                    <th colspan="4">电脑验光</th>
+                    <th colspan="5">旧镜参数</th>
+                    <th colspan="5">配镜处方</th>
+                </tr>
+                <tr>
+                    <th id="examination_date"></th>
+                    <th>球镜</th><th>柱镜</th><th>轴位</th><th>视力</th><th>瞳距</th>
+                    <th>球镜</th><th>柱镜</th><th>轴位</th><th>瞳距</th>
+                    <th>球镜</th><th>柱镜</th><th>轴位</th><th>视力</th><th>瞳距</th>
+                    <th>球镜</th><th>柱镜</th><th>轴位</th><th>视力</th><th>瞳距</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>右眼</td>
+                    <!-- 主觉验光右眼 -->
+                    <td id="subjective_right_spherical"> </td>
+                    <td id="subjective_right_cylindrical"> </td>
+                    <td id="subjective_right_axis"> </td>
+                    <td id="bcva_right_vision"> </td>
+                    <td rowspan="3" id="subjective_both_pupil_distance"> </td> <!-- 瞳距双眼 -->
+                    <!-- 电脑验光右眼 -->
+                    <td id="objective_right_spherical"> </td>
+                    <td id="objective_right_cylindrical"> </td>
+                    <td id="objective_right_axis"> </td>
+                    <td rowspan="3" id="objective_pupil_distance"> </td> <!-- 瞳距双眼 -->
+                    <!-- 旧镜参数右眼 -->
+                    <td id="vaec_right_spherical"> </td>
+                    <td id="vaec_right_cylindrical"> </td>
+                    <td id="vaec_right_axis"> </td>
+                    <td id="vaec_right_old_vision"> </td>
+                    <td rowspan="3" id="vaec_both_pupil_distance"> </td> <!-- 瞳距双眼 -->
+                    <!-- 配镜处方右眼 -->
+                    <td id="vacc_right_spherical"> </td>
+                    <td id="vacc_right_cylindrical"> </td>
+                    <td id="vacc_right_axis"> </td>
+                    <td id="vacc_right_old_vision"> </td>
+                    <td rowspan="3" id="vacc_both_pupil_distance"> </td> <!-- 瞳距双眼 -->
+                </tr>
+                <tr>
+                    <td>左眼</td>
+                    <!-- 主觉验光左眼 -->
+                    <td id="subjective_left_spherical"> </td>
+                    <td id="subjective_left_cylindrical"> </td>
+                    <td id="subjective_left_axis"> </td>
+                    <td id="bcva_left_vision"> </td>
+                    <!-- 电脑验光左眼 -->
+                    <td id="objective_left_spherical"> </td>
+                    <td id="objective_left_cylindrical"> </td>
+                    <td id="objective_left_axis"> </td>
+                    <!-- 旧镜参数左眼 -->
+                    <td id="vaec_left_spherical"> </td>
+                    <td id="vaec_left_cylindrical"> </td>
+                    <td id="vaec_left_axis"> </td>
+                    <td id="vaec_left_old_vision"> </td>
+                    <!-- 配镜处方左眼 -->
+                    <td id="vacc_left_spherical"> </td>
+                    <td id="vacc_left_cylindrical"> </td>
+                    <td id="vacc_left_axis"> </td>
+                    <td id="vacc_left_old_vision"> </td>
+                </tr>
+                <tr>
+                    <td>双眼</td>
+                    <!-- 主觉验光双眼 -->
+                    <td colspan="3"> </td> <!-- 空出球镜、柱镜和轴位列 -->
+                    <td id="bcva_both_vision"> </td>
+                    <!-- 电脑验光双眼 -->
+                    <td colspan="3"> </td> <!-- 空出球镜、柱镜和轴位列 -->
+                    <!-- 旧镜参数双眼 -->
+                    <td colspan="3"> </td> <!-- 空出球镜、柱镜和轴位列 -->
+                    <td id="vaec_both_old_vision"> </td>
+                    <!-- 配镜处方双眼 -->
+                    <td colspan="3"> </td> <!-- 空出球镜、柱镜和轴位列 -->
+                    <td id="vacc_both_old_vision"> </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 图表展示区域 -->
+    <div id="chartContainer" style="width: 100%; height: 400px;"></div>
+
+    <div id="chartSwitch" style="display: flex; justify-content: center; margin-top: 10px;">
+        <label style="margin-right: 10px;">
+            <input type="radio" name="chartType" value="subjective">
+            主觉验光图表
+        </label>
+        <label>
+            <input type="radio" name="chartType" value="prescription">
+            配镜处方图表
+        </label>
+    </div>
+
+
+</div>

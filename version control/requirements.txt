@@ -1,0 +1,9 @@
+# 版本管理系统依赖
+
+# 如果使用SFTP上传，需要安装paramiko
+paramiko>=2.12.0
+
+# Django相关（如果作为Django应用使用）
+Django>=4.2.0
+djangorestframework>=3.14.0
+

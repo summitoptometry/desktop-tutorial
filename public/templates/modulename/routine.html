@@ -1,0 +1,94 @@
+<div id="routine-checkup-container">
+    <h2 style="text-align: left; margin-left: 0%;">常规检查</h2>
+
+                <!-- 添加编辑、提交和取消按钮 -->
+            <div style="margin-bottom: 10px;">
+                <button id="editroutineButton" style="background-color: green; color: white;" onclick="enterroutineEditMode()">编辑</button>
+                <button id="submitroutineButton" style="display: none; background-color: blue; color: white;" onclick="submitroutineEditMode()">提交</button>
+                <button id="cancelroutineButton" style="display: none; background-color: red; color: white;" onclick="cancelroutineEditMode()">取消</button>
+            </div>
+    <!-- 左右眼数据表格 -->
+    <div id="eye-data-table" >
+        <table>
+
+            <thead>
+                <tr>
+                    <th id="examination_date" class="date-display" style="display: 1;width: 8%;"> </th>
+                    <th>眼轴</th>
+                    <th>K1</th>
+                    <th>K2</th>
+                    <th>近视临界点</th>
+                    <th>轴率比</th>
+                    <th>角膜厚度</th>
+                    <th>前房厚度</th>
+                    <th>晶体厚度</th>
+                    <th>玻璃体厚度</th>
+                    <th>脉络膜厚度</th>
+                    <th>眼压</th>
+                    <th>裸眼视力</th>
+
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>右眼</td>
+                    <td id="right_eye_axial_length">N/A</td>
+                    <td id="right_eye_k1">N/A</td>
+                    <td id="right_eye_k2">N/A</td>
+                    <td id="right_malwt">N/A</td>
+                    <td id="right_al_cr">N/A</td>
+                    <td id="right_cct">N/A</td>
+                    <td id="right_anterior_chamber_depth">N/A</td>
+                    <td id="right_lens_thickness">N/A</td>
+                    <td id="right_vitreous_space_thickness">N/A</td>
+                    <td id="right_choroidal_thickness">N/A</td>
+                    <td id="right_intraocular_pressure">N/A</td>
+                    <td id="uva_right_vision">N/A</td>
+                </tr>
+                <tr>
+                    <td>左眼</td>
+                    <td id="left_eye_axial_length">N/A</td>
+                    <td id="left_eye_k1">N/A</td>
+                    <td id="left_eye_k2">N/A</td>
+                    <td id="left_malwt">N/A</td>
+                    <td id="left_al_cr">N/A</td>
+                    <td id="left_cct">N/A</td>
+                    <td id="left_anterior_chamber_depth">N/A</td>
+                    <td id="left_lens_thickness">N/A</td>
+                    <td id="left_vitreous_space_thickness">N/A</td>
+                    <td id="left_choroidal_thickness">N/A</td>
+                    <td id="left_intraocular_pressure">N/A</td>
+                    <td id="uva_left_vision">N/A</td>
+                </tr>
+            </tbody>
+        </table>
+
+
+
+    </div>
+
+    <!-- ECharts 图表 -->
+    <div id="echarts-container" style="width: 100%; height: 400px;"></div>
+
+    <!-- 图表切换选项 -->
+    <div id="chart-options">
+        <label>
+            <input type="radio" name="chartType" value="axialLength" onclick="switchChartData('axialLength')" checked>
+            眼轴
+        </label>
+        <label>
+            <input type="radio" name="chartType" value="eyePressure" onclick="switchChartData('eyePressure')">
+            眼压
+        </label>
+        <label>
+            <input type="radio" name="chartType" value="unaidedVision" onclick="switchChartData('unaidedVision')">
+            裸眼视力
+        </label>
+        <label>
+            <input type="radio" name="chartType" value="choroidalThickness" onclick="switchChartData('choroidalThickness')">
+            脉络膜厚度
+        </label>
+    </div>
+
+
+</div>

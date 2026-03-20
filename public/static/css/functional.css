@@ -1,0 +1,12 @@
+button:hover {
+    background-color: #45a049; /* 悬停时背景色变深 */
+    border-color: #388e3c;   /* 边框颜色也变化 */
+}
+
+table {
+    border: 2px solid #999; /* 外框为实线 */
+}
+
+td {
+    border: 1px dashed lightgray; /* 内框为虚线 */
+}

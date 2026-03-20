@@ -1,0 +1,238 @@
+
+<h2>诊疗方案</h2>
+    <!-- 编辑、保存、取消按钮 -->
+    <div style="margin-bottom: 15px;">
+        <button id="edittreatmentButton" onclick="starttreatmentEdit()">编辑</button>
+        <button id="savetreatmentButton" style="display: none;" onclick="savetreatmentData()">保存</button>
+        <button id="canceltreatmentButton" style="display: none;" onclick="canceltreatmentEdit()">取消</button>
+    </div>
+
+
+
+
+<section id="left">
+    <div class="form-row">
+
+
+
+
+
+        <div style="width: 100%;">
+            <!-- 裸眼视力 -->
+            <h3>裸眼视力</h3>
+            <div style="display: flex; justify-content: space-between; width: 100%;">
+                <div>
+                    <label for="uva_right_vision">右眼:</label>
+                    <input type="number" id="uva_right_vision" name="uva_right_vision" min="0" step="0.01" placeholder="右眼裸眼视力" style="width: 60%;">
+                </div>
+                <div>
+                    <label for="uva_left_vision">左眼:</label>
+                    <input type="number" id="uva_left_vision" name="uva_left_vision" min="0" step="0.01" placeholder="左眼裸眼视力" style="width: 60%;">
+                </div>
+                <div>
+                    <label for="uva_both_vision">双眼:</label>
+                    <input type="number" id="uva_both_vision" name="uva_both_vision" min="0" step="0.01" placeholder="双眼裸眼视力" style="width: 60%;">
+                </div>
+            </div>
+
+            <!-- 戴镜视力 -->
+            <h3>戴镜视力</h3>
+            <div style="display: flex; justify-content: space-between; width: 100%;">
+                <div>
+                    <label for="vaec_right_old_vision">右眼:</label>
+                    <input type="number" id="vaec_right_old_vision" name="vaec_right_old_vision" min="0" step="0.01" placeholder="右眼戴镜视力" style="width: 60%;">
+                </div>
+                <div>
+                    <label for="vaec_left_old_vision">左眼:</label>
+                    <input type="number" id="vaec_left_old_vision" name="vaec_left_old_vision" min="0" step="0.01" placeholder="左眼戴镜视力" style="width: 60%;">
+                </div>
+                <div>
+                    <label for="vaec_both_old_vision">双眼:</label>
+                    <input type="number" id="vaec_both_old_vision" name="vaec_both_old_vision" min="0" step="0.01" placeholder="双眼戴镜视力" style="width: 60%;">
+                </div>
+            </div>
+        </div>
+
+
+
+
+
+
+
+
+    <!-- 身高/体重 -->
+    <div class="form-row">
+        <div >
+            <label for="height" >身高(厘米):</label>
+            <!-- 显示文本的部分 -->
+
+            <!-- 编辑模式下的输入框 -->
+            <input type="number" id="height" name="height" min="0" placeholder="请输入身高"   >
+        </div>
+        <div >
+            <label for="weight" >体重(千克):</label>
+            <!-- 显示文本的部分 -->
+
+            <!-- 编辑模式下的输入框 -->
+            <input type="number" id="weight" name="weight" step="0.1" min="0" placeholder="请输入体重"   >
+        </div>
+    </div>
+
+    <!-- 检查间隔/下次检查日期 -->
+    <div class="form-row">
+        <div>
+            <label for="period" >检查间隔:</label>
+            <!-- 显示文本的部分 -->
+
+            <!-- 编辑模式下的下拉框 -->
+            <select id="period" onchange="updateReviewDate()">
+                <option value="3">三个月</option>
+                <option value="2">两个月</option>
+                <option value="1">一个月</option>
+                <option value="0">自定义</option>
+            </select>
+        </div>
+        <div>
+            <label for="examination_date">检查日期:</label>
+            <!-- 显示文本的部分 -->
+
+            <!-- 编辑模式下的日期框 -->
+            <input type="date" id="examination_date" name="examination_date" oninput="autoTabYear(this)"  >
+        </div>
+        <div>
+            <label for="review_date">下次检查日期:</label>
+            <!-- 显示文本的部分 -->
+
+            <!-- 编辑模式下的日期框 -->
+            <input type="date" id="review_date" name="review_date" onchange="updatePeriodBasedOnReviewDate()">
+
+        </div>
+    </div>
+
+</section>
+
+
+<section id="right">
+
+    <!-- 治疗方案 -->
+    <h3>本次治疗方案</h3>
+    <div class="form-row">
+        <label>
+            <input type="checkbox" id="sync_eyes" checked onchange="toggleSync()"> 双眼同步
+        </label>
+    </div>
+
+    <h4>右眼治疗方案</h4>
+    <div class="form-row">
+        <div>
+            <label for="right_atropine">阿托品:</label>
+            <select id="right_atropine" name="right_atropine" onchange="updateTreatmentOptions('right')">
+                <option value="否">否</option>
+                <option value="0.01%">0.01%</option>
+                <option value="0.02%">0.02%</option>
+                <option value="0.05%">0.05%</option>
+
+            </select>
+        </div>
+        <div>
+            <label for="right_glasses">配镜手段:</label>
+            <select id="right_glasses" name="right_glasses" onchange="updateTreatmentOptions('right')">
+                <option value="否">否</option>
+                <option value="离焦镜">离焦镜</option>
+                <option value="点扩散">点扩散</option>
+                <option value="OK镜">OK镜</option>
+                <option value="离焦软镜">离焦软镜</option>
+                <option value="RGP">RGP</option>
+                <option value="单光镜">单光镜</option>
+                <option value="渐近镜">渐近镜</option>
+                <option value="双效离焦点扩散">双效离焦点扩散</option>
+            </select>
+            <!-- 动态生成的品牌选择器 -->
+            <select id="right_glasses_pp" name="right_glasses_pp" style="display: none;" onchange="updateTreatmentOptions('right')"></select>
+        </div>
+        <div>
+            <label for="right_hg">低强度红光:</label>
+            <select id="right_hg" name="right_hg" onchange="updateTreatmentOptions('right')">
+                <option value="否">否</option>
+                <option value="唯迪科">唯迪科</option>
+                <option value="小太阳">小太阳</option>
+            </select>
+            <!-- 动态生成的档位选择器 -->
+            <select id="right_hg_dw" name="right_hg_dw" style="display: none;" onchange="updateTreatmentOptions('right')"></select>
+        </div>
+        <div>
+            <label for="right_physiotherapy">理疗:</label>
+            <select id="right_physiotherapy" name="right_physiotherapy" onchange="updateTreatmentOptions('right')">
+                <option value="否">否</option>
+                <option value="是">是</option>
+
+            </select>
+        </div>
+        <div>
+            <label for="right_visual_training">视觉训练:</label>
+            <select id="right_visual_training" name="right_visual_training" onchange="updateTreatmentOptions('right')">
+                <option value="否">否</option>
+                <option value="是">是</option>
+
+            </select>
+        </div>
+    </div>
+
+    <!-- 左眼治疗方案 -->
+    <h4>左眼治疗方案</h4>
+    <div class="form-row">
+        <div>
+            <label for="left_atropine">阿托品:</label>
+            <select id="left_atropine" name="left_atropine" disabled>
+                <option value="否">否</option>
+                <option value="0.01%">0.01%</option>
+                <option value="0.02%">0.02%</option>
+                <option value="0.05%">0.05%</option>
+
+            </select>
+        </div>
+        <div>
+            <label for="left_glasses">配镜手段:</label>
+            <select id="left_glasses" name="left_glasses" disabled>
+                <option value="否">否</option>
+                <option value="离焦镜">离焦镜</option>
+                <option value="点扩散">点扩散</option>
+                <option value="OK镜">OK镜</option>
+                <option value="离焦软镜">离焦软镜</option>
+                <option value="RGP">RGP</option>
+                <option value="单光镜">单光镜</option>
+                <option value="渐近镜">渐近镜</option>
+                <option value="双效离焦点扩散">双效离焦点扩散</option>
+            </select>
+            <!-- 动态生成的品牌选择器 -->
+            <select id="left_glasses_pp" name="left_glasses_pp" style="display: none;" disabled></select>
+        </div>
+        <div>
+            <label for="left_hg">低强度红光:</label>
+            <select id="left_hg" name="left_hg" disabled>
+                <option value="否">否</option>
+                <option value="唯迪科">唯迪科</option>
+                <option value="小太阳">小太阳</option>
+            </select>
+            <!-- 动态生成的档位选择器 -->
+            <select id="left_hg_dw" name="left_hg_dw" style="display: none;" disabled></select>
+        </div>
+        <div>
+            <label for="left_physiotherapy">理疗:</label>
+            <select id="left_physiotherapy" name="left_physiotherapy" disabled>
+                <option value="否">否</option>
+                <option value="是">是</option>
+
+            </select>
+        </div>
+        <div>
+            <label for="left_visual_training">视觉训练:</label>
+            <select id="left_visual_training" name="left_visual_training" disabled>
+                <option value="否">否</option>
+                <option value="是">是</option>
+
+            </select>
+        </div>
+    </div>
+
+</section>

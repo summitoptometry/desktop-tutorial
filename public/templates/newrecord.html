@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>患者检查主页</title>
+    <link rel="stylesheet" href="../static/css/main.css"> <!-- 引用主页样式 -->
+    <script src="../static/js/Echarts.js"></script> <!-- 引用 ECharts 库 -->
+</head>
+<body>
+
+<div class="container">
+    <!-- 顶部导航栏 -->
+    <div class="top-bar">
+        <span class="title">档案查询</span>
+        <button onclick="loadModule('basic')">基础检查</button>
+        <button onclick="loadModule('routine')">常规检查</button>
+        <button onclick="loadModule('vision')">视光检查</button>
+        <button onclick="loadModule('functional')">视功能检查</button>
+        <button onclick="loadModule('treatment')">诊疗方案</button>
+<!-- {#        <button onclick="loadModule('new')">新增检查</button>#} -->
+    </div>
+
+    <div class="content-layout">
+        <!-- 左侧检查记录区 -->
+        <div class="side-bar" id="recordList">
+            <h3>检查记录</h3>
+            <ul id="yearList">
+                <!-- 年份列表由 JavaScript 动态填充 -->
+            </ul>
+        </div>
+
+        <div class="main-area">
+            <!-- 患者基础信息 -->
+            <div class="patient-info">
+                <span id="patientName">姓名: </span>
+                <span id="patientGender">性别: </span>
+                <span id="patientAge">年龄: </span>
+                <span id="patientPhone">联系电话: </span>
+                <span id="initialAxisRatio">初始轴率比: </span>
+                <span id="create_date">建档日期: </span>
+            </div>
+
+            <!-- 主内容区域 -->
+            <div id="main-content" class="main-content">
+                <!-- 加载的模块内容将显示在这里 -->
+            </div>
+        </div>
+    </div>
+
+  
+
+</div>
+
+<script src="../static/js/main.js"></script> <!-- 引用主页主脚本 -->
+</body>
+</html>
