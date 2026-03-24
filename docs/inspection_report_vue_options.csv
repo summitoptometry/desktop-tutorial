@@ -1,0 +1,17 @@
+optionKey,label,value
+genderOptions,男,男
+genderOptions,女,女
+glassesTypeOptions,单焦点,单焦点
+glassesTypeOptions,点扩散,点扩散
+glassesTypeOptions,多点离焦,多点离焦
+glassesTypeOptions,渐进,渐进
+glassesTypeOptions,抗疲劳,抗疲劳
+glassesTypeOptions,变色,变色
+ampMethodOptions,推近法,推近法
+ampMethodOptions,负镜片法,负镜片法
+facilityLensOptions,±2.00D,±2.00D
+facilityLensOptions,±1.50D,±1.50D
+facilityLensOptions,±1.00D,±1.00D
+facilityTargetOptions,20/30,20/30
+facilityTargetOptions,20/40,20/40
+facilityTargetOptions,20/50,20/50

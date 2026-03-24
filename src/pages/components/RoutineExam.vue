@@ -315,6 +315,8 @@ function formatValue(value, type) {
   const num = Number(value);
   if (isNaN(num)) return '-';
   switch (type) {
+    case 'cct':
+      return String(Math.round(num));
     case 'choroid':
     case 'iop':
       return num.toFixed(1);
@@ -366,7 +368,7 @@ const columns = computed(() => [
     width: 100,
   },
   {
-    title: '近视临界点\n(mm)',
+    title: '参考临界值',
     dataIndex: 'critical_point',
     width: 120,
   },
@@ -405,7 +407,7 @@ const columns = computed(() => [
 const tableData = computed(() => {
   if (!props.record) return [];
 
-  // 计算近视临界点（只需要计算一次，因为左右眼K值相同）
+  // 计算参考临界值（只需要计算一次，因为左右眼K值相同）
   const criticalPoint = calculateCriticalPoint(
     props.record.right_eye_k1,
     props.record.right_eye_k2
@@ -444,7 +446,7 @@ const tableData = computed(() => {
         'default'
       ),
       critical_point: formatValue(criticalPoint, 'default'),
-      cct: formatValue(props.record.right_cct, 'default'),
+      cct: formatValue(props.record.right_cct, 'cct'),
       acd: formatValue(props.record.right_anterior_chamber_depth, 'default'),
       lens_thickness: formatValue(props.record.right_lens_thickness, 'default'),
       vitreous_length: formatValue(props.record.right_vitreous_space_thickness, 'default'),
@@ -469,7 +471,7 @@ const tableData = computed(() => {
         'default'
       ),
       critical_point: formatValue(criticalPoint, 'default'),
-      cct: formatValue(props.record.left_cct, 'default'),
+      cct: formatValue(props.record.left_cct, 'cct'),
       acd: formatValue(props.record.left_anterior_chamber_depth, 'default'),
       lens_thickness: formatValue(props.record.left_lens_thickness, 'default'),
       vitreous_length: formatValue(props.record.left_vitreous_space_thickness, 'default'),

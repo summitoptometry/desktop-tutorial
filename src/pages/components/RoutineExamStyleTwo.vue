@@ -1,12 +1,12 @@
 <template>
-  <div class="routine-exam-style-two">
+  <div class="routine-exam-style-two" :class="{ 'routine-exam-style-two--edit': viewMode === 'edit' }">
     <!-- 基础检查 -->
-    <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasRoutineData" 
+    <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasRoutineData || (reportLayout && hasRetinoscopyData)" 
          v-show="!showOnlySection || showOnlySection === 'routine'"
          class="section-block"
          :class="{ 'collapsed': enableCollapse && !sectionExpanded?.routine }">
       <h3 
-        v-if="viewMode === 'view' || !isReportMode"
+        v-if="!reportLayout && (viewMode !== 'view' || showSectionTitlesInView)"
         class="section-title"
         :class="{ 'clickable': enableCollapse }"
         @click="enableCollapse && handleToggleSection('routine')"
@@ -18,7 +18,159 @@
         </span>
       </h3>
       <div v-show="viewMode === 'print' || showOnlySection === 'routine' || (enableCollapse ? sectionExpanded?.routine : true)">
-      <table class="routine-info-table">
+      <div v-if="reportLayout" class="exam-report-basic-retinoscopy-row">
+        <table v-if="viewMode === 'edit' || hasRoutineData" class="exam-sheet exam-table-basic routine-info-table routine-report-by-eye">
+        <colgroup>
+          <col class="basic-col-eye" />
+          <col class="basic-col-iop" />
+          <col class="basic-col-corrected-iop" />
+          <col class="basic-col-height" />
+          <col class="basic-col-weight" />
+          <col class="basic-col-bmi" />
+        </colgroup>
+        <tbody>
+          <tr>
+            <th
+              class="group-head report-section-top-title"
+              colspan="6"
+              :class="{ clickable: enableCollapse }"
+              @click="enableCollapse && handleToggleSection('routine')"
+            >
+              <span>基础检查</span>
+              <span v-if="enableCollapse" class="section-toggle-icon report-section-side-toggle">
+                <UpOutlined v-if="sectionExpanded?.routine" />
+                <DownOutlined v-else />
+              </span>
+            </th>
+          </tr>
+          <tr>
+            <th class="row-head">眼别</th>
+            <th class="col-head basic-th-iop">眼压/mmHg</th>
+            <th class="col-head basic-th-corrected-iop">修正眼压/mmHg</th>
+            <th class="col-head basic-th-height">身高/cm</th>
+            <th class="col-head basic-th-weight">体重/kg</th>
+            <th class="col-head basic-th-bmi">BMI</th>
+          </tr>
+          <tr>
+            <th class="eye-cell eye-name">右眼</th>
+            <td class="basic-td-iop">
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="editForm.right_intraocular_pressure" :min="0" :precision="1" style="width: 100%" placeholder="mmHg" />
+                </template>
+                <template v-else>{{ formatIOP(record?.right_intraocular_pressure) }}</template>
+              </div>
+            </td>
+            <td class="basic-td-corrected-iop cell-computed">
+              <div class="cell-field">{{ formatIOP(calculateCorrectedIOP(viewMode === 'edit' ? editForm.right_intraocular_pressure : record?.right_intraocular_pressure, viewMode === 'edit' ? editForm.right_cct : record?.right_cct)) }}</div>
+            </td>
+            <td class="basic-td-height" rowspan="2">
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="editForm.height" :min="0" :precision="0" style="width: 100%" placeholder="cm" />
+                </template>
+                <template v-else>{{ formatHeight(record?.height) }}</template>
+              </div>
+            </td>
+            <td class="basic-td-weight" rowspan="2">
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="editForm.weight" :min="0" :precision="1" style="width: 100%" placeholder="kg" />
+                </template>
+                <template v-else>{{ formatWeight(record?.weight) }}</template>
+              </div>
+            </td>
+            <td rowspan="2" class="cell-computed basic-td-bmi">
+              <div class="cell-field">{{ calculateBMI(viewMode === 'edit' ? editForm.height : record?.height, viewMode === 'edit' ? editForm.weight : record?.weight) }}</div>
+            </td>
+          </tr>
+          <tr>
+            <th class="eye-cell eye-name">左眼</th>
+            <td class="basic-td-iop">
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="editForm.left_intraocular_pressure" :min="0" :precision="1" style="width: 100%" placeholder="mmHg" />
+                </template>
+                <template v-else>{{ formatIOP(record?.left_intraocular_pressure) }}</template>
+              </div>
+            </td>
+            <td class="basic-td-corrected-iop cell-computed">
+              <div class="cell-field">{{ formatIOP(calculateCorrectedIOP(viewMode === 'edit' ? editForm.left_intraocular_pressure : record?.left_intraocular_pressure, viewMode === 'edit' ? editForm.left_cct : record?.left_cct)) }}</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+        <table v-if="viewMode === 'edit' || hasRetinoscopyData" class="exam-sheet exam-table-objective-retinoscopy objective-report-by-eye">
+          <tbody>
+            <tr>
+              <th class="group-head report-section-top-title" colspan="4">
+                <span>检影验光</span>
+              </th>
+            </tr>
+            <tr>
+              <th class="col-head">眼别</th>
+              <th class="col-head">球镜</th>
+              <th class="col-head">柱镜</th>
+              <th class="col-head">轴位</th>
+            </tr>
+            <tr>
+              <th class="eye-cell eye-name">右眼</th>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input :value="getSphericalDisplayValue('retinoscopy_right_eye_spherical')" @input="handleSphericalChange('retinoscopy_right_eye_spherical', $event)" @blur="handleSphericalBlur('retinoscopy_right_eye_spherical')" class="prescription-input prescription-spherical cell-number" placeholder="球镜" style="width: 100%" /></template>
+                  <template v-else>{{ formatSphere(record?.retinoscopy_right_eye_spherical, record?.retinoscopy_right_eye_spherical_sign) }}</template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'">
+                    <div class="objective-cyl-tooltip-wrap">
+                      <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('retinoscopy_right_eye_cylindrical')">
+                        <div class="cell-sphere-wrap"><a-input :value="getCylindricalDisplayValue('retinoscopy_right_eye_cylindrical')" @input="handleCylindricalChange('retinoscopy_right_eye_cylindrical', $event)" @blur="handleCylindricalBlur('retinoscopy_right_eye_cylindrical')" class="prescription-input prescription-cylindrical cell-input" placeholder="请填写负柱镜-" /></div>
+                      </a-tooltip>
+                    </div>
+                  </template>
+                  <template v-else><span class="cell-readonly-value">{{ formatCylinder(record?.retinoscopy_right_eye_cylindrical) }}</span></template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.retinoscopy_right_eye_axis" class="prescription-input prescription-axis cell-input" placeholder="轴位" /></template>
+                  <template v-else><span class="cell-readonly-value">{{ formatAxis(record?.retinoscopy_right_eye_axis) }}</span></template>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th class="eye-cell eye-name">左眼</th>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input :value="getSphericalDisplayValue('retinoscopy_left_eye_spherical')" @input="handleSphericalChange('retinoscopy_left_eye_spherical', $event)" @blur="handleSphericalBlur('retinoscopy_left_eye_spherical')" class="prescription-input prescription-spherical cell-number" placeholder="球镜" style="width: 100%" /></template>
+                  <template v-else>{{ formatSphere(record?.retinoscopy_left_eye_spherical, record?.retinoscopy_left_eye_spherical_sign) }}</template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'">
+                    <div class="objective-cyl-tooltip-wrap">
+                      <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('retinoscopy_left_eye_cylindrical')">
+                        <div class="cell-sphere-wrap"><a-input :value="getCylindricalDisplayValue('retinoscopy_left_eye_cylindrical')" @input="handleCylindricalChange('retinoscopy_left_eye_cylindrical', $event)" @blur="handleCylindricalBlur('retinoscopy_left_eye_cylindrical')" class="prescription-input prescription-cylindrical cell-input" placeholder="请填写负柱镜-" /></div>
+                      </a-tooltip>
+                    </div>
+                  </template>
+                  <template v-else><span class="cell-readonly-value">{{ formatCylinder(record?.retinoscopy_left_eye_cylindrical) }}</span></template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.retinoscopy_left_eye_axis" class="prescription-input prescription-axis cell-input" placeholder="轴位" /></template>
+                  <template v-else><span class="cell-readonly-value">{{ formatAxis(record?.retinoscopy_left_eye_axis) }}</span></template>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <table v-else class="routine-info-table">
         <thead>
           <tr>
             <th>检查项目</th>
@@ -61,7 +213,7 @@
           </tr>
           <tr>
             <td class="item-label">BMI</td>
-            <td>{{ calculateBMI(viewMode === 'edit' ? editForm.height : record?.height, viewMode === 'edit' ? editForm.weight : record?.weight) }}</td>
+            <td class="cell-computed">{{ calculateBMI(viewMode === 'edit' ? editForm.height : record?.height, viewMode === 'edit' ? editForm.weight : record?.weight) }}</td>
             <td class="unit-cell">-</td>
           </tr>
           <tr>
@@ -98,12 +250,12 @@
           </tr>
           <tr>
             <td class="item-label">修正眼压（右眼）</td>
-            <td>{{ formatIOP(calculateCorrectedIOP(viewMode === 'edit' ? editForm.right_intraocular_pressure : record?.right_intraocular_pressure, viewMode === 'edit' ? editForm.right_cct : record?.right_cct)) }}</td>
+            <td class="cell-computed">{{ formatIOP(calculateCorrectedIOP(viewMode === 'edit' ? editForm.right_intraocular_pressure : record?.right_intraocular_pressure, viewMode === 'edit' ? editForm.right_cct : record?.right_cct)) }}</td>
             <td class="unit-cell">mmHg</td>
           </tr>
           <tr>
             <td class="item-label">修正眼压（左眼）</td>
-            <td>{{ formatIOP(calculateCorrectedIOP(viewMode === 'edit' ? editForm.left_intraocular_pressure : record?.left_intraocular_pressure, viewMode === 'edit' ? editForm.left_cct : record?.left_cct)) }}</td>
+            <td class="cell-computed">{{ formatIOP(calculateCorrectedIOP(viewMode === 'edit' ? editForm.left_intraocular_pressure : record?.left_intraocular_pressure, viewMode === 'edit' ? editForm.left_cct : record?.left_cct)) }}</td>
             <td class="unit-cell">mmHg</td>
           </tr>
         </tbody>
@@ -117,7 +269,7 @@
          class="section-block"
          :class="{ 'collapsed': enableCollapse && !sectionExpanded?.vision }">
       <h3 
-        v-if="viewMode === 'view' || !isReportMode"
+        v-if="!reportLayout && (viewMode === 'edit' || showSectionTitlesInView)"
         class="section-title"
         :class="{ 'clickable': enableCollapse }"
         @click="enableCollapse && handleToggleSection('vision')"
@@ -129,14 +281,328 @@
         </span>
       </h3>
       <div v-show="viewMode === 'print' || showOnlySection === 'vision' || (enableCollapse ? sectionExpanded?.vision : true)">
-      <table class="vision-table">
+      <table v-if="reportLayout" class="exam-sheet exam-table-vision vision-table vision-report-by-eye">
+        <tbody>
+          <tr>
+            <th
+              class="side-title report-section-side-title"
+              rowspan="5"
+              :class="{ clickable: enableCollapse }"
+              @click="enableCollapse && handleToggleSection('vision')"
+            >
+              <span class="report-section-side-title-text">视力检查</span>
+              <span v-if="enableCollapse" class="section-toggle-icon report-section-side-toggle">
+                <UpOutlined v-if="sectionExpanded?.vision" />
+                <DownOutlined v-else />
+              </span>
+            </th>
+            <th class="row-head" rowspan="2">眼别</th>
+            <th class="group-head" colspan="2">裸眼视力</th>
+            <th class="group-head" colspan="2">戴镜视力</th>
+            <th class="group-head" rowspan="2">旧镜类型</th>
+            <th class="group-head" colspan="3">旧镜光度</th>
+          </tr>
+          <tr>
+            <th class="sub-head">远用</th>
+            <th class="sub-head">近用</th>
+            <th class="sub-head">远用</th>
+            <th class="sub-head">近用</th>
+            <th class="sub-head">球镜</th>
+            <th class="sub-head">柱镜</th>
+            <th class="sub-head">轴位</th>
+          </tr>
+          <tr>
+            <th class="eye-cell eye-name">右眼</th>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'uva_right_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('uva_right_vision')" @input="onVisionInput('uva_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('uva_right_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('uva_right_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'uva_right_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'uva_right_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'uva_right_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'uva_right_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'uva_right_vision').superscriptPart">{{ getVisionDisplayParts(record, 'uva_right_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'near_uva_right_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_uva_right_vision')" @input="onVisionInput('near_uva_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_uva_right_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_uva_right_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'near_uva_right_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'near_uva_right_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_uva_right_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'near_uva_right_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'near_uva_right_vision').superscriptPart">{{ getVisionDisplayParts(record, 'near_uva_right_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'vaec_right_old_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('vaec_right_old_vision')" @input="onVisionInput('vaec_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('vaec_right_old_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('vaec_right_old_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'vaec_right_old_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'vaec_right_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'vaec_right_old_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'vaec_right_old_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'vaec_right_old_vision').superscriptPart">{{ getVisionDisplayParts(record, 'vaec_right_old_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'near_subjective_right_old_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_subjective_right_old_vision')" @input="onVisionInput('near_subjective_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_right_old_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_subjective_right_old_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'near_subjective_right_old_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'near_subjective_right_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_subjective_right_old_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'near_subjective_right_old_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'near_subjective_right_old_vision').superscriptPart">{{ getVisionDisplayParts(record, 'near_subjective_right_old_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td rowspan="3" class="vision-glasses-type-cell">
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-select :value="bothGlassesType" @change="handleBothGlassesTypeChange" class="glasses-type-select" placeholder="旧镜类型" allowClear popup-class-name="glasses-type-dropdown" :dropdown-match-select-width="false">
+                    <a-select-option value="单焦点">单焦点</a-select-option>
+                    <a-select-option value="点扩散">点扩散</a-select-option>
+                    <a-select-option value="多点离焦">多点离焦</a-select-option>
+                    <a-select-option value="渐进">渐进</a-select-option>
+                    <a-select-option value="抗疲劳">抗疲劳</a-select-option>
+                    <a-select-option value="变色">变色</a-select-option>
+                  </a-select>
+                </template>
+                <template v-else>{{ formatOldGlassesType(record?.vaec_right_glasses_type, record?.vaec_left_glasses_type) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input :value="getSphericalDisplayValue('vaec_right_spherical')" @input="handleSphericalChange('vaec_right_spherical', $event)" @blur="handleSphericalBlur('vaec_right_spherical')" class="prescription-input prescription-spherical" placeholder="球镜" style="width: 100%" />
+                </template>
+                <template v-else>{{ formatSphere(record?.vaec_right_spherical, record?.vaec_right_spherical_sign) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('vaec_right_cylindrical')">
+                    <div class="cell-sphere-wrap">
+                      <a-input :value="getCylindricalDisplayValue('vaec_right_cylindrical')" @input="handleCylindricalChange('vaec_right_cylindrical', $event)" @blur="handleCylindricalBlur('vaec_right_cylindrical')" class="prescription-input prescription-cylindrical" placeholder="请填写负柱镜-" />
+                    </div>
+                  </a-tooltip>
+                </template>
+                <template v-else>{{ formatCylinder(record?.vaec_right_cylindrical) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="editForm.vaec_right_axis" :min="0" :max="180" class="prescription-input prescription-axis" placeholder="轴位" style="width: 100%" />
+                </template>
+                <template v-else>{{ formatAxis(record?.vaec_right_axis) }}</template>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th class="eye-cell eye-name">左眼</th>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'uva_left_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('uva_left_vision')" @input="onVisionInput('uva_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('uva_left_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('uva_left_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'uva_left_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'uva_left_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'uva_left_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'uva_left_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'uva_left_vision').superscriptPart">{{ getVisionDisplayParts(record, 'uva_left_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'near_uva_left_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_uva_left_vision')" @input="onVisionInput('near_uva_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_uva_left_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_uva_left_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'near_uva_left_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'near_uva_left_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_uva_left_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'near_uva_left_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'near_uva_left_vision').superscriptPart">{{ getVisionDisplayParts(record, 'near_uva_left_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'vaec_left_old_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('vaec_left_old_vision')" @input="onVisionInput('vaec_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('vaec_left_old_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('vaec_left_old_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'vaec_left_old_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'vaec_left_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'vaec_left_old_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'vaec_left_old_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'vaec_left_old_vision').superscriptPart">{{ getVisionDisplayParts(record, 'vaec_left_old_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'near_subjective_left_old_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_subjective_left_old_vision')" @input="onVisionInput('near_subjective_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_left_old_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_subjective_left_old_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'near_subjective_left_old_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'near_subjective_left_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_subjective_left_old_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'near_subjective_left_old_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'near_subjective_left_old_vision').superscriptPart">{{ getVisionDisplayParts(record, 'near_subjective_left_old_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input :value="getSphericalDisplayValue('vaec_left_spherical')" @input="handleSphericalChange('vaec_left_spherical', $event)" @blur="handleSphericalBlur('vaec_left_spherical')" class="prescription-input prescription-spherical" placeholder="球镜" style="width: 100%" />
+                </template>
+                <template v-else>{{ formatSphere(record?.vaec_left_spherical, record?.vaec_left_spherical_sign) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('vaec_left_cylindrical')">
+                    <div class="cell-sphere-wrap">
+                      <a-input :value="getCylindricalDisplayValue('vaec_left_cylindrical')" @input="handleCylindricalChange('vaec_left_cylindrical', $event)" @blur="handleCylindricalBlur('vaec_left_cylindrical')" class="prescription-input prescription-cylindrical" placeholder="请填写负柱镜-" />
+                    </div>
+                  </a-tooltip>
+                </template>
+                <template v-else>{{ formatCylinder(record?.vaec_left_cylindrical) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="editForm.vaec_left_axis" :min="0" :max="180" class="prescription-input prescription-axis" placeholder="轴位" style="width: 100%" />
+                </template>
+                <template v-else>{{ formatAxis(record?.vaec_left_axis) }}</template>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th class="eye-cell eye-name">双眼</th>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'uva_both_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('uva_both_vision')" @input="onVisionInput('uva_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('uva_both_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('uva_both_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'uva_both_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'uva_both_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'uva_both_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'uva_both_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'uva_both_vision').superscriptPart">{{ getVisionDisplayParts(record, 'uva_both_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'near_uva_both_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_uva_both_vision')" @input="onVisionInput('near_uva_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_uva_both_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_uva_both_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'near_uva_both_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'near_uva_both_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_uva_both_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'near_uva_both_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'near_uva_both_vision').superscriptPart">{{ getVisionDisplayParts(record, 'near_uva_both_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'vaec_both_old_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('vaec_both_old_vision')" @input="onVisionInput('vaec_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('vaec_both_old_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('vaec_both_old_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'vaec_both_old_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'vaec_both_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'vaec_both_old_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'vaec_both_old_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'vaec_both_old_vision').superscriptPart">{{ getVisionDisplayParts(record, 'vaec_both_old_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+              <template v-if="viewMode === 'edit'">
+                <template v-if="visionFocusedCell === 'near_subjective_both_old_vision'">
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_subjective_both_old_vision')" @input="onVisionInput('near_subjective_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_both_old_vision', el)" />
+                </template>
+                <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_subjective_both_old_vision')">
+                  <span>{{ getVisionDisplayParts(editForm, 'near_subjective_both_old_vision').valuePart }}</span>
+                  <sup v-if="getVisionDisplayParts(editForm, 'near_subjective_both_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_subjective_both_old_vision').superscriptPart }}</sup>
+                </div>
+              </template>
+              <template v-else>
+                <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'near_subjective_both_old_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'near_subjective_both_old_vision').superscriptPart">{{ getVisionDisplayParts(record, 'near_subjective_both_old_vision').superscriptPart }}</sup></span>
+              </template>
+              </div>
+            </td>
+            <td colspan="3" class="pd-cell-report">
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <span class="pd-label">瞳距</span>
+                  <a-input-number v-model:value="editForm.vaec_both_pupil_distance" :min="0" :precision="1" class="pd-input-number" placeholder="mm" />
+                  <span class="pd-unit">mm</span>
+                </template>
+                <template v-else>瞳距 {{ formatPDNumber(record?.vaec_both_pupil_distance) }} mm</template>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <table v-else class="vision-table">
         <thead>
           <tr>
             <th>检查项目</th>
             <th>远用/近用</th>
-            <th>右眼</th>
-            <th>左眼</th>
-            <th>双眼</th>
+            <th class="eye-name">右眼</th>
+            <th class="eye-name">左眼</th>
+            <th class="eye-name">双眼</th>
           </tr>
         </thead>
         <tbody>
@@ -147,12 +613,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'uva_right_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('uva_right_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('uva_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('uva_right_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('uva_right_vision')" @input="onVisionInput('uva_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('uva_right_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('uva_right_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'uva_right_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'uva_right_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'uva_right_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('uva_right_vision', getVisionDisplayParts(editForm, 'uva_right_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -162,12 +627,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'uva_left_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('uva_left_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('uva_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('uva_left_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('uva_left_vision')" @input="onVisionInput('uva_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('uva_left_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('uva_left_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'uva_left_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'uva_left_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'uva_left_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('uva_left_vision', getVisionDisplayParts(editForm, 'uva_left_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -177,12 +641,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'uva_both_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('uva_both_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('uva_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('uva_both_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('uva_both_vision')" @input="onVisionInput('uva_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('uva_both_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('uva_both_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'uva_both_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'uva_both_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'uva_both_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('uva_both_vision', getVisionDisplayParts(editForm, 'uva_both_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -195,12 +658,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'near_uva_right_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('near_uva_right_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('near_uva_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_uva_right_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_uva_right_vision')" @input="onVisionInput('near_uva_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_uva_right_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_uva_right_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'near_uva_right_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'near_uva_right_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_uva_right_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('near_uva_right_vision', getVisionDisplayParts(editForm, 'near_uva_right_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -210,12 +672,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'near_uva_left_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('near_uva_left_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('near_uva_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_uva_left_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_uva_left_vision')" @input="onVisionInput('near_uva_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_uva_left_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_uva_left_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'near_uva_left_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'near_uva_left_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_uva_left_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('near_uva_left_vision', getVisionDisplayParts(editForm, 'near_uva_left_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -225,12 +686,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'near_uva_both_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('near_uva_both_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('near_uva_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_uva_both_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_uva_both_vision')" @input="onVisionInput('near_uva_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_uva_both_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_uva_both_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'near_uva_both_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'near_uva_both_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_uva_both_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('near_uva_both_vision', getVisionDisplayParts(editForm, 'near_uva_both_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -245,12 +705,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'vaec_right_old_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('vaec_right_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('vaec_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('vaec_right_old_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('vaec_right_old_vision')" @input="onVisionInput('vaec_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('vaec_right_old_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('vaec_right_old_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'vaec_right_old_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'vaec_right_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'vaec_right_old_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('vaec_right_old_vision', getVisionDisplayParts(editForm, 'vaec_right_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -260,12 +719,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'vaec_left_old_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('vaec_left_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('vaec_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('vaec_left_old_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('vaec_left_old_vision')" @input="onVisionInput('vaec_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('vaec_left_old_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('vaec_left_old_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'vaec_left_old_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'vaec_left_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'vaec_left_old_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('vaec_left_old_vision', getVisionDisplayParts(editForm, 'vaec_left_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -275,12 +733,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'vaec_both_old_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('vaec_both_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('vaec_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('vaec_both_old_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('vaec_both_old_vision')" @input="onVisionInput('vaec_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('vaec_both_old_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('vaec_both_old_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'vaec_both_old_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'vaec_both_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'vaec_both_old_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('vaec_both_old_vision', getVisionDisplayParts(editForm, 'vaec_both_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -293,12 +750,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'near_subjective_right_old_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('near_subjective_right_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('near_subjective_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_right_old_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_subjective_right_old_vision')" @input="onVisionInput('near_subjective_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_right_old_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_subjective_right_old_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'near_subjective_right_old_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'near_subjective_right_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_subjective_right_old_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('near_subjective_right_old_vision', getVisionDisplayParts(editForm, 'near_subjective_right_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -308,12 +764,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'near_subjective_left_old_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('near_subjective_left_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('near_subjective_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_left_old_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_subjective_left_old_vision')" @input="onVisionInput('near_subjective_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_left_old_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_subjective_left_old_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'near_subjective_left_old_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'near_subjective_left_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_subjective_left_old_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('near_subjective_left_old_vision', getVisionDisplayParts(editForm, 'near_subjective_left_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -323,12 +778,11 @@
             <td>
               <template v-if="viewMode === 'edit'">
                 <template v-if="visionFocusedCell === 'near_subjective_both_old_vision'">
-                  <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('near_subjective_both_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('near_subjective_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_both_old_vision', el)" />
+                  <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_subjective_both_old_vision')" @input="onVisionInput('near_subjective_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_both_old_vision', el)" />
                 </template>
                 <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_subjective_both_old_vision')">
                   <span>{{ getVisionDisplayParts(editForm, 'near_subjective_both_old_vision').valuePart }}</span>
                   <sup v-if="getVisionDisplayParts(editForm, 'near_subjective_both_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_subjective_both_old_vision').superscriptPart }}</sup>
-                  <span v-if="isVisionPlaceholder('near_subjective_both_old_vision', getVisionDisplayParts(editForm, 'near_subjective_both_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
                 </div>
               </template>
               <template v-else>
@@ -345,8 +799,10 @@
                   :value="bothGlassesType" 
                   @change="handleBothGlassesTypeChange" 
                   class="glasses-type-select"
-                  placeholder="类型" 
+                  placeholder="旧镜类型" 
                   allowClear
+                  popup-class-name="glasses-type-dropdown"
+                  :dropdown-match-select-width="false"
                 >
                   <a-select-option value="单焦点">单焦点</a-select-option>
                   <a-select-option value="点扩散">点扩散</a-select-option>
@@ -361,12 +817,12 @@
             <td class="old-glasses-cell">
               <template v-if="viewMode === 'edit'">
                 <div class="prescription-input-group">
-                  <a-input-number 
-                    v-model:value="editForm.vaec_right_spherical" 
-                    :step="0.25" 
-                    :precision="2"
-                    class="prescription-input prescription-spherical" 
-                    placeholder="球镜" 
+                  <a-input
+                    :value="getSphericalDisplayValue('vaec_right_spherical')"
+                    @input="handleSphericalChange('vaec_right_spherical', $event)"
+                    @blur="handleSphericalBlur('vaec_right_spherical')"
+                    class="prescription-input prescription-spherical"
+                    placeholder="球镜"
                   />
                   <a-input-number 
                     v-model:value="editForm.vaec_right_cylindrical" 
@@ -389,12 +845,12 @@
             <td class="old-glasses-cell">
               <template v-if="viewMode === 'edit'">
                 <div class="prescription-input-group">
-                  <a-input-number 
-                    v-model:value="editForm.vaec_left_spherical" 
-                    :step="0.25" 
-                    :precision="2"
-                    class="prescription-input prescription-spherical" 
-                    placeholder="球镜" 
+                  <a-input
+                    :value="getSphericalDisplayValue('vaec_left_spherical')"
+                    @input="handleSphericalChange('vaec_left_spherical', $event)"
+                    @blur="handleSphericalBlur('vaec_left_spherical')"
+                    class="prescription-input prescription-spherical"
+                    placeholder="球镜"
                   />
                   <a-input-number 
                     v-model:value="editForm.vaec_left_cylindrical" 
@@ -416,7 +872,7 @@
             </td>
             <td class="old-glasses-cell">
               <template v-if="viewMode === 'edit'">
-                <a-input-number v-model:value="editForm.vaec_both_pupil_distance" :min="0" :precision="1" style="width: 100%" placeholder="瞳距" />
+                <a-input-number v-model:value="editForm.vaec_both_pupil_distance" :min="0" :precision="1" class="pd-input-number" placeholder="瞳距" />
               </template>
               <template v-else>PD：{{ formatPDNumber(record?.vaec_both_pupil_distance) }} mm</template>
             </td>
@@ -426,26 +882,217 @@
       </div>
     </div>
 
-    <!-- 客观验光检查 -->
-    <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasObjectiveRefractionData" 
+    <template v-if="reportLayout">
+      <slot name="report-after-vision" />
+    </template>
+
+    <!-- 电脑验光检查 -->
+    <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasObjectiveComputerBlockData || (!reportLayout && hasRetinoscopyData)" 
          v-show="!showOnlySection || showOnlySection === 'objective-refraction'"
          class="section-block"
          :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['objective-refraction'] }">
       <h3 
-        v-if="viewMode === 'view' || !isReportMode"
+        v-if="!reportLayout && (viewMode !== 'view' || showSectionTitlesInView)"
         class="section-title"
         :class="{ 'clickable': enableCollapse }"
         @click="enableCollapse && handleToggleSection('objective-refraction')"
       >
-        客观验光检查
+        电脑验光检查
         <span v-if="enableCollapse" class="section-toggle-icon">
           <UpOutlined v-if="sectionExpanded?.['objective-refraction']" />
           <DownOutlined v-else />
         </span>
       </h3>
       <div v-show="viewMode === 'print' || showOnlySection === 'objective-refraction' || (enableCollapse ? sectionExpanded?.['objective-refraction'] : true)">
-        <!-- 客观验光表格（检影 / 电脑 / 散瞳电脑） -->
-      <table class="refraction-table">
+        <table v-if="reportLayout" class="exam-sheet exam-table-objective-refraction objective-report-by-eye">
+          <tbody>
+            <tr>
+              <th
+                class="side-title report-section-side-title"
+                rowspan="4"
+                :class="{ clickable: enableCollapse }"
+                @click="enableCollapse && handleToggleSection('objective-refraction')"
+              >
+                <span class="report-section-side-title-text">电脑验光检查</span>
+                <span v-if="enableCollapse" class="section-toggle-icon report-section-side-toggle">
+                  <UpOutlined v-if="sectionExpanded?.['objective-refraction']" />
+                  <DownOutlined v-else />
+                </span>
+              </th>
+              <th class="sub-head">（小瞳）</th>
+              <th class="sub-head">球镜</th>
+              <th class="sub-head">柱镜</th>
+              <th class="sub-head">轴位</th>
+              <th class="sub-head">瞳孔直径</th>
+              <th class="sub-head">等效球镜</th>
+              <th class="sub-head">瞳距</th>
+              <th class="sub-head objective-pupillary-col-head">（散瞳）</th>
+              <th class="sub-head">球镜</th>
+              <th class="sub-head">柱镜</th>
+              <th class="sub-head">轴位</th>
+              <th class="sub-head">瞳孔直径</th>
+              <th class="sub-head">等效球镜</th>
+            </tr>
+            <tr>
+              <th class="eye-cell eye-name">右眼</th>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input :value="getSphericalDisplayValue('objective_right_spherical')" @input="handleSphericalChange('objective_right_spherical', $event)" @blur="handleSphericalBlur('objective_right_spherical')" class="prescription-input prescription-spherical cell-number" placeholder="球镜" style="width: 100%" /></template>
+                  <template v-else>{{ formatSphere(record?.objective_right_spherical, record?.objective_right_spherical_sign) }}</template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'">
+                    <div class="objective-cyl-tooltip-wrap">
+                      <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('objective_right_cylindrical')">
+                        <div class="cell-sphere-wrap"><a-input :value="getCylindricalDisplayValue('objective_right_cylindrical')" @input="handleCylindricalChange('objective_right_cylindrical', $event)" @blur="handleCylindricalBlur('objective_right_cylindrical')" class="prescription-input prescription-cylindrical cell-input" placeholder="请填写负柱镜-" /></div>
+                      </a-tooltip>
+                    </div>
+                  </template>
+                  <template v-else><span class="cell-readonly-value">{{ formatCylinder(record?.objective_right_cylindrical) }}</span></template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.objective_right_axis" class="prescription-input prescription-axis cell-input" placeholder="轴位" /></template>
+                  <template v-else><span class="cell-readonly-value">{{ formatAxis(record?.objective_right_axis) }}</span></template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.objective_right_pupil" class="prescription-input prescription-pupil cell-input" placeholder="mm" style="width: 100%" /></template>
+                  <template v-else><span class="cell-readonly-value"><template v-if="hasValue(record?.objective_right_pupil)">{{ formatPS(record?.objective_right_pupil) }}mm</template><template v-else>-</template></span></template>
+                </div>
+              </td>
+              <td class="cell-computed">
+                <div class="cell-field"><span class="cell-readonly-value">{{ formatSE(viewMode === 'edit' ? editForm.objective_right_spherical : record?.objective_right_spherical, viewMode === 'edit' ? editForm.objective_right_cylindrical : record?.objective_right_cylindrical, viewMode === 'edit' ? editForm.objective_right_spherical_sign : record?.objective_right_spherical_sign) }}</span></div>
+              </td>
+              <td rowspan="3">
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.subjective_both_pupil_distance" :min="0" :precision="1" class="cell-number" style="width: 100%" placeholder="mm" /></template>
+                  <template v-else>{{ formatPDNumber(record?.subjective_both_pupil_distance ?? record?.objective_pupil_distance ?? record?.vaec_both_pupil_distance) }}</template>
+                </div>
+              </td>
+              <th class="eye-cell eye-name">右眼</th>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input :value="getSphericalDisplayValue('pupillary_objective_right_spherical')" @input="handleSphericalChange('pupillary_objective_right_spherical', $event)" @blur="handleSphericalBlur('pupillary_objective_right_spherical')" class="prescription-input prescription-spherical cell-number" placeholder="球镜" style="width: 100%" /></template>
+                  <template v-else>{{ formatSphere(record?.pupillary_objective_right_spherical, record?.pupillary_objective_right_spherical_sign) }}</template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'">
+                    <div class="objective-cyl-tooltip-wrap">
+                      <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('pupillary_objective_right_cylindrical')">
+                        <div class="cell-sphere-wrap"><a-input :value="getCylindricalDisplayValue('pupillary_objective_right_cylindrical')" @input="handleCylindricalChange('pupillary_objective_right_cylindrical', $event)" @blur="handleCylindricalBlur('pupillary_objective_right_cylindrical')" class="prescription-input prescription-cylindrical cell-input" placeholder="请填写负柱镜-" /></div>
+                      </a-tooltip>
+                    </div>
+                  </template>
+                  <template v-else><span class="cell-readonly-value">{{ formatCylinder(record?.pupillary_objective_right_cylindrical) }}</span></template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.pupillary_objective_right_axis" class="prescription-input prescription-axis cell-input" placeholder="轴位" /></template>
+                  <template v-else><span class="cell-readonly-value">{{ formatAxis(record?.pupillary_objective_right_axis) }}</span></template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.pupillary_objective_right_pupil" class="prescription-input prescription-pupil cell-input" placeholder="mm" style="width: 100%" /></template>
+                  <template v-else><span class="cell-readonly-value"><template v-if="hasValue(record?.pupillary_objective_right_pupil)">{{ formatPS(record?.pupillary_objective_right_pupil) }}mm</template><template v-else>-</template></span></template>
+                </div>
+              </td>
+              <td class="cell-computed">
+                <div class="cell-field"><span class="cell-readonly-value">{{ formatSE(viewMode === 'edit' ? editForm.pupillary_objective_right_spherical : record?.pupillary_objective_right_spherical, viewMode === 'edit' ? editForm.pupillary_objective_right_cylindrical : record?.pupillary_objective_right_cylindrical, viewMode === 'edit' ? editForm.pupillary_objective_right_spherical_sign : record?.pupillary_objective_right_spherical_sign) }}</span></div>
+              </td>
+            </tr>
+            <tr>
+              <th class="eye-cell eye-name">左眼</th>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input :value="getSphericalDisplayValue('objective_left_spherical')" @input="handleSphericalChange('objective_left_spherical', $event)" @blur="handleSphericalBlur('objective_left_spherical')" class="prescription-input prescription-spherical cell-number" placeholder="球镜" style="width: 100%" /></template>
+                  <template v-else>{{ formatSphere(record?.objective_left_spherical, record?.objective_left_spherical_sign) }}</template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'">
+                    <div class="objective-cyl-tooltip-wrap">
+                      <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('objective_left_cylindrical')">
+                        <div class="cell-sphere-wrap"><a-input :value="getCylindricalDisplayValue('objective_left_cylindrical')" @input="handleCylindricalChange('objective_left_cylindrical', $event)" @blur="handleCylindricalBlur('objective_left_cylindrical')" class="prescription-input prescription-cylindrical cell-input" placeholder="请填写负柱镜-" /></div>
+                      </a-tooltip>
+                    </div>
+                  </template>
+                  <template v-else><span class="cell-readonly-value">{{ formatCylinder(record?.objective_left_cylindrical) }}</span></template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.objective_left_axis" class="prescription-input prescription-axis cell-input" placeholder="轴位" /></template>
+                  <template v-else><span class="cell-readonly-value">{{ formatAxis(record?.objective_left_axis) }}</span></template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.objective_left_pupil" class="prescription-input prescription-pupil cell-input" placeholder="mm" style="width: 100%" /></template>
+                  <template v-else><span class="cell-readonly-value"><template v-if="hasValue(record?.objective_left_pupil)">{{ formatPS(record?.objective_left_pupil) }}mm</template><template v-else>-</template></span></template>
+                </div>
+              </td>
+              <td class="cell-computed">
+                <div class="cell-field"><span class="cell-readonly-value">{{ formatSE(viewMode === 'edit' ? editForm.objective_left_spherical : record?.objective_left_spherical, viewMode === 'edit' ? editForm.objective_left_cylindrical : record?.objective_left_cylindrical, viewMode === 'edit' ? editForm.objective_left_spherical_sign : record?.objective_left_spherical_sign) }}</span></div>
+              </td>
+              <th class="eye-cell eye-name">左眼</th>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input :value="getSphericalDisplayValue('pupillary_objective_left_spherical')" @input="handleSphericalChange('pupillary_objective_left_spherical', $event)" @blur="handleSphericalBlur('pupillary_objective_left_spherical')" class="prescription-input prescription-spherical cell-number" placeholder="球镜" style="width: 100%" /></template>
+                  <template v-else>{{ formatSphere(record?.pupillary_objective_left_spherical, record?.pupillary_objective_left_spherical_sign) }}</template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'">
+                    <div class="objective-cyl-tooltip-wrap">
+                      <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('pupillary_objective_left_cylindrical')">
+                        <div class="cell-sphere-wrap"><a-input :value="getCylindricalDisplayValue('pupillary_objective_left_cylindrical')" @input="handleCylindricalChange('pupillary_objective_left_cylindrical', $event)" @blur="handleCylindricalBlur('pupillary_objective_left_cylindrical')" class="prescription-input prescription-cylindrical cell-input" placeholder="请填写负柱镜-" /></div>
+                      </a-tooltip>
+                    </div>
+                  </template>
+                  <template v-else><span class="cell-readonly-value">{{ formatCylinder(record?.pupillary_objective_left_cylindrical) }}</span></template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.pupillary_objective_left_axis" class="prescription-input prescription-axis cell-input" placeholder="轴位" /></template>
+                  <template v-else><span class="cell-readonly-value">{{ formatAxis(record?.pupillary_objective_left_axis) }}</span></template>
+                </div>
+              </td>
+              <td>
+                <div class="cell-field">
+                  <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.pupillary_objective_left_pupil" class="prescription-input prescription-pupil cell-input" placeholder="mm" style="width: 100%" /></template>
+                  <template v-else><span class="cell-readonly-value"><template v-if="hasValue(record?.pupillary_objective_left_pupil)">{{ formatPS(record?.pupillary_objective_left_pupil) }}mm</template><template v-else>-</template></span></template>
+                </div>
+              </td>
+              <td class="cell-computed">
+                <div class="cell-field"><span class="cell-readonly-value">{{ formatSE(viewMode === 'edit' ? editForm.pupillary_objective_left_spherical : record?.pupillary_objective_left_spherical, viewMode === 'edit' ? editForm.pupillary_objective_left_cylindrical : record?.pupillary_objective_left_cylindrical, viewMode === 'edit' ? editForm.pupillary_objective_left_spherical_sign : record?.pupillary_objective_left_spherical_sign) }}</span></div>
+              </td>
+            </tr>
+            <tr>
+              <th class="eye-cell eye-name">双眼</th>
+              <td colspan="5" class="cell-muted">
+                <div class="cell-field">—</div>
+              </td>
+              <th class="eye-cell eye-name">双眼</th>
+              <td colspan="5" class="cell-muted">
+                <div class="cell-field">—</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <!-- 电脑验光检查表格（检影 / 小瞳 / 散瞳） -->
+      <table v-else class="refraction-table">
         <thead>
           <tr>
             <th rowspan="2">检查项目</th>
@@ -463,18 +1110,18 @@
         </thead>
 
         <tbody>
-          <!-- 电脑验光行（共2行） -->
+          <!-- （小瞳）行（共2行） -->
           <tr>
-            <td class="refraction-label" rowspan="2">电脑验光</td>
+            <td class="refraction-label" rowspan="2">（小瞳）</td>
             <!-- 右眼球镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-input-number 
-                  v-model:value="editForm.objective_right_spherical" 
-                  :step="0.25" 
-                  :precision="2"
-                  class="prescription-input prescription-spherical" 
-                  placeholder="球镜" 
+                <a-input
+                  :value="getSphericalDisplayValue('objective_right_spherical')"
+                  @input="handleSphericalChange('objective_right_spherical', $event)"
+                  @blur="handleSphericalBlur('objective_right_spherical')"
+                  class="prescription-input prescription-spherical"
+                  placeholder="球镜"
                   style="width: 100%"
                 />
               </template>
@@ -483,14 +1130,14 @@
             <!-- 右眼柱镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-tooltip title="请填写+/-" :open="needCylindricalSignHint('objective_right_cylindrical')">
+                <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('objective_right_cylindrical')">
                   <div class="cell-sphere-wrap">
                     <a-input 
                       :value="getCylindricalDisplayValue('objective_right_cylindrical')" 
                       @input="handleCylindricalChange('objective_right_cylindrical', $event)"
                       @blur="handleCylindricalBlur('objective_right_cylindrical')"
                       class="prescription-input prescription-cylindrical" 
-                      placeholder="请填写+/-" 
+                      placeholder="请填写负柱镜-" 
                     />
                   </div>
                 </a-tooltip>
@@ -511,12 +1158,12 @@
             <!-- 左眼球镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-input-number 
-                  v-model:value="editForm.objective_left_spherical" 
-                  :step="0.25" 
-                  :precision="2"
-                  class="prescription-input prescription-spherical" 
-                  placeholder="球镜" 
+                <a-input
+                  :value="getSphericalDisplayValue('objective_left_spherical')"
+                  @input="handleSphericalChange('objective_left_spherical', $event)"
+                  @blur="handleSphericalBlur('objective_left_spherical')"
+                  class="prescription-input prescription-spherical"
+                  placeholder="球镜"
                   style="width: 100%"
                 />
               </template>
@@ -527,14 +1174,14 @@
             <!-- 左眼柱镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-tooltip title="请填写+/-" :open="needCylindricalSignHint('objective_left_cylindrical')">
+                <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('objective_left_cylindrical')">
                   <div class="cell-sphere-wrap">
                     <a-input 
                       :value="getCylindricalDisplayValue('objective_left_cylindrical')" 
                       @input="handleCylindricalChange('objective_left_cylindrical', $event)"
                       @blur="handleCylindricalBlur('objective_left_cylindrical')"
                       class="prescription-input prescription-cylindrical" 
-                      placeholder="请填写+/-" 
+                      placeholder="请填写负柱镜-" 
                     />
                   </div>
                 </a-tooltip>
@@ -576,7 +1223,7 @@
               </div>
             </td>
             <!-- 右眼：SE在轴位列，与柱镜列后半部分合并显示 -->
-            <td style="padding-left: 0; border-left: none;">
+            <td class="cell-computed" style="padding-left: 0; border-left: none;">
               <template v-if="viewMode === 'edit'">
                 <span style="color: #666;">SE: {{ formatSE(viewMode === 'edit' ? editForm.objective_right_spherical : record?.objective_right_spherical, viewMode === 'edit' ? editForm.objective_right_cylindrical : record?.objective_right_cylindrical, viewMode === 'edit' ? editForm.objective_right_spherical_sign : record?.objective_right_spherical_sign) }}</span>
               </template>
@@ -606,7 +1253,7 @@
               </div>
             </td>
             <!-- 左眼：SE在轴位列，与柱镜列后半部分合并显示 -->
-            <td style="padding-left: 0; border-left: none;">
+            <td class="cell-computed" style="padding-left: 0; border-left: none;">
               <template v-if="viewMode === 'edit'">
                 <span style="color: #666;">SE: {{ formatSE(viewMode === 'edit' ? editForm.objective_left_spherical : record?.objective_left_spherical, viewMode === 'edit' ? editForm.objective_left_cylindrical : record?.objective_left_cylindrical, viewMode === 'edit' ? editForm.objective_left_spherical_sign : record?.objective_left_spherical_sign) }}</span>
               </template>
@@ -616,18 +1263,18 @@
             </td>
           </tr>
 
-          <!-- 散瞳电脑验光行（共2行） -->
+          <!-- （散瞳）行（共2行） -->
           <tr>
-            <td class="refraction-label pupillary-objective-label" rowspan="2">散瞳<br>电脑验光</td>
+            <td class="refraction-label pupillary-objective-label" rowspan="2">（散瞳）</td>
             <!-- 右眼球镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-input-number 
-                  v-model:value="editForm.pupillary_objective_right_spherical" 
-                  :step="0.25" 
-                  :precision="2"
-                  class="prescription-input prescription-spherical" 
-                  placeholder="球镜" 
+                <a-input
+                  :value="getSphericalDisplayValue('pupillary_objective_right_spherical')"
+                  @input="handleSphericalChange('pupillary_objective_right_spherical', $event)"
+                  @blur="handleSphericalBlur('pupillary_objective_right_spherical')"
+                  class="prescription-input prescription-spherical"
+                  placeholder="球镜"
                   style="width: 100%"
                 />
               </template>
@@ -636,14 +1283,14 @@
             <!-- 右眼柱镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-tooltip title="请填写+/-" :open="needCylindricalSignHint('pupillary_objective_right_cylindrical')">
+                <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('pupillary_objective_right_cylindrical')">
                   <div class="cell-sphere-wrap">
                     <a-input 
                       :value="getCylindricalDisplayValue('pupillary_objective_right_cylindrical')" 
                       @input="handleCylindricalChange('pupillary_objective_right_cylindrical', $event)"
                       @blur="handleCylindricalBlur('pupillary_objective_right_cylindrical')"
                       class="prescription-input prescription-cylindrical" 
-                      placeholder="请填写+/-" 
+                      placeholder="请填写负柱镜-" 
                     />
                   </div>
                 </a-tooltip>
@@ -664,12 +1311,12 @@
             <!-- 左眼球镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-input-number 
-                  v-model:value="editForm.pupillary_objective_left_spherical" 
-                  :step="0.25" 
-                  :precision="2"
-                  class="prescription-input prescription-spherical" 
-                  placeholder="球镜" 
+                <a-input
+                  :value="getSphericalDisplayValue('pupillary_objective_left_spherical')"
+                  @input="handleSphericalChange('pupillary_objective_left_spherical', $event)"
+                  @blur="handleSphericalBlur('pupillary_objective_left_spherical')"
+                  class="prescription-input prescription-spherical"
+                  placeholder="球镜"
                   style="width: 100%"
                 />
               </template>
@@ -678,14 +1325,14 @@
             <!-- 左眼柱镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-tooltip title="请填写+/-" :open="needCylindricalSignHint('pupillary_objective_left_cylindrical')">
+                <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('pupillary_objective_left_cylindrical')">
                   <div class="cell-sphere-wrap">
                     <a-input 
                       :value="getCylindricalDisplayValue('pupillary_objective_left_cylindrical')" 
                       @input="handleCylindricalChange('pupillary_objective_left_cylindrical', $event)"
                       @blur="handleCylindricalBlur('pupillary_objective_left_cylindrical')"
                       class="prescription-input prescription-cylindrical" 
-                      placeholder="请填写+/-" 
+                      placeholder="请填写负柱镜-" 
                     />
                   </div>
                 </a-tooltip>
@@ -727,7 +1374,7 @@
               </div>
             </td>
             <!-- 右眼：SE在轴位列，与柱镜列后半部分合并显示 -->
-            <td style="padding-left: 0; border-left: none;">
+            <td class="cell-computed" style="padding-left: 0; border-left: none;">
               <template v-if="viewMode === 'edit'">
                 <span style="color: #666;">SE: {{ formatSE(viewMode === 'edit' ? editForm.pupillary_objective_right_spherical : record?.pupillary_objective_right_spherical, viewMode === 'edit' ? editForm.pupillary_objective_right_cylindrical : record?.pupillary_objective_right_cylindrical, viewMode === 'edit' ? editForm.pupillary_objective_right_spherical_sign : record?.pupillary_objective_right_spherical_sign) }}</span>
               </template>
@@ -757,7 +1404,7 @@
               </div>
             </td>
             <!-- 左眼：SE在轴位列，与柱镜列后半部分合并显示 -->
-            <td style="padding-left: 0; border-left: none;">
+            <td class="cell-computed" style="padding-left: 0; border-left: none;">
               <template v-if="viewMode === 'edit'">
                 <span style="color: #666;">SE: {{ formatSE(viewMode === 'edit' ? editForm.pupillary_objective_left_spherical : record?.pupillary_objective_left_spherical, viewMode === 'edit' ? editForm.pupillary_objective_left_cylindrical : record?.pupillary_objective_left_cylindrical, viewMode === 'edit' ? editForm.pupillary_objective_left_spherical_sign : record?.pupillary_objective_left_spherical_sign) }}</span>
               </template>
@@ -773,12 +1420,12 @@
             <!-- 右眼球镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-input-number 
-                  v-model:value="editForm.retinoscopy_right_eye_spherical" 
-                  :step="0.25" 
-                  :precision="2"
-                  class="prescription-input prescription-spherical" 
-                  placeholder="球镜" 
+                <a-input
+                  :value="getSphericalDisplayValue('retinoscopy_right_eye_spherical')"
+                  @input="handleSphericalChange('retinoscopy_right_eye_spherical', $event)"
+                  @blur="handleSphericalBlur('retinoscopy_right_eye_spherical')"
+                  class="prescription-input prescription-spherical"
+                  placeholder="球镜"
                   style="width: 100%"
                 />
               </template>
@@ -787,14 +1434,14 @@
             <!-- 右眼柱镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-tooltip title="请填写+/-" :open="needCylindricalSignHint('retinoscopy_right_eye_cylindrical')">
+                <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('retinoscopy_right_eye_cylindrical')">
                   <div class="cell-sphere-wrap">
                     <a-input 
                       :value="getCylindricalDisplayValue('retinoscopy_right_eye_cylindrical')" 
                       @input="handleCylindricalChange('retinoscopy_right_eye_cylindrical', $event)"
                       @blur="handleCylindricalBlur('retinoscopy_right_eye_cylindrical')"
                       class="prescription-input prescription-cylindrical" 
-                      placeholder="请填写+/-" 
+                      placeholder="请填写负柱镜-" 
                     />
                   </div>
                 </a-tooltip>
@@ -815,12 +1462,12 @@
             <!-- 左眼球镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-input-number 
-                  v-model:value="editForm.retinoscopy_left_eye_spherical" 
-                  :step="0.25" 
-                  :precision="2"
-                  class="prescription-input prescription-spherical" 
-                  placeholder="球镜" 
+                <a-input
+                  :value="getSphericalDisplayValue('retinoscopy_left_eye_spherical')"
+                  @input="handleSphericalChange('retinoscopy_left_eye_spherical', $event)"
+                  @blur="handleSphericalBlur('retinoscopy_left_eye_spherical')"
+                  class="prescription-input prescription-spherical"
+                  placeholder="球镜"
                   style="width: 100%"
                 />
               </template>
@@ -829,14 +1476,14 @@
             <!-- 左眼柱镜列 -->
             <td>
               <template v-if="viewMode === 'edit'">
-                <a-tooltip title="请填写+/-" :open="needCylindricalSignHint('retinoscopy_left_eye_cylindrical')">
+                <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('retinoscopy_left_eye_cylindrical')">
                   <div class="cell-sphere-wrap">
                     <a-input 
                       :value="getCylindricalDisplayValue('retinoscopy_left_eye_cylindrical')" 
                       @input="handleCylindricalChange('retinoscopy_left_eye_cylindrical', $event)"
                       @blur="handleCylindricalBlur('retinoscopy_left_eye_cylindrical')"
                       class="prescription-input prescription-cylindrical" 
-                      placeholder="请填写+/-" 
+                      placeholder="请填写负柱镜-" 
                     />
                   </div>
                 </a-tooltip>
@@ -860,26 +1507,317 @@
       </div>
     </div>
 
-    <!-- 主观验光检查 -->
+    <!-- 主觉验光检查 -->
     <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasSubjectiveRefractionData" 
          v-show="!showOnlySection || showOnlySection === 'subjective-refraction'"
          class="section-block"
          :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['subjective-refraction'] }">
       <h3 
-        v-if="viewMode === 'view' || !isReportMode"
+        v-if="!reportLayout && (viewMode !== 'view' || showSectionTitlesInView)"
         class="section-title"
         :class="{ 'clickable': enableCollapse }"
         @click="enableCollapse && handleToggleSection('subjective-refraction')"
       >
-        主观验光检查
+        主觉验光检查
         <span v-if="enableCollapse" class="section-toggle-icon">
           <UpOutlined v-if="sectionExpanded?.['subjective-refraction']" />
           <DownOutlined v-else />
         </span>
       </h3>
       <div v-show="viewMode === 'print' || showOnlySection === 'subjective-refraction' || (enableCollapse ? sectionExpanded?.['subjective-refraction'] : true)">
-      <!-- 主观验光 -->
-      <table class="refraction-table subjective-table">
+      <!-- 主觉验光：报告式 exam-sheet -->
+      <table v-if="reportLayout" class="exam-sheet exam-table-subjective-refraction subjective-report-by-eye">
+        <tbody>
+          <tr>
+            <th
+              class="side-title report-section-side-title"
+              rowspan="4"
+              :class="{ clickable: enableCollapse }"
+              @click="enableCollapse && handleToggleSection('subjective-refraction')"
+            >
+              <span class="report-section-side-title-text">主觉验光检查</span>
+              <span v-if="enableCollapse" class="section-toggle-icon report-section-side-toggle">
+                <UpOutlined v-if="sectionExpanded?.['subjective-refraction']" />
+                <DownOutlined v-else />
+              </span>
+            </th>
+            <th class="row-head">眼别</th>
+            <th class="sub-head">球镜</th>
+            <th class="sub-head">柱镜</th>
+            <th class="sub-head">轴位</th>
+            <th class="sub-head">矫正视力</th>
+            <th class="sub-head">ADD</th>
+            <th class="sub-head subjective-pupillary-col-head">（散瞳）</th>
+            <th class="sub-head">球镜</th>
+            <th class="sub-head">柱镜</th>
+            <th class="sub-head">轴位</th>
+            <th class="sub-head">矫正视力</th>
+          </tr>
+          <tr>
+            <th class="eye-cell eye-name">右眼</th>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input :value="getSphericalDisplayValue('subjective_right_spherical')" @input="handleSphericalChange('subjective_right_spherical', $event)" @blur="handleSphericalBlur('subjective_right_spherical')" class="prescription-input prescription-spherical cell-number" placeholder="球镜" style="width: 100%" /></template>
+                <template v-else>{{ formatSphere(record?.subjective_right_spherical, record?.subjective_right_spherical_sign) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('subjective_right_cylindrical')">
+                    <div class="cell-sphere-wrap"><a-input :value="getCylindricalDisplayValue('subjective_right_cylindrical')" @input="handleCylindricalChange('subjective_right_cylindrical', $event)" @blur="handleCylindricalBlur('subjective_right_cylindrical')" class="prescription-input prescription-cylindrical cell-input" placeholder="请填写负柱镜-" /></div>
+                  </a-tooltip>
+                </template>
+                <template v-else>{{ formatCylinder(record?.subjective_right_cylindrical) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.subjective_right_axis" class="prescription-input prescription-axis cell-input" placeholder="轴位" /></template>
+                <template v-else>{{ formatAxis(record?.subjective_right_axis) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <template v-if="visionFocusedCell === 'subjective_right_old_vision'">
+                    <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('subjective_right_old_vision')" @input="onVisionInput('subjective_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('subjective_right_old_vision', el)" />
+                  </template>
+                  <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('subjective_right_old_vision')">
+                    <span>{{ getVisionDisplayParts(editForm, 'subjective_right_old_vision').valuePart }}</span>
+                    <sup v-if="getVisionDisplayParts(editForm, 'subjective_right_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'subjective_right_old_vision').superscriptPart }}</sup>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'subjective_right_old_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'subjective_right_old_vision').superscriptPart">{{ getVisionDisplayParts(record, 'subjective_right_old_vision').superscriptPart }}</sup></span>
+                </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-select v-model:value="editForm.subjective_right_near_add_power" class="vision-value-select cell-select" placeholder="ADD" allowClear popup-class-name="add-power-dropdown" :dropdown-match-select-width="false" style="width: 100%;">
+                    <a-select-option v-for="opt in addOptions" :key="opt" :value="parseFloat(opt)">{{ opt }}</a-select-option>
+                  </a-select>
+                </template>
+                <template v-else>{{ formatADD(record?.subjective_right_near_add_power) }}</template>
+              </div>
+            </td>
+            <th class="eye-cell eye-name">右眼</th>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input :value="getSphericalDisplayValue('pupillary_subjective_right_spherical')" @input="handleSphericalChange('pupillary_subjective_right_spherical', $event)" @blur="handleSphericalBlur('pupillary_subjective_right_spherical')" class="prescription-input prescription-spherical cell-number" placeholder="球镜" style="width: 100%" /></template>
+                <template v-else>{{ formatSphere(record?.pupillary_subjective_right_spherical, record?.pupillary_subjective_right_spherical_sign) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('pupillary_subjective_right_cylindrical')">
+                    <div class="cell-sphere-wrap"><a-input :value="getCylindricalDisplayValue('pupillary_subjective_right_cylindrical')" @input="handleCylindricalChange('pupillary_subjective_right_cylindrical', $event)" @blur="handleCylindricalBlur('pupillary_subjective_right_cylindrical')" class="prescription-input prescription-cylindrical cell-input" placeholder="请填写负柱镜-" /></div>
+                  </a-tooltip>
+                </template>
+                <template v-else>{{ formatCylinder(record?.pupillary_subjective_right_cylindrical) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.pupillary_subjective_right_axis" class="prescription-input prescription-axis cell-input" placeholder="轴位" /></template>
+                <template v-else>{{ formatAxis(record?.pupillary_subjective_right_axis) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <template v-if="visionFocusedCell === 'pupillary_bcva_right_vision'">
+                    <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('pupillary_bcva_right_vision')" @input="onVisionInput('pupillary_bcva_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_right_vision', el)" />
+                  </template>
+                  <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('pupillary_bcva_right_vision')">
+                    <span>{{ getVisionDisplayParts(editForm, 'pupillary_bcva_right_vision').valuePart }}</span>
+                    <sup v-if="getVisionDisplayParts(editForm, 'pupillary_bcva_right_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'pupillary_bcva_right_vision').superscriptPart }}</sup>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="vision-cell-superscript"><span>{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_right_vision', 'pupillary_subjective_right_old_vision').valuePart }}</span><sup v-if="getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_right_vision', 'pupillary_subjective_right_old_vision').superscriptPart">{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_right_vision', 'pupillary_subjective_right_old_vision').superscriptPart }}</sup></span>
+                </template>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th class="eye-cell eye-name">左眼</th>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input :value="getSphericalDisplayValue('subjective_left_spherical')" @input="handleSphericalChange('subjective_left_spherical', $event)" @blur="handleSphericalBlur('subjective_left_spherical')" class="prescription-input prescription-spherical cell-number" placeholder="球镜" style="width: 100%" /></template>
+                <template v-else>{{ formatSphere(record?.subjective_left_spherical, record?.subjective_left_spherical_sign) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('subjective_left_cylindrical')">
+                    <div class="cell-sphere-wrap"><a-input :value="getCylindricalDisplayValue('subjective_left_cylindrical')" @input="handleCylindricalChange('subjective_left_cylindrical', $event)" @blur="handleCylindricalBlur('subjective_left_cylindrical')" class="prescription-input prescription-cylindrical cell-input" placeholder="请填写负柱镜-" /></div>
+                  </a-tooltip>
+                </template>
+                <template v-else>{{ formatCylinder(record?.subjective_left_cylindrical) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.subjective_left_axis" class="prescription-input prescription-axis cell-input" placeholder="轴位" /></template>
+                <template v-else>{{ formatAxis(record?.subjective_left_axis) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <template v-if="visionFocusedCell === 'subjective_left_old_vision'">
+                    <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('subjective_left_old_vision')" @input="onVisionInput('subjective_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('subjective_left_old_vision', el)" />
+                  </template>
+                  <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('subjective_left_old_vision')">
+                    <span>{{ getVisionDisplayParts(editForm, 'subjective_left_old_vision').valuePart }}</span>
+                    <sup v-if="getVisionDisplayParts(editForm, 'subjective_left_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'subjective_left_old_vision').superscriptPart }}</sup>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'subjective_left_old_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'subjective_left_old_vision').superscriptPart">{{ getVisionDisplayParts(record, 'subjective_left_old_vision').superscriptPart }}</sup></span>
+                </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-select v-model:value="editForm.subjective_left_near_add_power" class="vision-value-select cell-select" placeholder="ADD" allowClear popup-class-name="add-power-dropdown" :dropdown-match-select-width="false" style="width: 100%;">
+                    <a-select-option v-for="opt in addOptions" :key="opt" :value="parseFloat(opt)">{{ opt }}</a-select-option>
+                  </a-select>
+                </template>
+                <template v-else>{{ formatADD(record?.subjective_left_near_add_power) }}</template>
+              </div>
+            </td>
+            <th class="eye-cell eye-name">左眼</th>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input :value="getSphericalDisplayValue('pupillary_subjective_left_spherical')" @input="handleSphericalChange('pupillary_subjective_left_spherical', $event)" @blur="handleSphericalBlur('pupillary_subjective_left_spherical')" class="prescription-input prescription-spherical cell-number" placeholder="球镜" style="width: 100%" /></template>
+                <template v-else>{{ formatSphere(record?.pupillary_subjective_left_spherical, record?.pupillary_subjective_left_spherical_sign) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('pupillary_subjective_left_cylindrical')">
+                    <div class="cell-sphere-wrap"><a-input :value="getCylindricalDisplayValue('pupillary_subjective_left_cylindrical')" @input="handleCylindricalChange('pupillary_subjective_left_cylindrical', $event)" @blur="handleCylindricalBlur('pupillary_subjective_left_cylindrical')" class="prescription-input prescription-cylindrical cell-input" placeholder="请填写负柱镜-" /></div>
+                  </a-tooltip>
+                </template>
+                <template v-else>{{ formatCylinder(record?.pupillary_subjective_left_cylindrical) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input v-model:value="editForm.pupillary_subjective_left_axis" class="prescription-input prescription-axis cell-input" placeholder="轴位" /></template>
+                <template v-else>{{ formatAxis(record?.pupillary_subjective_left_axis) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <template v-if="visionFocusedCell === 'pupillary_bcva_left_vision'">
+                    <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('pupillary_bcva_left_vision')" @input="onVisionInput('pupillary_bcva_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_left_vision', el)" />
+                  </template>
+                  <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('pupillary_bcva_left_vision')">
+                    <span>{{ getVisionDisplayParts(editForm, 'pupillary_bcva_left_vision').valuePart }}</span>
+                    <sup v-if="getVisionDisplayParts(editForm, 'pupillary_bcva_left_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'pupillary_bcva_left_vision').superscriptPart }}</sup>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="vision-cell-superscript"><span>{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_left_vision', 'pupillary_subjective_left_old_vision').valuePart }}</span><sup v-if="getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_left_vision', 'pupillary_subjective_left_old_vision').superscriptPart">{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_left_vision', 'pupillary_subjective_left_old_vision').superscriptPart }}</sup></span>
+                </template>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th class="eye-cell eye-name">双眼</th>
+            <td colspan="3">
+              <div class="cell-field dominant-eye-pd-report">
+                <div class="dominant-eye-pd-container">
+                  <div class="dominant-eye-pd-item">
+                    <span class="dominant-eye-pd-label">主导眼：</span>
+                    <template v-if="viewMode === 'edit'">
+                      <div class="dominant-eye-toggle-group" role="group" aria-label="主导眼">
+                        <button
+                          type="button"
+                          class="dominant-eye-toggle-btn"
+                          :class="{ 'dominant-eye-toggle-btn--active': formatDominantEye(editForm.subjective_leading_eye) === '右眼' }"
+                          :aria-pressed="formatDominantEye(editForm.subjective_leading_eye) === '右眼'"
+                          @click="toggleDominantEye('右眼')"
+                        >右眼</button>
+                        <button
+                          type="button"
+                          class="dominant-eye-toggle-btn"
+                          :class="{ 'dominant-eye-toggle-btn--active': formatDominantEye(editForm.subjective_leading_eye) === '左眼' }"
+                          :aria-pressed="formatDominantEye(editForm.subjective_leading_eye) === '左眼'"
+                          @click="toggleDominantEye('左眼')"
+                        >左眼</button>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <span v-if="record?.subjective_leading_eye || record?.dominant_eye">{{ formatDominantEye(record.subjective_leading_eye || record.dominant_eye) }}</span>
+                      <span v-else>-</span>
+                    </template>
+                  </div>
+                  <div class="dominant-eye-pd-item">
+                    <span class="dominant-eye-pd-label">瞳距：</span>
+                    <template v-if="viewMode === 'edit'">
+                      <a-input v-model:value="editForm.subjective_both_pupil_distance" class="pupil-distance-input cell-input" placeholder="mm" />
+                    </template>
+                    <template v-else>{{ formatPDNumber(record?.subjective_both_pupil_distance) }}</template>
+                    <span class="pupil-distance-unit">mm</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <template v-if="visionFocusedCell === 'subjective_both_old_vision'">
+                    <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('subjective_both_old_vision')" @input="onVisionInput('subjective_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('subjective_both_old_vision', el)" />
+                  </template>
+                  <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('subjective_both_old_vision')">
+                    <span>{{ getVisionDisplayParts(editForm, 'subjective_both_old_vision').valuePart }}</span>
+                    <sup v-if="getVisionDisplayParts(editForm, 'subjective_both_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'subjective_both_old_vision').superscriptPart }}</sup>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="vision-cell-superscript"><span>{{ getVisionDisplayParts(record, 'subjective_both_old_vision').valuePart }}</span><sup v-if="getVisionDisplayParts(record, 'subjective_both_old_vision').superscriptPart">{{ getVisionDisplayParts(record, 'subjective_both_old_vision').superscriptPart }}</sup></span>
+                </template>
+              </div>
+            </td>
+            <td class="cell-muted">
+              <div class="cell-field">—</div>
+            </td>
+            <th class="eye-cell eye-name">双眼</th>
+            <td colspan="3" class="cell-muted">
+              <div class="cell-field">—</div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <template v-if="visionFocusedCell === 'pupillary_bcva_both_vision'">
+                    <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('pupillary_bcva_both_vision')" @input="onVisionInput('pupillary_bcva_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_both_vision', el)" />
+                  </template>
+                  <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('pupillary_bcva_both_vision')">
+                    <span>{{ getVisionDisplayParts(editForm, 'pupillary_bcva_both_vision').valuePart }}</span>
+                    <sup v-if="getVisionDisplayParts(editForm, 'pupillary_bcva_both_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'pupillary_bcva_both_vision').superscriptPart }}</sup>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="vision-cell-superscript"><span>{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_both_vision', 'pupillary_subjective_both_old_vision').valuePart }}</span><sup v-if="getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_both_vision', 'pupillary_subjective_both_old_vision').superscriptPart">{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_both_vision', 'pupillary_subjective_both_old_vision').superscriptPart }}</sup></span>
+                </template>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <!-- 主觉验光：编辑/常规表 -->
+      <table v-else class="refraction-table subjective-table">
      <thead>
        <tr>
          <th class="col-check-item">检查项目</th>
@@ -890,6 +1828,7 @@
          <th>远视力</th>
          <th>近视力</th>
          <th class="col-add-pd">ADD</th>
+         <th class="col-pupillary-eye">（散瞳）</th>
        </tr>
      </thead>
 
@@ -897,15 +1836,15 @@
        <!-- 主觉验光 -->
        <tr>
          <td rowspan="3" class="col-check-item">主觉验光</td>
-         <td>右眼</td>
+         <td class="eye-name">右眼</td>
          <td>
            <template v-if="viewMode === 'edit'">
-             <a-input-number 
-               v-model:value="editForm.subjective_right_spherical" 
-               :step="0.25" 
-               :precision="2"
-               class="prescription-input prescription-spherical" 
-               placeholder="球镜" 
+             <a-input
+               :value="getSphericalDisplayValue('subjective_right_spherical')"
+               @input="handleSphericalChange('subjective_right_spherical', $event)"
+               @blur="handleSphericalBlur('subjective_right_spherical')"
+               class="prescription-input prescription-spherical"
+               placeholder="球镜"
                style="width: 100%"
              />
            </template>
@@ -915,14 +1854,14 @@
          </td>
          <td>
            <template v-if="viewMode === 'edit'">
-             <a-tooltip title="请填写+/-" :open="needCylindricalSignHint('subjective_right_cylindrical')">
+             <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('subjective_right_cylindrical')">
                <div class="cell-sphere-wrap">
                  <a-input 
                    :value="getCylindricalDisplayValue('subjective_right_cylindrical')" 
                    @input="handleCylindricalChange('subjective_right_cylindrical', $event)"
                    @blur="handleCylindricalBlur('subjective_right_cylindrical')"
                    class="prescription-input prescription-cylindrical" 
-                   placeholder="请填写+/-" 
+                   placeholder="请填写负柱镜-" 
                  />
                </div>
              </a-tooltip>
@@ -938,12 +1877,11 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'subjective_right_old_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('subjective_right_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('subjective_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('subjective_right_old_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('subjective_right_old_vision')" @input="onVisionInput('subjective_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('subjective_right_old_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('subjective_right_old_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'subjective_right_old_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'subjective_right_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'subjective_right_old_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('subjective_right_old_vision', getVisionDisplayParts(editForm, 'subjective_right_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
            <template v-else>
@@ -953,12 +1891,11 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'near_subjective_right_old_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('near_subjective_right_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('near_subjective_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_right_old_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_subjective_right_old_vision')" @input="onVisionInput('near_subjective_right_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_right_old_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_subjective_right_old_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'near_subjective_right_old_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'near_subjective_right_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_subjective_right_old_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('near_subjective_right_old_vision', getVisionDisplayParts(editForm, 'near_subjective_right_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
            <template v-else>
@@ -967,23 +1904,26 @@
          </td>
          <td class="col-add-pd">
            <template v-if="viewMode === 'edit'">
-             <a-select v-model:value="editForm.subjective_right_near_add_power" class="vision-value-select" placeholder="ADD" allowClear style="width: 100%;">
+             <a-select v-model:value="editForm.subjective_right_near_add_power" class="vision-value-select" placeholder="ADD" allowClear popup-class-name="add-power-dropdown" :dropdown-match-select-width="false" style="width: 100%;">
                <a-select-option v-for="opt in addOptions" :key="opt" :value="parseFloat(opt)">{{ opt }}</a-select-option>
              </a-select>
            </template>
            <template v-else>{{ formatADD(record?.subjective_right_near_add_power) }}</template>
          </td>
+         <td class="col-pupillary-eye cell-muted">
+           <div class="cell-field">—</div>
+         </td>
        </tr>
        <tr>
-         <td>左眼</td>
+         <td class="eye-name">左眼</td>
          <td>
            <template v-if="viewMode === 'edit'">
-             <a-input-number 
-               v-model:value="editForm.subjective_left_spherical" 
-               :step="0.25" 
-               :precision="2"
-               class="prescription-input prescription-spherical" 
-               placeholder="球镜" 
+             <a-input
+               :value="getSphericalDisplayValue('subjective_left_spherical')"
+               @input="handleSphericalChange('subjective_left_spherical', $event)"
+               @blur="handleSphericalBlur('subjective_left_spherical')"
+               class="prescription-input prescription-spherical"
+               placeholder="球镜"
                style="width: 100%"
              />
            </template>
@@ -993,14 +1933,14 @@
          </td>
          <td>
            <template v-if="viewMode === 'edit'">
-             <a-tooltip title="请填写+/-" :open="needCylindricalSignHint('subjective_left_cylindrical')">
+             <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('subjective_left_cylindrical')">
                <div class="cell-sphere-wrap">
                  <a-input 
                    :value="getCylindricalDisplayValue('subjective_left_cylindrical')" 
                    @input="handleCylindricalChange('subjective_left_cylindrical', $event)"
                    @blur="handleCylindricalBlur('subjective_left_cylindrical')"
                    class="prescription-input prescription-cylindrical" 
-                   placeholder="请填写+/-" 
+                   placeholder="请填写负柱镜-" 
                  />
                </div>
              </a-tooltip>
@@ -1016,12 +1956,11 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'subjective_left_old_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('subjective_left_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('subjective_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('subjective_left_old_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('subjective_left_old_vision')" @input="onVisionInput('subjective_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('subjective_left_old_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('subjective_left_old_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'subjective_left_old_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'subjective_left_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'subjective_left_old_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('subjective_left_old_vision', getVisionDisplayParts(editForm, 'subjective_left_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
            <template v-else>
@@ -1031,12 +1970,11 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'near_subjective_left_old_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('near_subjective_left_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('near_subjective_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_left_old_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_subjective_left_old_vision')" @input="onVisionInput('near_subjective_left_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_left_old_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_subjective_left_old_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'near_subjective_left_old_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'near_subjective_left_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_subjective_left_old_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('near_subjective_left_old_vision', getVisionDisplayParts(editForm, 'near_subjective_left_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
            <template v-else>
@@ -1045,24 +1983,39 @@
          </td>
          <td class="col-add-pd">
            <template v-if="viewMode === 'edit'">
-             <a-select v-model:value="editForm.subjective_left_near_add_power" class="vision-value-select" placeholder="ADD" allowClear style="width: 100%;">
+             <a-select v-model:value="editForm.subjective_left_near_add_power" class="vision-value-select" placeholder="ADD" allowClear popup-class-name="add-power-dropdown" :dropdown-match-select-width="false" style="width: 100%;">
                <a-select-option v-for="opt in addOptions" :key="opt" :value="parseFloat(opt)">{{ opt }}</a-select-option>
              </a-select>
            </template>
            <template v-else>{{ formatADD(record?.subjective_left_near_add_power) }}</template>
          </td>
+         <td class="col-pupillary-eye cell-muted">
+           <div class="cell-field">—</div>
+         </td>
        </tr>
        <tr>
-         <td>双眼</td>
+         <td class="eye-name">双眼</td>
          <td colspan="3" class="dominant-eye-pd-cell">
            <div class="dominant-eye-pd-container">
              <div class="dominant-eye-pd-item">
                <span class="dominant-eye-pd-label">主导眼：</span>
                <template v-if="viewMode === 'edit'">
-                 <a-select v-model:value="editForm.subjective_leading_eye" class="dominant-eye-select" placeholder="选择">
-                   <a-select-option value="右眼">右眼</a-select-option>
-                   <a-select-option value="左眼">左眼</a-select-option>
-                 </a-select>
+                 <div class="dominant-eye-toggle-group" role="group" aria-label="主导眼">
+                   <button
+                     type="button"
+                     class="dominant-eye-toggle-btn"
+                     :class="{ 'dominant-eye-toggle-btn--active': formatDominantEye(editForm.subjective_leading_eye) === '右眼' }"
+                     :aria-pressed="formatDominantEye(editForm.subjective_leading_eye) === '右眼'"
+                     @click="toggleDominantEye('右眼')"
+                   >右眼</button>
+                   <button
+                     type="button"
+                     class="dominant-eye-toggle-btn"
+                     :class="{ 'dominant-eye-toggle-btn--active': formatDominantEye(editForm.subjective_leading_eye) === '左眼' }"
+                     :aria-pressed="formatDominantEye(editForm.subjective_leading_eye) === '左眼'"
+                     @click="toggleDominantEye('左眼')"
+                   >左眼</button>
+                 </div>
                </template>
                <template v-else>
                  <span v-if="record?.subjective_leading_eye || record?.dominant_eye">{{ formatDominantEye(record.subjective_leading_eye || record.dominant_eye) }}</span>
@@ -1082,12 +2035,11 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'subjective_both_old_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('subjective_both_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('subjective_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('subjective_both_old_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('subjective_both_old_vision')" @input="onVisionInput('subjective_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('subjective_both_old_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('subjective_both_old_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'subjective_both_old_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'subjective_both_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'subjective_both_old_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('subjective_both_old_vision', getVisionDisplayParts(editForm, 'subjective_both_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
            <template v-else>
@@ -1097,12 +2049,11 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'near_subjective_both_old_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('near_subjective_both_old_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('near_subjective_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_both_old_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('near_subjective_both_old_vision')" @input="onVisionInput('near_subjective_both_old_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('near_subjective_both_old_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('near_subjective_both_old_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'near_subjective_both_old_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'near_subjective_both_old_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'near_subjective_both_old_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('near_subjective_both_old_vision', getVisionDisplayParts(editForm, 'near_subjective_both_old_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
            <template v-else>
@@ -1110,20 +2061,23 @@
            </template>
          </td>
          <td class="col-add-pd"></td>
+         <td class="col-pupillary-eye cell-muted">
+           <div class="cell-field">—</div>
+         </td>
        </tr>
 
-       <!-- 散瞳主觉验光 -->
+       <!-- （散瞳）主觉验光 -->
        <tr>
-         <td rowspan="3" class="col-check-item pupillary-subjective-label">散瞳<br>主觉验光</td>
-         <td>右眼</td>
+         <td rowspan="3" class="col-check-item pupillary-subjective-label">（散瞳）</td>
+         <td class="eye-name">右眼</td>
          <td>
            <template v-if="viewMode === 'edit'">
-             <a-input-number 
-               v-model:value="editForm.pupillary_subjective_right_spherical" 
-               :step="0.25" 
-               :precision="2"
-               class="prescription-input prescription-spherical" 
-               placeholder="球镜" 
+             <a-input
+               :value="getSphericalDisplayValue('pupillary_subjective_right_spherical')"
+               @input="handleSphericalChange('pupillary_subjective_right_spherical', $event)"
+               @blur="handleSphericalBlur('pupillary_subjective_right_spherical')"
+               class="prescription-input prescription-spherical"
+               placeholder="球镜"
                style="width: 100%"
              />
            </template>
@@ -1133,14 +2087,14 @@
          </td>
          <td>
            <template v-if="viewMode === 'edit'">
-             <a-tooltip title="请填写+/-" :open="needCylindricalSignHint('pupillary_subjective_right_cylindrical')">
+             <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('pupillary_subjective_right_cylindrical')">
                <div class="cell-sphere-wrap">
                  <a-input 
                    :value="getCylindricalDisplayValue('pupillary_subjective_right_cylindrical')" 
                    @input="handleCylindricalChange('pupillary_subjective_right_cylindrical', $event)"
                    @blur="handleCylindricalBlur('pupillary_subjective_right_cylindrical')"
                    class="prescription-input prescription-cylindrical" 
-                   placeholder="请填写+/-" 
+                   placeholder="请填写负柱镜-" 
                  />
                </div>
              </a-tooltip>
@@ -1160,12 +2114,11 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'pupillary_bcva_right_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('pupillary_bcva_right_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('pupillary_bcva_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_right_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('pupillary_bcva_right_vision')" @input="onVisionInput('pupillary_bcva_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_right_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('pupillary_bcva_right_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'pupillary_bcva_right_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'pupillary_bcva_right_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'pupillary_bcva_right_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('pupillary_bcva_right_vision', getVisionDisplayParts(editForm, 'pupillary_bcva_right_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
            <template v-else>
@@ -1175,30 +2128,30 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'pupillary_bcva_near_right_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('pupillary_bcva_near_right_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('pupillary_bcva_near_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_near_right_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('pupillary_bcva_near_right_vision')" @input="onVisionInput('pupillary_bcva_near_right_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_near_right_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('pupillary_bcva_near_right_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'pupillary_bcva_near_right_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'pupillary_bcva_near_right_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'pupillary_bcva_near_right_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('pupillary_bcva_near_right_vision', getVisionDisplayParts(editForm, 'pupillary_bcva_near_right_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
-           <template v-else>
-             <span class="vision-cell-superscript"><span>{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_right_vision', 'pupillary_subjective_near_right_old_vision').valuePart }}</span><sup v-if="getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_right_vision', 'pupillary_subjective_near_right_old_vision').superscriptPart">{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_right_vision', 'pupillary_subjective_near_right_old_vision').superscriptPart }}</sup></span>
-           </template>
-         </td>
-         <td class="col-add-pd"></td>
-       </tr>
-       <tr>
-         <td>左眼</td>
+          <template v-else>
+            <span class="vision-cell-superscript"><span>{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_right_vision', 'pupillary_subjective_near_right_old_vision').valuePart }}</span><sup v-if="getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_right_vision', 'pupillary_subjective_near_right_old_vision').superscriptPart">{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_right_vision', 'pupillary_subjective_near_right_old_vision').superscriptPart }}</sup></span>
+          </template>
+        </td>
+        <td class="col-add-pd"></td>
+        <th class="col-pupillary-eye" scope="row">右眼</th>
+      </tr>
+      <tr>
+        <td class="eye-name">左眼</td>
          <td>
            <template v-if="viewMode === 'edit'">
-             <a-input-number 
-               v-model:value="editForm.pupillary_subjective_left_spherical" 
-               :step="0.25" 
-               :precision="2"
-               class="prescription-input prescription-spherical" 
-               placeholder="球镜" 
+             <a-input
+               :value="getSphericalDisplayValue('pupillary_subjective_left_spherical')"
+               @input="handleSphericalChange('pupillary_subjective_left_spherical', $event)"
+               @blur="handleSphericalBlur('pupillary_subjective_left_spherical')"
+               class="prescription-input prescription-spherical"
+               placeholder="球镜"
                style="width: 100%"
              />
            </template>
@@ -1208,14 +2161,14 @@
          </td>
          <td>
            <template v-if="viewMode === 'edit'">
-             <a-tooltip title="请填写+/-" :open="needCylindricalSignHint('pupillary_subjective_left_cylindrical')">
+             <a-tooltip title="请填写负柱镜-" :open="needCylindricalSignHint('pupillary_subjective_left_cylindrical')">
                <div class="cell-sphere-wrap">
                  <a-input 
                    :value="getCylindricalDisplayValue('pupillary_subjective_left_cylindrical')" 
                    @input="handleCylindricalChange('pupillary_subjective_left_cylindrical', $event)"
                    @blur="handleCylindricalBlur('pupillary_subjective_left_cylindrical')"
                    class="prescription-input prescription-cylindrical" 
-                   placeholder="请填写+/-" 
+                   placeholder="请填写负柱镜-" 
                  />
                </div>
              </a-tooltip>
@@ -1235,12 +2188,11 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'pupillary_bcva_left_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('pupillary_bcva_left_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('pupillary_bcva_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_left_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('pupillary_bcva_left_vision')" @input="onVisionInput('pupillary_bcva_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_left_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('pupillary_bcva_left_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'pupillary_bcva_left_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'pupillary_bcva_left_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'pupillary_bcva_left_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('pupillary_bcva_left_vision', getVisionDisplayParts(editForm, 'pupillary_bcva_left_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
            <template v-else>
@@ -1250,32 +2202,31 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'pupillary_bcva_near_left_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('pupillary_bcva_near_left_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('pupillary_bcva_near_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_near_left_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('pupillary_bcva_near_left_vision')" @input="onVisionInput('pupillary_bcva_near_left_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_near_left_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('pupillary_bcva_near_left_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'pupillary_bcva_near_left_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'pupillary_bcva_near_left_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'pupillary_bcva_near_left_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('pupillary_bcva_near_left_vision', getVisionDisplayParts(editForm, 'pupillary_bcva_near_left_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
-           <template v-else>
-             <span class="vision-cell-superscript"><span>{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_left_vision', 'pupillary_subjective_near_left_old_vision').valuePart }}</span><sup v-if="getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_left_vision', 'pupillary_subjective_near_left_old_vision').superscriptPart">{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_left_vision', 'pupillary_subjective_near_left_old_vision').superscriptPart }}</sup></span>
-           </template>
-         </td>
-         <td class="col-add-pd"></td>
-       </tr>
-       <tr>
-         <td>双眼</td>
+          <template v-else>
+            <span class="vision-cell-superscript"><span>{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_left_vision', 'pupillary_subjective_near_left_old_vision').valuePart }}</span><sup v-if="getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_left_vision', 'pupillary_subjective_near_left_old_vision').superscriptPart">{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_left_vision', 'pupillary_subjective_near_left_old_vision').superscriptPart }}</sup></span>
+          </template>
+        </td>
+        <td class="col-add-pd"></td>
+        <th class="col-pupillary-eye" scope="row">左眼</th>
+      </tr>
+      <tr>
+        <td class="eye-name">双眼</td>
          <td colspan="3"></td>
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'pupillary_bcva_both_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('pupillary_bcva_both_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('pupillary_bcva_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_both_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('pupillary_bcva_both_vision')" @input="onVisionInput('pupillary_bcva_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_both_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('pupillary_bcva_both_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'pupillary_bcva_both_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'pupillary_bcva_both_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'pupillary_bcva_both_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('pupillary_bcva_both_vision', getVisionDisplayParts(editForm, 'pupillary_bcva_both_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
            <template v-else>
@@ -1285,20 +2236,20 @@
          <td>
            <template v-if="viewMode === 'edit'">
              <template v-if="visionFocusedCell === 'pupillary_bcva_near_both_vision'">
-               <input type="text" inputmode="text" class="vision-combined-input" :value="getVisionInputDisplay('pupillary_bcva_near_both_vision')" placeholder="如 1.0+2、0.8" @input="onVisionInput('pupillary_bcva_near_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_near_both_vision', el)" />
+               <input type="text" inputmode="text" class="vision-combined-input" autocomplete="off" :value="getVisionInputDisplay('pupillary_bcva_near_both_vision')" @input="onVisionInput('pupillary_bcva_near_both_vision', $event.target.value)" @blur="visionFocusedCell = null" :ref="el => setVisionInputRef('pupillary_bcva_near_both_vision', el)" />
              </template>
              <div v-else class="vision-cell-superscript vision-edit-display" @click="focusVisionCell('pupillary_bcva_near_both_vision')">
                <span>{{ getVisionDisplayParts(editForm, 'pupillary_bcva_near_both_vision').valuePart }}</span>
                <sup v-if="getVisionDisplayParts(editForm, 'pupillary_bcva_near_both_vision').superscriptPart">{{ getVisionDisplayParts(editForm, 'pupillary_bcva_near_both_vision').superscriptPart }}</sup>
-               <span v-if="isVisionPlaceholder('pupillary_bcva_near_both_vision', getVisionDisplayParts(editForm, 'pupillary_bcva_near_both_vision'))" class="vision-placeholder-hint">如 1.0+2</span>
              </div>
            </template>
-           <template v-else>
-             <span class="vision-cell-superscript"><span>{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_both_vision', 'pupillary_subjective_near_both_old_vision').valuePart }}</span><sup v-if="getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_both_vision', 'pupillary_subjective_near_both_old_vision').superscriptPart">{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_both_vision', 'pupillary_subjective_near_both_old_vision').superscriptPart }}</sup></span>
-           </template>
-         </td>
-         <td class="col-add-pd"></td>
-       </tr>
+          <template v-else>
+            <span class="vision-cell-superscript"><span>{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_both_vision', 'pupillary_subjective_near_both_old_vision').valuePart }}</span><sup v-if="getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_both_vision', 'pupillary_subjective_near_both_old_vision').superscriptPart">{{ getVisionDisplayPartsWithFallback(record, 'pupillary_bcva_near_both_vision', 'pupillary_subjective_near_both_old_vision').superscriptPart }}</sup></span>
+          </template>
+        </td>
+        <td class="col-add-pd"></td>
+        <th class="col-pupillary-eye" scope="row">双眼</th>
+      </tr>
      </tbody>
   </table>
       </div>
@@ -1344,6 +2295,14 @@ const props = defineProps({
   showOnlySection: {
     type: String,
     default: null // 如果设置，只显示指定的 section（如 'routine', 'vision', 'objective-refraction', 'subjective-refraction'）
+  },
+  showSectionTitlesInView: {
+    type: Boolean,
+    default: false
+  },
+  reportLayout: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -1422,14 +2381,14 @@ const normalizeVisionLevels = (data) => {
     'uva_right_vision', 'uva_left_vision', 'uva_both_vision',
     'near_uva_right_vision', 'near_uva_left_vision', 'near_uva_both_vision',
     'vaec_right_old_vision', 'vaec_left_old_vision', 'vaec_both_old_vision',
-    // 主观验光检查 - 远视力
+    // 主觉验光检查 - 远视力
     'subjective_right_old_vision', 'subjective_left_old_vision', 'subjective_both_old_vision',
-    // 主观验光检查 - 近视力
+    // 主觉验光检查 - 近视力
     'near_subjective_right_old_vision', 'near_subjective_left_old_vision', 'near_subjective_both_old_vision',
-    // 散瞳主观验光检查 - 远视力（BCVA字段，兼容旧字段）
+    // 散瞳主觉验光检查 - 远视力（BCVA字段，兼容旧字段）
     'pupillary_bcva_right_vision', 'pupillary_bcva_left_vision', 'pupillary_bcva_both_vision',
     'pupillary_subjective_right_old_vision', 'pupillary_subjective_left_old_vision', 'pupillary_subjective_both_old_vision',
-    // 散瞳主观验光检查 - 近视力（BCVA字段，兼容旧字段）
+    // 散瞳主觉验光检查 - 近视力（BCVA字段，兼容旧字段）
     'pupillary_bcva_near_right_vision', 'pupillary_bcva_near_left_vision', 'pupillary_bcva_near_both_vision',
     'pupillary_subjective_near_right_old_vision', 'pupillary_subjective_near_left_old_vision', 'pupillary_subjective_near_both_old_vision'
   ];
@@ -1603,16 +2562,24 @@ const hasVisionData = computed(() => {
   );
 });
 
-const hasObjectiveRefractionData = computed(() => {
+const hasRetinoscopyData = computed(() => {
+  const record = props.record;
+  if (!record) return false;
+  return (
+    hasFieldValue(record.retinoscopy_right_eye_spherical) || hasFieldValue(record.retinoscopy_left_eye_spherical) ||
+    hasFieldValue(record.retinoscopy_right_eye_cylindrical) || hasFieldValue(record.retinoscopy_left_eye_cylindrical) ||
+    hasFieldValue(record.retinoscopy_right_eye_axis) || hasFieldValue(record.retinoscopy_left_eye_axis)
+  );
+});
+
+/** （小瞳）+（散瞳）电脑验光检查（不含检影；报告式下检影与基础检查同一行） */
+const hasObjectiveComputerBlockData = computed(() => {
   const record = props.record;
   if (!record) return false;
   return (
     hasFieldValue(record.objective_right_spherical) || hasFieldValue(record.objective_left_spherical) ||
     hasFieldValue(record.objective_right_cylindrical) || hasFieldValue(record.objective_left_cylindrical) ||
     hasFieldValue(record.objective_right_axis) || hasFieldValue(record.objective_left_axis) ||
-    hasFieldValue(record.retinoscopy_right_eye_spherical) || hasFieldValue(record.retinoscopy_left_eye_spherical) ||
-    hasFieldValue(record.retinoscopy_right_eye_cylindrical) || hasFieldValue(record.retinoscopy_left_eye_cylindrical) ||
-    hasFieldValue(record.retinoscopy_right_eye_axis) || hasFieldValue(record.retinoscopy_left_eye_axis) ||
     hasFieldValue(record.pupillary_objective_right_spherical) || hasFieldValue(record.pupillary_objective_left_spherical) ||
     hasFieldValue(record.pupillary_objective_right_cylindrical) || hasFieldValue(record.pupillary_objective_left_cylindrical) ||
     hasFieldValue(record.pupillary_objective_right_axis) || hasFieldValue(record.pupillary_objective_left_axis) ||
@@ -1802,16 +2769,16 @@ const getVisionCombinedDisplayString = (eyeData) => {
   return value;
 };
 const formatVisionValueForSup = (value) => {
-  if (value === null || value === undefined || value === '') return '-';
+  if (value === null || value === undefined || value === '') return '';
   const num = Number(value);
-  if (isNaN(num)) return '-';
+  if (isNaN(num)) return '';
   const twoDecimalStr = num.toFixed(2);
   if (twoDecimalStr.length >= 4 && twoDecimalStr[twoDecimalStr.length - 1] === '0') return num.toFixed(1);
   return twoDecimalStr;
 };
 const formatVisionCellSuperscript = (eyeData) => {
-  if (!eyeData || (eyeData.value === null && eyeData.value === undefined && eyeData.value === '')) {
-    return { valuePart: '-', superscriptPart: '' };
+  if (!eyeData || eyeData.value == null || eyeData.value === '') {
+    return { valuePart: '', superscriptPart: '' };
   }
   const valuePart = formatVisionValueForSup(eyeData.value);
   const sign = eyeData.sign || '+';
@@ -1843,7 +2810,7 @@ const getVisionDisplayParts = (source, fieldPrefix) => {
 // 散瞳视力查看：优先显示 bcva 字段，无值时回退到 subjective_old 字段
 const getVisionDisplayPartsWithFallback = (source, primaryKey, fallbackKey) => {
   const primary = getVisionDisplayParts(source, primaryKey);
-  if (primary.valuePart !== '-') return primary;
+  if (primary.valuePart || primary.superscriptPart) return primary;
   return getVisionDisplayParts(source, fallbackKey);
 };
 
@@ -1859,10 +2826,6 @@ const getVisionInputDisplay = (fieldPrefix) => {
   const raw = visionRawByCell.value[fieldPrefix];
   if (raw !== undefined && raw !== null) return String(raw);
   return getVisionCombinedDisplayString(getVisionCellData(editForm.value, fieldPrefix));
-};
-const isVisionPlaceholder = (fieldPrefix, displayParts) => {
-  if (!displayParts) return true;
-  return (displayParts.valuePart === '-' || !displayParts.valuePart) && !displayParts.superscriptPart;
 };
 const onVisionInput = (fieldPrefix, value) => {
   visionRawByCell.value[fieldPrefix] = value;
@@ -2022,7 +2985,7 @@ const formatAxis = (value) => {
   return Math.abs(Math.round(num)).toString();
 };
 
-// 计算等效球镜 SE = S + C/2
+// 计算等效球镜 SE = S + C/2（显示带单位 D，如 -2.25D）
 const formatSE = (spherical, cylindrical, sphericalSign) => {
   // 如果球镜为空，返回"-"
   if (spherical === null || spherical === undefined || spherical === '') return '-';
@@ -2038,12 +3001,13 @@ const formatSE = (spherical, cylindrical, sphericalSign) => {
   const c = Number(cylindrical);
   if (isNaN(c) || c === 0) {
     // 只有球镜，没有柱镜时，显示球镜值（带符号）
-    return s >= 0 ? '+' + s.toFixed(2) : s.toFixed(2);
+    const v = s >= 0 ? '+' + s.toFixed(2) : s.toFixed(2);
+    return v + 'D';
   }
   // SE = 球镜 + 柱镜/2（柱镜按实际正负值参与计算）
   const se = s + c / 2;
-  // 显示时带上符号
-  return se >= 0 ? '+' + se.toFixed(2) : se.toFixed(2);
+  const v = se >= 0 ? '+' + se.toFixed(2) : se.toFixed(2);
+  return v + 'D';
 };
 
 // 格式化主导眼
@@ -2055,6 +3019,17 @@ const formatDominantEye = (value) => {
   if (valueStr === 'left' || valueStr === '左' || valueStr === 'L' || valueStr === '左眼') return '左眼';
   // 如果已经是正确的格式，直接返回
   return valueStr;
+};
+
+/** 主导眼：点选切换；再次点击已选项则清空 */
+const toggleDominantEye = (eye) => {
+  if (!editForm.value) return;
+  const cur = formatDominantEye(editForm.value.subjective_leading_eye);
+  if (cur === eye) {
+    editForm.value.subjective_leading_eye = null;
+  } else {
+    editForm.value.subjective_leading_eye = eye;
+  }
 };
 
 // 判断值是否为空
@@ -2165,55 +3140,52 @@ const handleToggleSection = (sectionKey) => {
   emit('toggle-section', sectionKey);
 };
 
-// 获取球镜显示值（显示时格式化为2位小数）
+// 球镜编辑：输入过程中原样显示字符串；已落库为数字时与柱镜一致带 +/-、两位小数（仅展示，不干扰输入过程）
 const getSphericalDisplayValue = (fieldName) => {
   if (!editForm.value || editForm.value[fieldName] === null || editForm.value[fieldName] === undefined || editForm.value[fieldName] === '') return '';
   const value = editForm.value[fieldName];
-  // 如果是字符串，直接返回（输入过程中）
-  if (typeof value === 'string') {
-    return value;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') {
+    if (isNaN(value)) return '';
+    const inferred = value >= 0 ? '+' : '-';
+    return inferred + Math.abs(value).toFixed(2);
   }
-  // 如果是数字，格式化为2位小数
-  const num = Number(value);
-  if (!isNaN(num)) {
-    return num.toFixed(2);
-  }
-  return value;
+  return String(value);
 };
 
-// 处理球镜输入变化（输入过程中不格式化）
+// 处理球镜输入：输入过程中只存字符串，不打断 -1. 等中间态
 const handleSphericalChange = (fieldName, e) => {
-  if (!editForm.value) {
-    editForm.value = {};
-  }
+  if (!editForm.value) editForm.value = {};
   const value = e.target ? e.target.value : e;
-  // 直接保存输入值，不进行格式化
   editForm.value[fieldName] = value;
 };
 
-// 处理球镜失去焦点，格式化为2位小数
+// 失焦：解析为数字并保留最多两位小数（与柱镜 blur 一致）
 const handleSphericalBlur = (fieldName) => {
-  if (!editForm.value || !editForm.value[fieldName]) return;
-  const value = editForm.value[fieldName];
-  if (value === null || value === undefined || value === '') {
+  if (!editForm.value) return;
+  const raw = editForm.value[fieldName];
+  if (raw === null || raw === undefined || raw === '') {
     editForm.value[fieldName] = '';
     return;
   }
-  // 失去焦点时格式化为2位小数
-  const num = Number(value);
-  if (!isNaN(num)) {
-    editForm.value[fieldName] = parseFloat(num.toFixed(2));
+  const value = typeof raw === 'string' ? raw.trim() : raw;
+  if (value === '') {
+    editForm.value[fieldName] = '';
+    return;
   }
+  const num = Number(String(value).replace(/[^\d.+-]/g, ''));
+  if (!isNaN(num)) editForm.value[fieldName] = parseFloat(num.toFixed(2));
 };
 
-// 获取柱镜显示值（与球镜一致：符号在文本框内，显示时格式化为2位小数）
+// 获取柱镜显示值（与 formatCylinder 一致：数值型带 +/-，避免 toFixed 去掉正号）
 const getCylindricalDisplayValue = (fieldName) => {
   if (!editForm.value || editForm.value[fieldName] === null || editForm.value[fieldName] === undefined || editForm.value[fieldName] === '') return '';
   const value = editForm.value[fieldName];
-  if (typeof value === 'string') return value;
-  const num = Number(value);
-  if (!isNaN(num)) return num.toFixed(2);
-  return value;
+  if (typeof value === 'number') {
+    const inferred = value >= 0 ? '+' : '-';
+    return inferred + Math.abs(value).toFixed(2);
+  }
+  return String(value);
 };
 
 // 处理柱镜输入变化（与球镜一致：符号在文本框内）
@@ -2281,6 +3253,12 @@ const handleBothGlassesTypeChange = (value) => {
 
 <style scoped lang="scss">
 .routine-exam-style-two {
+  /* 与表内输入框 32px 一致；报告式 .exam-sheet 表格内仍由 exam-sheet.css 使用 22px */
+  --exr-select-h: 32px;
+  /* 视力 +/- 网格内紧凑下拉，保持原 26px 行高布局 */
+  --exr-vision-grid-select-h: 26px;
+  --exr-font-body: 11px; /* 表内输入/下拉基础字号（略小于原 12px） */
+  --exr-font-table: 12px; /* 视力/验光表体字号（略小于原 13px） */
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -2290,7 +3268,7 @@ const handleBothGlassesTypeChange = (value) => {
   // a-input组件文本居中
   :deep(.ant-input) {
     text-align: center !important;
-    font-size: 12px;
+    font-size: var(--exr-font-body);
     height: 32px; // 统一输入框高度
     line-height: 32px; // 统一行高
   }
@@ -2302,38 +3280,103 @@ const handleBothGlassesTypeChange = (value) => {
   
   :deep(.ant-input-number-input) {
     text-align: center !important;
-    font-size: 12px;
+    font-size: var(--exr-font-body);
     height: 32px; // 统一输入框高度
     line-height: 32px; // 统一行高
   }
+
+  // 表格内文本框：不显示占位灰字（避免「背景字」与内容重叠）
+  table {
+    :deep(.ant-input::placeholder),
+    :deep(.ant-input-number-input::placeholder) {
+      color: transparent !important;
+      opacity: 0 !important;
+    }
+  }
   
-  // a-select组件文本居中
+  // a-select组件文本居中（高度与统一报告表下拉一致）
   :deep(.ant-select-selector) {
     .ant-select-selection-item,
     .ant-select-selection-placeholder {
       text-align: center;
-      line-height: 30px;
+      line-height: calc(var(--exr-select-h, 32px) - 2px);
     }
   }
   
   // a-select组件字体大小
   :deep(.ant-select-selector) {
-    font-size: 12px;
+    font-size: var(--exr-font-body);
   }
   
   :deep(.ant-select-selection-item) {
-    font-size: 12px;
+    font-size: var(--exr-font-body);
   }
   
   :deep(.ant-select-selection-placeholder) {
-    font-size: 12px;
+    font-size: var(--exr-font-body);
   }
   
   // 下拉选项字体缩小（全局样式，因为下拉菜单挂载在body上）
   :deep(.ant-select-dropdown) {
     .ant-select-item {
-      font-size: 12px;
+      font-size: var(--exr-font-body);
     }
+  }
+
+  // 主导眼 / 瞳距：报告式字号由 exam-sheet 与眼别 th.eye-cell.eye-name 对齐；非报告式主觉表与本表 td.eye-name 一致
+  .dominant-eye-pd-report .dominant-eye-pd-container {
+    font-size: inherit;
+  }
+
+  .subjective-table .dominant-eye-pd-cell .dominant-eye-pd-container {
+    font-size: var(--exr-font-body);
+
+    .dominant-eye-pd-label {
+      font-size: inherit;
+    }
+
+    .dominant-eye-toggle-group {
+      flex: 0 0 auto;
+    }
+
+    .dominant-eye-toggle-btn {
+      font-size: max(9px, calc(var(--exr-font-body, 11px) - 1px)) !important;
+    }
+
+    .pupil-distance-input :deep(input) {
+      font-size: inherit !important;
+    }
+
+    .pupil-distance-unit {
+      font-size: inherit;
+    }
+  }
+}
+
+// 编辑模式：表内可填数值与查看态一致，与「身高」等格同用 --exr-font-body
+.routine-exam-style-two.routine-exam-style-two--edit {
+  --exr-font-body: 11px;
+  --exr-font-table: 12px;
+
+  .section-title {
+    font-size: 15px;
+  }
+
+  .section-toggle-icon {
+    font-size: 12px;
+  }
+
+  .vision-combined-input {
+    font-size: var(--exr-font-body);
+  }
+
+  .routine-info-table:not(.exam-sheet),
+  .dominant-eye-table {
+    font-size: var(--exr-font-body);
+  }
+
+  .vision-sign-btn {
+    font-size: 13px;
   }
 }
 
@@ -2364,7 +3407,7 @@ const handleBothGlassesTypeChange = (value) => {
 }
 
 .section-title {
-  font-size: 18px; // 从16px放大到18px
+  font-size: 16px;
   font-weight: 600;
   color: #224b96;
   margin: 0;
@@ -2419,13 +3462,13 @@ const handleBothGlassesTypeChange = (value) => {
 .section-toggle-icon {
   margin-left: auto;
   color: #666;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-.routine-info-table {
+.routine-info-table:not(.exam-sheet) {
   width: 100%;
   border-collapse: collapse;
-  font-size: clamp(0.75rem, 1.5vw, 0.9375rem);
+  font-size: clamp(0.7rem, 1.4vw, 0.875rem);
   margin-bottom: 16px;
   
   th, td {
@@ -2473,7 +3516,7 @@ const handleBothGlassesTypeChange = (value) => {
 .dominant-eye-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: clamp(0.75rem, 1.5vw, 0.9375rem);
+  font-size: clamp(0.7rem, 1.4vw, 0.875rem);
   margin-bottom: 16px;
   
   th, td {
@@ -2510,23 +3553,23 @@ const handleBothGlassesTypeChange = (value) => {
   margin-left: 1.5em; // 1.5个汉字位置（使用em单位，1em约等于一个汉字宽度）
 }
 
-.vision-table {
+.vision-table:not(.exam-sheet) {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px; // 从11px放大到13px
+  font-size: var(--exr-font-table, 12px);
   table-layout: fixed;
 }
 
-.vision-table {
+.vision-table:not(.exam-sheet) {
   border-radius: 8px;
   overflow: hidden;
 }
 
-.vision-table thead {
+.vision-table:not(.exam-sheet) thead {
   background: linear-gradient(180deg, rgba(34, 75, 150, 0.12) 0%, rgba(34, 75, 150, 0.08) 100%);
 }
 
-.vision-table th {
+.vision-table:not(.exam-sheet) th {
   padding: 10px 12px;
   text-align: center;
   font-weight: 600;
@@ -2536,7 +3579,12 @@ const handleBothGlassesTypeChange = (value) => {
   line-height: 1.3;
 }
 
-.vision-table tbody tr {
+/* 眼别列：右眼/左眼/双眼 略小于表头 */
+.vision-table:not(.exam-sheet) th.eye-name {
+  font-size: 10px;
+}
+
+.vision-table:not(.exam-sheet) tbody tr {
   transition: background-color 0.2s ease;
   
   &:hover {
@@ -2544,14 +3592,14 @@ const handleBothGlassesTypeChange = (value) => {
   }
 }
 
-.vision-table td {
+.vision-table:not(.exam-sheet) td {
   border: 1px solid #f0f2f5;
   border-top: none;
 }
 
 // 检查项目列（第1列）- 增加宽度，强制单行显示
-.vision-table th:nth-child(1),
-.vision-table td:nth-child(1) {
+.vision-table:not(.exam-sheet) th:nth-child(1),
+.vision-table:not(.exam-sheet) td:nth-child(1) {
   width: 14%;
   white-space: nowrap;
   overflow: hidden;
@@ -2560,8 +3608,8 @@ const handleBothGlassesTypeChange = (value) => {
 }
 
 // 远用/近用列（第2列）- 与第一列保持一致
-.vision-table th:nth-child(2),
-.vision-table td:nth-child(2) {
+.vision-table:not(.exam-sheet) th:nth-child(2),
+.vision-table:not(.exam-sheet) td:nth-child(2) {
   width: 14%;
   white-space: nowrap;
   overflow: hidden;
@@ -2570,27 +3618,27 @@ const handleBothGlassesTypeChange = (value) => {
 }
 
 // 右眼列（第3列）- 按1:1:1比例分配，三等分
-.vision-table th:nth-child(3),
-.vision-table td:nth-child(3) {
+.vision-table:not(.exam-sheet) th:nth-child(3),
+.vision-table:not(.exam-sheet) td:nth-child(3) {
   width: calc((100% - 14% - 14%) / 3);
   min-width: 100px;
 }
 
 // 左眼列（第4列）- 按1:1:1比例分配，三等分
-.vision-table th:nth-child(4),
-.vision-table td:nth-child(4) {
+.vision-table:not(.exam-sheet) th:nth-child(4),
+.vision-table:not(.exam-sheet) td:nth-child(4) {
   width: calc((100% - 14% - 14%) / 3);
   min-width: 100px;
 }
 
 // 双眼列（第5列）- 按1:1:1比例分配，三等分
-.vision-table th:nth-child(5),
-.vision-table td:nth-child(5) {
+.vision-table:not(.exam-sheet) th:nth-child(5),
+.vision-table:not(.exam-sheet) td:nth-child(5) {
   width: calc((100% - 14% - 14%) / 3);
   min-width: 100px;
 }
 
-.vision-table td {
+.vision-table:not(.exam-sheet) td {
   padding: 2.5mm 2.5mm; // 从2mm增加25%到2.5mm
   text-align: center;
   color: #333;
@@ -2598,7 +3646,7 @@ const handleBothGlassesTypeChange = (value) => {
   line-height: 1.3;
 }
 
-.vision-table .vision-label {
+.vision-table:not(.exam-sheet) .vision-label {
   text-align: center;
   color: #666;
   font-weight: 500;
@@ -2610,83 +3658,89 @@ const handleBothGlassesTypeChange = (value) => {
   padding: 2.5mm 2.5mm; // 从2mm增加25%到2.5mm
 }
 
-.vision-table .vision-sub-label-cell {
+.vision-table:not(.exam-sheet) .vision-sub-label-cell {
   text-align: center;
   color: #999;
   font-weight: 500;
   background: #fafbff;
   padding: 2.5mm 2.5mm; // 从2mm增加25%到2.5mm
-  font-size: 13px; // 从11px放大到13px
+  font-size: var(--exr-font-table, 12px);
 }
 
-.vision-table .old-glasses-row {
+.vision-table:not(.exam-sheet) .old-glasses-row {
   background: #f9faff;
 }
 
-.vision-table .old-glasses-row td {
+.vision-table:not(.exam-sheet) .old-glasses-row td {
   border-top: 2px solid #d0d8f0;
 }
 
-.vision-table .old-glasses-label {
+.vision-table:not(.exam-sheet) .old-glasses-label {
   text-align: center;
   padding: 2.5mm 2.5mm; // 从2mm增加25%到2.5mm
-  font-size: 13px; // 从11px放大到13px
+  font-size: var(--exr-font-table, 12px);
   color: #666;
   font-weight: 500;
   background: #f9faff;
 }
 
-.vision-table .old-glasses-cell {
+.vision-table:not(.exam-sheet) .old-glasses-cell {
   text-align: center;
   padding: 2.5mm 2.5mm; // 从2mm增加25%到2.5mm
-  font-size: 13px; // 从11px放大到13px
+  font-size: var(--exr-font-table, 12px);
   color: #333;
 }
 
-// 旧镜类型选择框样式：宽度自适应，箭头居中，简洁样式
-.vision-table .glasses-type-select {
-  width: 80% !important;
-  min-width: 80px;
-  max-width: 160px; // 增加最大宽度以适应"多点离焦"选项的文字宽度
-  
+// 旧镜类型选择框：触发器样式见下；下拉面板见 .glasses-type-dropdown（与 ADD 下拉同理）
+.vision-table:not(.exam-sheet) .glasses-type-select {
+  width: auto !important;
+  max-width: 100px !important;
+  min-width: 76px;
+  margin-left: auto;
+  margin-right: auto;
+
   :deep(.ant-select-selector) {
     display: flex;
     align-items: center;
-    padding-right: 24px !important;
-    padding-left: 8px !important;
+    padding-right: 7px !important;
+    padding-left: 5px !important;
     background: #fff !important;
     border: 1px solid #d9d9d9 !important;
-    border-radius: 4px !important;
-    height: 32px;
-    font-size: 12px;
+    border-radius: 6px !important;
+    min-height: var(--exr-select-h, 32px);
+    height: var(--exr-select-h, 32px) !important;
+    font-size: var(--exr-font-table, 12px);
   }
-  
+
   :deep(.ant-select-selection-item) {
-    line-height: 32px;
+    line-height: calc(var(--exr-select-h, 32px) - 2px);
     padding-right: 0;
     padding-left: 0;
-    font-size: 12px;
+    font-size: var(--exr-font-table, 12px);
+    font-weight: 500;
   }
-  
+
   :deep(.ant-select-selection-placeholder) {
-    line-height: 32px;
+    line-height: calc(var(--exr-select-h, 32px) - 2px);
     padding-left: 0;
-    font-size: 12px;
+    font-size: var(--exr-font-body, 11px);
+    color: #bfbfbf;
+    font-weight: 400;
   }
-  
+
   :deep(.ant-select-arrow) {
     top: 50% !important;
     transform: translateY(-50%) !important;
-    right: 8px !important;
+    right: 2px !important;
     margin-top: 0 !important;
-    color: #666 !important;
-    font-size: 12px;
+    color: #8c8c8c !important;
+    font-size: 10px;
   }
-  
+
   :deep(.ant-select-clear) {
     top: 50%;
     transform: translateY(-50%);
-    right: 24px;
+    right: 11px;
   }
   
   &:hover :deep(.ant-select-selector) {
@@ -2702,12 +3756,18 @@ const handleBothGlassesTypeChange = (value) => {
 .refraction-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px; // 从11px放大到13px
+  font-size: var(--exr-font-table, 12px);
   table-layout: fixed;
 }
 
-// 主观验光表格列宽调整
+// 主觉验光表格列宽调整
 .subjective-table {
+  /* 眼别列文字（右眼/左眼/双眼）略小于表体 13px */
+  td.eye-name {
+    font-size: 11px;
+    font-weight: 600;
+  }
+
   .col-check-item {
     width: 12%;
   }
@@ -2749,9 +3809,9 @@ const handleBothGlassesTypeChange = (value) => {
     }
   }
   
-  // 近视力列（第7列）- 与远视力宽度一致，增加宽度
-  th:nth-child(7),
-  td:nth-child(7) {
+  // 近视力列（第7列）- 与远视力宽度一致；ADD/（散瞳）列勿套用
+  th:nth-child(7):not(.col-pupillary-eye),
+  td:nth-child(7):not(.col-pupillary-eye):not(.col-add-pd) {
     width: 13%;
     
     .vision-value-select {
@@ -2760,13 +3820,41 @@ const handleBothGlassesTypeChange = (value) => {
     }
   }
   
+  /* （散瞳）眼别列：在 ADD 右侧，与报告式 exam-sheet 一致 */
+  th.col-pupillary-eye,
+  td.col-pupillary-eye {
+    width: 6% !important;
+    min-width: 48px !important;
+    max-width: 72px !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    overflow: visible !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #2a3542 !important;
+  }
+
+  thead th.col-pupillary-eye {
+    font-weight: 600;
+    font-size: 11px;
+    background: #f0f9fd;
+    color: #2a3542;
+  }
+
+  /* 散瞳块内「（散瞳）」列眼别：与眼别列视觉一致 */
+  tbody th.col-pupillary-eye {
+    background: #fafbff;
+    font-weight: 600;
+  }
+
   // ADD列 - 与柱镜宽度一致（11%）
   th.col-add-pd,
   td.col-add-pd {
     width: 11%;
   }
   
-  // 主观验光表格中球镜和柱镜输入框：统一减小内边距
+  // 主觉验光表格中球镜和柱镜输入框：统一减小内边距
   .prescription-spherical,
   .prescription-cylindrical {
     &.ant-input-number {
@@ -2788,52 +3876,53 @@ const handleBothGlassesTypeChange = (value) => {
     
     .dominant-eye-pd-container {
       display: flex;
-      flex-direction: column;
-      gap: 8px;
-      align-items: center; // 水平居中
-      justify-content: center; // 垂直居中
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      width: 100%;
+      font-weight: 400;
       
       .dominant-eye-pd-item {
         display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
         align-items: center;
         justify-content: center;
-        gap: 4px;
+        gap: 6px;
+        flex: 0 0 auto;
+        width: auto;
         
         .dominant-eye-pd-label {
           white-space: nowrap;
+          flex-shrink: 0;
+          font-weight: 400;
         }
         
-        .dominant-eye-select {
-          width: 80px;
-          height: 32px; // 设置选择器高度
-          
-          :deep(.ant-select-selector) {
-            height: 32px !important;
-            text-align: center;
-            display: flex !important;
-            align-items: center !important; // 垂直居中
-            justify-content: center !important; // 水平居中
-            
-            .ant-select-selection-item,
-            .ant-select-selection-placeholder {
-              text-align: center;
-              line-height: 1 !important; // 避免行高影响垂直居中
-            }
-          }
+        .dominant-eye-toggle-group {
+          flex: 0 0 auto;
         }
         
+        // 瞳距：短输入框，与 mm 间距收紧
         .pupil-distance-input {
-          width: 80px;
+          width: 4.8ch !important;
+          min-width: 4ch !important;
+          max-width: 5.5ch !important;
+          flex: 0 0 auto !important;
           text-align: center;
           
           :deep(input) {
             text-align: center;
+            padding-left: 2px !important;
+            padding-right: 2px !important;
           }
         }
         
         .pupil-distance-unit {
           white-space: nowrap;
-          margin-left: 2px;
+          margin-left: 0;
+          flex-shrink: 0;
         }
       }
     }
@@ -2876,7 +3965,7 @@ const handleBothGlassesTypeChange = (value) => {
   line-height: 1.3;
 }
 
-// 确保客观验光检查表格所有单元格内容居中
+// 确保电脑验光检查表格所有单元格内容居中
 .refraction-table tbody td {
   text-align: center !important;
 }
@@ -2884,7 +3973,7 @@ const handleBothGlassesTypeChange = (value) => {
 .refraction-table .refraction-value-top {
   text-align: center;
   padding: 2.5mm 2.5mm; // 从2mm增加25%到2.5mm
-  font-size: 13px; // 从11px放大到13px
+  font-size: var(--exr-font-table, 12px);
   color: #333;
   border: 1px solid #e0e6f5;
   line-height: 1.3;
@@ -2894,7 +3983,7 @@ const handleBothGlassesTypeChange = (value) => {
 .refraction-table .refraction-value-bottom {
   text-align: center;
   padding: 2.5mm 2.5mm; // 从2mm增加25%到2.5mm
-  font-size: 13px; // 从11px放大到13px
+  font-size: var(--exr-font-table, 12px);
   color: #666;
   border: 1px solid #e0e6f5;
   line-height: 1.3;
@@ -2909,23 +3998,21 @@ const handleBothGlassesTypeChange = (value) => {
   width: 34%;
   vertical-align: middle;
   padding: 2.5mm 2.5mm; // 从2mm增加25%到2.5mm
-  font-size: 13px; // 从11px放大到13px
+  font-size: var(--exr-font-table, 12px);
 }
 
-// 主观验光检查表格的检查项目列宽为14%
+// 主觉验光检查表格的检查项目列宽为14%
 .subjective-table .refraction-label {
   width: 14%;
 }
 
 // 散瞳主觉验光标签字体与主觉验光一致（移除字体缩小）
 .subjective-table .pupillary-subjective-label {
-  // 字体大小与主觉验光一致，继承默认的13px
   line-height: 1.3;
 }
 
-// 散瞳电脑验光标签字体与电脑验光一致（移除字体缩小）
+// 「（散瞳）」侧栏标签字体与「（小瞳）」一致（移除字体缩小）
 .refraction-table .pupillary-objective-label {
-  // 字体大小与电脑验光一致，继承.refraction-label的13px
   line-height: 1.3;
 }
 
@@ -2948,7 +4035,7 @@ const handleBothGlassesTypeChange = (value) => {
 .refraction-table .vision-dominant-cell {
   text-align: center;
   padding: 2.5mm 2.5mm; // 从2mm增加25%到2.5mm
-  font-size: 13px; // 从11px放大到13px
+  font-size: var(--exr-font-table, 12px);
   color: #333;
   border: 1px solid #e0e6f5;
   line-height: 1.3;
@@ -2958,7 +4045,7 @@ const handleBothGlassesTypeChange = (value) => {
 .refraction-table .vision-dominant-label {
   text-align: center;
   padding: 2.5mm 2.5mm; // 从2mm增加25%到2.5mm
-  font-size: 13px; // 从11px放大到13px
+  font-size: var(--exr-font-table, 12px);
   color: #666;
   font-weight: 500;
   background: #fafbff;
@@ -2982,17 +4069,24 @@ const handleBothGlassesTypeChange = (value) => {
   width: 100%;
 }
 
-// 视力单输入（与手机端一致：1.0+2，展示为上标）
+// 视力单输入（表格单元格内：无边框、透明底、居中，与裸眼/矫正视力统一）
 .vision-combined-input {
   width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 0;
+  font-size: 13px;
   box-sizing: border-box;
+  background: transparent;
+  outline: none;
+  text-align: center;
 }
-.vision-combined-input::placeholder {
-  color: #bfbfbf;
+/* 避免 Chrome 自动填充时整块变黄底 */
+.vision-combined-input:-webkit-autofill,
+.vision-combined-input:-webkit-autofill:hover,
+.vision-combined-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset;
+  transition: background-color 99999s ease-out;
 }
 .vision-cell-superscript {
   display: inline-flex;
@@ -3007,21 +4101,23 @@ const handleBothGlassesTypeChange = (value) => {
   top: -0.4em;
 }
 .vision-edit-display {
-  min-height: 32px;
-  padding: 6px 8px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 0;
   cursor: text;
-  background: #fff;
+  background: transparent;
   width: 100%;
   box-sizing: border-box;
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  -webkit-tap-highlight-color: transparent;
 }
-.vision-edit-display .vision-placeholder-hint {
-  color: #bfbfbf;
-  font-size: 12px;
-  margin-left: 4px;
+.vision-edit-display:focus-visible {
+  outline: none;
 }
 
 // 远视力单元格2x2网格布局：左上+按钮，右上视力值，左下-按钮，右下个数
@@ -3045,13 +4141,14 @@ const handleBothGlassesTypeChange = (value) => {
   .vision-value-select {
     grid-column: 2;
     grid-row: 1;
-    height: 26px !important; // 与按钮+高度一致，使用!important确保优先级
+    height: var(--exr-vision-grid-select-h, 26px) !important; // 与按钮+高度一致，使用!important确保优先级
     max-width: 100%; // 加宽，移除宽度限制
     
     // 确保内部选择器高度也正确
     :deep(.ant-select-selector) {
-      height: 26px !important;
-      line-height: 26px !important;
+      height: var(--exr-vision-grid-select-h, 26px) !important;
+      min-height: var(--exr-vision-grid-select-h, 26px) !important;
+      line-height: var(--exr-vision-grid-select-h, 26px) !important;
     }
   }
   
@@ -3067,14 +4164,15 @@ const handleBothGlassesTypeChange = (value) => {
   .vision-level-select {
     grid-column: 2;
     grid-row: 2;
-    height: 26px !important; // 与按钮-高度一致，使用!important确保优先级
+    height: var(--exr-vision-grid-select-h, 26px) !important; // 与按钮-高度一致，使用!important确保优先级
     width: 100%;
     max-width: 60px; // 加宽个数下拉框
     
     // 确保内部选择器高度也正确
     :deep(.ant-select-selector) {
-      height: 26px !important;
-      line-height: 26px !important;
+      height: var(--exr-vision-grid-select-h, 26px) !important;
+      min-height: var(--exr-vision-grid-select-h, 26px) !important;
+      line-height: var(--exr-vision-grid-select-h, 26px) !important;
     }
   }
 }
@@ -3092,7 +4190,7 @@ const handleBothGlassesTypeChange = (value) => {
 // 处方输入框基础样式
 .prescription-input {
   height: 32px;
-  font-size: 12px;
+  font-size: var(--exr-font-body, 11px);
   text-align: center;
   
   // 所有输入框内容居中
@@ -3102,14 +4200,14 @@ const handleBothGlassesTypeChange = (value) => {
     text-align: center !important;
   }
   
-  // 选择器文本居中
+  // 选择器文本居中（与表内下拉高度一致）
   :deep(.ant-select-selector) {
     text-align: center;
     
     .ant-select-selection-item,
     .ant-select-selection-placeholder {
       text-align: center;
-      line-height: 30px;
+      line-height: calc(var(--exr-select-h, 32px) - 2px);
     }
   }
 }
@@ -3120,7 +4218,7 @@ const handleBothGlassesTypeChange = (value) => {
   min-width: 0;
 }
 
-// 客观验光检查表格中的球镜和柱镜输入框宽度调整
+// 电脑验光检查表格中的球镜和柱镜输入框宽度调整
 .refraction-table {
   // 增加球镜输入框宽度（通过增加flex值，让球镜输入框占用更多空间）
   .prescription-input-group .prescription-spherical {
@@ -3128,7 +4226,7 @@ const handleBothGlassesTypeChange = (value) => {
     min-width: 0;
   }
   
-  // 客观验光检查表格中的球镜输入框：隐藏箭头并居中
+  // 电脑验光检查表格中的球镜输入框：隐藏箭头并居中
   .prescription-spherical {
     &.ant-input-number {
       height: 32px !important;
@@ -3150,7 +4248,7 @@ const handleBothGlassesTypeChange = (value) => {
         text-align: center !important;
         height: 32px !important;
         line-height: 32px !important;
-        font-size: 12px !important;
+        font-size: var(--exr-font-body, 11px) !important;
         padding: 0 11px !important;
         border: none !important;
         background: transparent !important;
@@ -3169,13 +4267,13 @@ const handleBothGlassesTypeChange = (value) => {
     }
   }
   
-  // 客观验光检查表格中的柱镜和轴位输入框：统一样式
+  // 电脑验光检查表格中的柱镜和轴位输入框：统一样式
   .prescription-cylindrical,
   .prescription-axis {
     :deep(.ant-input) {
       height: 32px !important;
       line-height: 32px !important;
-      font-size: 12px !important;
+      font-size: var(--exr-font-body, 11px) !important;
       padding: 0 11px !important;
       text-align: center !important;
       border: 1px solid #d9d9d9 !important;
@@ -3200,7 +4298,7 @@ const handleBothGlassesTypeChange = (value) => {
   :deep(.ant-input-number-input) {
     height: 32px !important;
     line-height: 32px !important;
-    font-size: 12px !important;
+    font-size: var(--exr-font-body, 11px) !important;
     font-weight: 400 !important;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
     font-variant-numeric: normal !important;
@@ -3220,9 +4318,8 @@ const handleBothGlassesTypeChange = (value) => {
 
   :deep(.ant-input::placeholder),
   :deep(.ant-input-number-input::placeholder) {
-    color: rgba(0, 0, 0, 0.25) !important;
-    text-align: center;
-    font-weight: 400 !important;
+    color: transparent !important;
+    opacity: 0 !important;
   }
 }
 
@@ -3234,7 +4331,7 @@ const handleBothGlassesTypeChange = (value) => {
     height: 32px !important;
     line-height: 32px !important;
     text-align: center !important;
-    font-size: 12px !important;
+    font-size: var(--exr-font-body, 11px) !important;
     padding: 0 11px !important;
   }
 }
@@ -3247,7 +4344,7 @@ const handleBothGlassesTypeChange = (value) => {
     height: 32px !important;
     line-height: 32px !important;
     text-align: center !important;
-    font-size: 12px !important;
+    font-size: var(--exr-font-body, 11px) !important;
     padding: 0 11px !important;
   }
 }
@@ -3261,37 +4358,65 @@ const handleBothGlassesTypeChange = (value) => {
     height: 32px !important;
     line-height: 32px;
     text-align: center !important;
-    font-size: 12px;
+    font-size: var(--exr-font-body, 11px);
   }
 }
 
 // 旧镜光度输入框样式调整
 .old-glasses-cell {
-  // 确保所有输入框高度统一为32px，并设置文本居中
+  // 球镜/柱镜/轴位与类型选择：与 --exr-select-h 一致
   .prescription-input-group .prescription-input,
-  .glasses-type-select,
   .ant-input-number {
     height: 32px !important;
     text-align: center;
-    
-    :deep(.ant-select-selector),
+
     :deep(.ant-input),
     :deep(.ant-input-number-input) {
       height: 32px !important;
       line-height: 32px;
       text-align: center;
     }
-    
-    // 输入框中的placeholder和数值都居中
+
     :deep(input) {
       text-align: center;
     }
-    
-    // 选择器的文本居中
+  }
+
+  .glasses-type-select {
+    height: var(--exr-select-h, 32px) !important;
+    text-align: center;
+
+    :deep(.ant-select-selector) {
+      height: var(--exr-select-h, 32px) !important;
+      min-height: var(--exr-select-h, 32px) !important;
+      line-height: calc(var(--exr-select-h, 32px) - 2px);
+      padding-right: 7px !important;
+      padding-left: 5px !important;
+    }
+
+    :deep(.ant-select-arrow) {
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      right: 2px !important;
+      margin-top: 0 !important;
+    }
+
+    :deep(.ant-select-clear) {
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      right: 11px !important;
+    }
+
     :deep(.ant-select-selection-item),
     :deep(.ant-select-selection-placeholder) {
       text-align: center;
-      line-height: 30px;
+      line-height: calc(var(--exr-select-h, 32px) - 2px) !important;
+      font-size: var(--exr-font-table, 12px);
+    }
+
+    :deep(.ant-select-selection-placeholder) {
+      font-size: var(--exr-font-body, 11px);
+      color: #bfbfbf;
     }
   }
   
@@ -3336,33 +4461,95 @@ const handleBothGlassesTypeChange = (value) => {
   }
 }
 
-.vision-value-select {
+/* ADD/视力值等：仅常规主觉表（非 exam-sheet），与处方输入 32px 同高；勿用 line-height:1 以免占位灰字偏上 */
+.refraction-table.subjective-table .vision-value-select {
   flex: 1;
   min-width: 0;
   text-align: center;
   height: 32px;
-  
-  // 选中后隐藏箭头（当有选中项时）
-  :deep(.ant-select-selector:has(.ant-select-selection-item)) .ant-select-arrow {
-    display: none !important;
-  }
-  
-  // 选择器文本居中并垂直居中
+
   :deep(.ant-select-selector) {
     text-align: center;
     height: 32px !important;
+    min-height: 32px !important;
     display: flex !important;
     align-items: center !important;
-    
-    .ant-select-selection-item,
-    .ant-select-selection-placeholder {
-      text-align: center;
-      line-height: 1 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      height: 100% !important;
-    }
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  :deep(.ant-select-selection-item),
+  :deep(.ant-select-selection-placeholder) {
+    text-align: center;
+    line-height: 32px !important;
+    margin: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}
+
+/* 报告式 exam-sheet 内 ADD：高度由 exam-sheet.css 控制，行高与框一致以垂直居中 */
+.exam-sheet .vision-value-select {
+  :deep(.ant-select-selector) {
+    display: flex !important;
+    align-items: center !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  :deep(.ant-select-selection-item),
+  :deep(.ant-select-selection-placeholder) {
+    line-height: var(--exr-select-h, 22px) !important;
+    margin: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}
+
+/* 主导眼：右眼 / 左眼切换（再点已选项可取消） */
+.dominant-eye-toggle-group {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.dominant-eye-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: calc(var(--exr-select-h, 32px) - 8px);
+  min-height: calc(var(--exr-select-h, 32px) - 8px);
+  min-width: 32px;
+  padding: 0 5px;
+  margin: 0;
+  font-size: max(9px, calc(var(--exr-font-body, 11px) - 1px));
+  font-weight: 500;
+  line-height: normal;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.85);
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+
+  &:hover {
+    border-color: #40a9ff;
+    color: #1890ff;
+  }
+
+  &--active {
+    border-color: #224b96;
+    background: rgba(34, 75, 150, 0.1);
+    color: #224b96;
+    font-weight: 600;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #40a9ff;
+    outline-offset: 1px;
   }
 }
 
@@ -3390,7 +4577,7 @@ const handleBothGlassesTypeChange = (value) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 300; // 减细图标，从600改为300
   transition: all 0.3s;
   outline: none;
@@ -3480,7 +4667,7 @@ const handleBothGlassesTypeChange = (value) => {
     padding-right: 0 !important;
     padding-left: 0 !important;
     position: relative;
-    font-size: 12px;
+    font-size: var(--exr-font-body, 11px);
   }
   
   :deep(.ant-select-selection-item) {
@@ -3489,7 +4676,7 @@ const handleBothGlassesTypeChange = (value) => {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 12px;
+    font-size: var(--exr-font-body, 11px);
   }
   
   :deep(.ant-select-selection-placeholder) {
@@ -3533,301 +4720,198 @@ const handleBothGlassesTypeChange = (value) => {
   }
 }
 
-.prescription-input {
-  height: 32px;
-  font-size: 12px;
-}
+.routine-report-by-eye,
+.objective-report-by-eye,
+.subjective-report-by-eye,
+.vision-report-by-eye {
+  line-height: 1.1;
 
-// 球镜输入框：在球镜列中，与+/-按钮一起显示
-.prescription-input-group .prescription-spherical {
-  flex: 1;
-  min-width: 0;
-}
-
-// 柱镜输入框：在柱镜列中单独显示，填满单元格
-.prescription-cylindrical {
-  width: 100%;
-}
-
-// 轴位输入框：在轴位列中单独显示，填满单元格
-.prescription-axis {
-  width: 100%;
-}
-
-// 旧镜光度输入框样式调整
-.old-glasses-cell {
-  // 确保所有输入框高度统一为32px，并设置文本居中
-  .prescription-input-group .prescription-input,
-  .glasses-type-select,
-  .ant-input-number {
-    height: 32px !important;
+  &:not(.exam-sheet) th,
+  &:not(.exam-sheet) td {
+    border: 1px solid #b0d4e8;
     text-align: center;
-    
-    :deep(.ant-select-selector),
-    :deep(.ant-input),
-    :deep(.ant-input-number-input) {
-      height: 32px !important;
-      line-height: 32px;
-      text-align: center;
-    }
-    
-    // 输入框中的placeholder和数值都居中
-    :deep(input) {
-      text-align: center;
-    }
-    
-    // 选择器的文本居中
-    :deep(.ant-select-selection-item),
-    :deep(.ant-select-selection-placeholder) {
-      text-align: center;
-      line-height: 30px;
-    }
+    vertical-align: middle;
+    font-size: 10px;
+    padding: 2px 3px;
   }
-  
-  // 按3:3:2比例分配输入框宽度
-  .prescription-input-group {
-    gap: 4px;
-    
-    .prescription-spherical {
-      flex: 3; // 球镜占3份
-      min-width: 0;
-      max-width: 100%;
-    }
-    
-    .prescription-cylindrical {
-      flex: 3; // 柱镜占3份
-      min-width: 0;
-      max-width: 100%;
-    }
-    
-    .prescription-axis {
-      flex: 2; // 轴位占2份
-      min-width: 0;
-      max-width: 100%;
-      
-      // 取消轴位输入框的内边距，确保三位数完整显示
-      :deep(.ant-input-number-input) {
-        padding-left: 4px !important;
-        padding-right: 4px !important;
-      }
-    }
+
+  &:not(.exam-sheet) thead th {
+    background: #f0f9fd;
+    font-weight: 600;
+    font-size: 9px;
+    padding: 2px 2px;
+    line-height: 1.15;
   }
-  
-  // 隐藏数字输入框的上下箭头
-  .ant-input-number {
-    :deep(.ant-input-number-handler-wrap) {
-      display: none !important;
-    }
-    
-    :deep(.ant-input-number-input-wrap) {
-      padding-right: 4px !important;
-    }
+
+  /* 视力/客观等：侧栏仍在 thead（非 exam-sheet 布局） */
+  &:not(.exam-sheet) thead th.report-section-side-title {
+    background: #cceaf5;
+    color: #2a3542;
+    font-weight: 600;
+    font-size: 11px;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: 0.14em;
+    border-color: #b0d4e8;
+    border-right-color: #b0d4e8;
+    width: 26px;
+    min-width: 26px;
+    max-width: 30px;
+    padding: 4px 3px;
+    vertical-align: middle;
+  }
+
+  &:not(.exam-sheet) tbody td {
+    font-size: 10px;
+    line-height: 1.1;
   }
 }
 
-.vision-value-select {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
-  height: 32px;
-  
-  // 选中后隐藏箭头（当有选中项时）
-  :deep(.ant-select-selector:has(.ant-select-selection-item)) .ant-select-arrow {
-    display: none !important;
-  }
-  
-  // 选择器文本居中并垂直居中
+/* exam-sheet 视力表：跨行「旧镜类型」列；下拉宽度按文案收紧、格内居中 */
+.vision-report-by-eye.exam-sheet.vision-table .vision-glasses-type-cell {
+  vertical-align: middle;
+}
+
+.vision-report-by-eye.exam-sheet.vision-table .vision-glasses-type-cell .cell-field {
+  min-height: 58px;
+  align-self: stretch;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.vision-report-by-eye.exam-sheet.vision-table .vision-glasses-type-cell .cell-field :deep(.ant-select) {
+  width: auto !important;
+  max-width: 100px !important;
+  min-width: 76px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.vision-report-by-eye.exam-sheet.vision-table .vision-glasses-type-cell .glasses-type-select {
   :deep(.ant-select-selector) {
-    text-align: center;
-    height: 32px !important;
     display: flex !important;
     align-items: center !important;
-    
-    .ant-select-selection-item,
-    .ant-select-selection-placeholder {
-      text-align: center;
-      line-height: 1 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      height: 100% !important;
-    }
+    min-height: 26px !important;
+    height: 26px !important;
+    padding: 0 6px 0 4px !important;
+    border-radius: 4px !important;
+    font-size: var(--exr-font-body, 11px);
   }
-}
 
-// +/-按钮容器（垂直布局）
-.vision-sign-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex-shrink: 0;
-  height: 32px; // 与输入框高度对齐（Ant Design 默认输入框高度）
-  align-self: stretch; // 确保与输入框高度一致
-}
-
-// 独立的+/-按钮样式（按照图片设计）
-.vision-sign-btn {
-  width: 28px;
-  flex: 1; // 平均分配高度，适应容器高度
-  min-height: 0; // 允许flex收缩
-  padding: 0;
-  margin: 0;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: 300; // 减细图标，从600改为300
-  transition: all 0.3s;
-  outline: none;
-  line-height: 1;
-  text-align: center;
-  box-sizing: border-box;
-  
-  // 确保符号在水平和垂直方向完全居中
-  &::before {
-    content: '';
-    flex: 0 0 0;
-  }
-  
-  &:hover {
-    border-color: #40a9ff;
-  }
-  
-  &:active {
-    transform: scale(0.95);
-  }
-}
-
-// 确保"-"按钮图标垂直居中
-.vision-minus-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  
-  // 使用伪元素来确保垂直居中
-  &::after {
-    content: '';
-    display: inline-block;
-    vertical-align: middle;
-    height: 100%;
-  }
-}
-
-.vision-plus-btn {
-  color: #666;
-  background: #fff;
-  
-  &.active {
-    background: #1890ff;
-    color: #fff;
-    border-color: #1890ff;
-  }
-}
-
-.vision-minus-btn {
-  color: #666;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  
-  // 确保"-"符号垂直居中
-  // 由于按钮已经使用 flexbox，只需确保内容对齐
-  & {
-    align-items: center;
-    justify-content: center;
-  }
-  
-  // 微调"-"符号的显示，确保完全垂直居中
-  & > * {
-    line-height: 1;
-    display: inline-block;
-    vertical-align: middle;
-  }
-  
-  &.active {
-    background: #1890ff;
-    color: #fff;
-    border-color: #1890ff;
-  }
-}
-
-.vision-level-select {
-  width: 50px;
-  flex-shrink: 0;
-  
-  :deep(.ant-select-selector) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-right: 0 !important;
-    padding-left: 0 !important;
-    position: relative;
-    font-size: 12px;
-  }
-  
-  :deep(.ant-select-selection-item) {
-    text-align: center;
-    padding: 0 !important;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 12px;
-  }
-  
+  :deep(.ant-select-selection-item),
   :deep(.ant-select-selection-placeholder) {
-    display: none !important;
+    font-size: var(--exr-font-body, 11px);
+    line-height: 26px !important;
   }
-  
+
+  :deep(.ant-select-selection-placeholder) {
+    color: #bfbfbf;
+    font-weight: 400;
+    font-size: 11px;
+    line-height: 26px !important;
+  }
+
   :deep(.ant-select-arrow) {
     top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    right: auto !important;
+    transform: translateY(-50%) !important;
+    right: 2px !important;
     margin-top: 0 !important;
-    margin-left: 0 !important;
   }
-  
+
   :deep(.ant-select-clear) {
-    top: 50%;
-    transform: translateY(-50%);
-    right: 8px;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    right: 9px !important;
   }
 }
 
-// 视力显示中的上标间距
-.vision-table sup {
-  margin-left: 2px;
-  font-size: 0.85em;
+.refraction-table.subjective-table thead th.report-section-side-title {
+  background: #cceaf5;
+  color: #2a3542;
+  font-weight: 600;
+  font-size: 11px;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 0.14em;
+  border-color: #b0d4e8;
+  border-right-color: #b0d4e8;
+  width: 26px;
+  min-width: 26px;
+  max-width: 30px;
+  padding: 4px 3px;
+  vertical-align: middle;
 }
 
-// 视力符号字体稍大
-.vision-table sup .vision-sign {
-  font-size: 1.1em;
+.cell-computed {
+  background: rgba(82, 196, 26, 0.08);
+  font-weight: 500;
 }
 
-@media print {
-  .routine-exam-style-two {
-    gap: 0;
+.cell-muted {
+  color: #8c8c8c;
+  background: #fafafa;
+}
+
+.pd-cell-report {
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.1;
+
+  .pd-label {
+    margin-right: 4px;
+    font-size: 10px;
   }
 
-  .section-block {
-    gap: 3mm;
+  .pd-unit {
+    margin-left: 2px;
+    font-size: 10px;
   }
+}
+
+/* 非报告式视力表：旧镜行末格瞳距输入，勿 width:100% 拉满 */
+.vision-table:not(.exam-sheet) .old-glasses-cell .pd-input-number {
+  width: 5.5ch !important;
+  min-width: 4.5ch !important;
+  max-width: 8ch !important;
 }
 </style>
 
 <style lang="scss">
-// 视力检查下拉框选项字体缩小（全局样式，因为下拉菜单挂载在body上）
-.ant-select-dropdown {
+/* 旧镜类型下拉：与 ADD 一致，选项居中，面板宽度略宽于触发条、并限制最大宽度 */
+.glasses-type-dropdown.ant-select-dropdown {
+  padding: 6px 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  min-width: 112px !important;
+  max-width: 168px !important;
+
   .ant-select-item {
-    font-size: 12px !important;
+    font-size: var(--app-select-font, 13px) !important;
+    line-height: var(--app-select-line, 30px) !important;
+    padding: 4px 8px !important;
+    min-height: var(--app-select-h, 32px) !important;
+    justify-content: center !important;
+    text-align: center;
+  }
+
+  .ant-select-item-option-content {
+    white-space: nowrap;
+    text-align: center;
+    width: 100%;
+  }
+}
+
+/* ADD 近附加：下拉略宽于触发条即可，避免比格子里「框」突出太多 */
+.add-power-dropdown.ant-select-dropdown {
+  min-width: 128px !important;
+  max-width: 156px !important;
+
+  .ant-select-item {
+    justify-content: center !important;
+    text-align: center;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
   }
 }
 </style>

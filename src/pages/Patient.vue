@@ -31,6 +31,7 @@
         @open-add-modal="showAddModal"
         @edit-current-record="handleEditCurrentRecord"
         @refresh-data="fetchPatientData"
+        @patch-examination-record="patchExaminationRecord"
       />
     </div>
 
@@ -151,6 +152,82 @@ const examinationRecords = ref([]);
 const selectedRecordId = ref(null);
 const activeAction = ref(null);
 
+/** 保存成功但列表接口可能未返回的字段（如调节灵敏度通过情况、诊疗方案 JSON），按记录 id 保留并在每次拉取列表后写回 */
+const EXAM_OVERLAY_KEYS = [
+  'accommodation_sensitivity_pass_right',
+  'accommodation_sensitivity_pass_left',
+  'accommodation_sensitivity_pass_both',
+  'treatment_scheme_selection',
+  // 相关检查诊断：综合验光仪
+  'worth_4_type',
+  'stereopsis_testing',
+  'aniseikonia',
+  'alternate_cover_test',
+  // 相关检查诊断：四孔灯
+  'check_distance_2m',
+  'check_distance_40cm',
+  'dominant_eye_color_2m',
+  'dominant_eye_color_40cm',
+  'horizontal_option_2m',
+  'vertical_option_2m',
+  'horizontal_option_40cm',
+  'vertical_option_40cm',
+  'value',
+  'right_eye_suppression_type',
+  'right_eye_suppression_distance',
+  'right_eye_suppression_direction',
+  'left_eye_suppression_type',
+  'left_eye_suppression_distance',
+  'left_eye_suppression_direction',
+  'alternate_suppression_distance',
+  'alternate_suppression_direction',
+  // 相关检查诊断：同视机
+  'synoptophore_grade_I',
+  'synoptophore_grade_II',
+  'synoptophore_grade_III',
+  'synoptophore_level1_sign',
+  'synoptophore_level1_value',
+  'synoptophore_level2_positive',
+  'synoptophore_level2_negative',
+  'synoptophore_level3_stereo',
+  'synoptophore_level3_value'
+];
+const examinationRecordOverlayById = ref({});
+
+function pickExamOverlayFromRecord(rec) {
+  if (!rec?.id) return null;
+  const o = { id: rec.id };
+  let any = false;
+  EXAM_OVERLAY_KEYS.forEach((k) => {
+    if (Object.prototype.hasOwnProperty.call(rec, k)) {
+      o[k] = rec[k];
+      any = true;
+    }
+  });
+  return any ? o : null;
+}
+
+function mergeExaminationOverlaysIntoList() {
+  const map = examinationRecordOverlayById.value;
+  const ids = Object.keys(map);
+  if (!ids.length || !examinationRecords.value.length) return;
+  examinationRecords.value = examinationRecords.value.map((r) => {
+    const extra = map[r.id];
+    return extra ? { ...r, ...extra } : r;
+  });
+}
+
+/** @param {Record<string, unknown>} savedRecord - PatientStyleTwo 保存成功后的 cleanedSaveData */
+function patchExaminationRecord(savedRecord) {
+  const overlay = pickExamOverlayFromRecord(savedRecord);
+  if (!overlay) return;
+  examinationRecordOverlayById.value = {
+    ...examinationRecordOverlayById.value,
+    [overlay.id]: { ...examinationRecordOverlayById.value[overlay.id], ...overlay }
+  };
+  mergeExaminationOverlaysIntoList();
+}
+
 // 监听 props.record 变化，更新 patientInfo
 watch(() => props.record, (newRecord) => {
   console.log('[Patient.vue] watch 触发，newRecord:', newRecord);
@@ -174,6 +251,13 @@ watch(() => props.record, (newRecord) => {
     console.log('[Patient.vue] patientInfo.gkid:', patientInfo.value.gkid);
   }
 }, { immediate: true, deep: true });
+
+watch(
+  () => props.record?.patient_id ?? props.record?.id,
+  () => {
+    examinationRecordOverlayById.value = {};
+  }
+);
 
 // 悬浮窗分页（已改为滚动显示所有记录）
 const datePage = ref(1);
@@ -295,7 +379,8 @@ const fetchPatientData = async () => {
     // 不从 API 响应更新 patientInfo，直接使用从患者列表传递的数据
 
     examinationRecords.value = recordsData.examination_records || [];
-    
+    mergeExaminationOverlaysIntoList();
+
     console.log('获取到的检查记录数量:', examinationRecords.value.length);
     console.log('检查记录数据:', examinationRecords.value);
 
@@ -434,9 +519,9 @@ const styleTwoSections = computed(() => {
   return [
     { key: 'routine', title: '基础检查', component: RoutineExamStyleTwo },
     { key: 'vision', title: '视力检查', component: RoutineExamStyleTwo },
-    { key: 'objective-refraction', title: '客观验光', component: RoutineExamStyleTwo },
-    { key: 'subjective-refraction', title: '主观验光', component: RoutineExamStyleTwo },
     { key: 'biometry', title: '生物测量仪检查', component: BiometryExamStyleTwo },
+    { key: 'objective-refraction', title: '电脑验光检查', component: RoutineExamStyleTwo },
+    { key: 'subjective-refraction', title: '主觉验光检查', component: RoutineExamStyleTwo },
     { key: 'functional', title: '视功能检查', component: FunctionalExamStyleTwo },
     { key: 'img', title: '影像检查', component: ImgExamStyleTwo },
     { key: 'treatment', title: '诊疗方案', component: TreatmentPlan },
@@ -444,7 +529,7 @@ const styleTwoSections = computed(() => {
   ];
 });
 
-// 修改previousRecord的计算
+/** 与当前选中检查相对应的上一条检查记录：早于当前日期且时间上紧邻的前一条（非泛指的「上一次」） */
 const previousRecord = computed(() => {
   if (!examinationRecords.value.length) return null;
 
@@ -464,7 +549,7 @@ const previousRecord = computed(() => {
   // 如果没有更早的记录，返回null
   if (earlierRecords.length === 0) return null;
 
-  // 按日期从近到远排序，取第一条（最近的）
+  // 按日期从近到远排序，取第一条（与当前检查相邻的上一条）
   return earlierRecords.sort((a, b) =>
     new Date(b.examination_date) - new Date(a.examination_date)
   )[0];
@@ -593,7 +678,7 @@ const generateMockData = () => {
     vaec_left_axis: Math.floor(Math.random() * 180),
     vaec_both_pupil_distance: 55 + Math.random() * 10, // 55-65mm
     
-    // 客观验光 - 电脑验光
+    // 电脑验光检查 - 小瞳
     objective_right_spherical: -5 + Math.random() * 3, // -5到-2
     objective_right_cylindrical: -2 + Math.random() * 1, // -2到-1
     objective_right_axis: Math.floor(Math.random() * 180),
@@ -601,7 +686,7 @@ const generateMockData = () => {
     objective_left_cylindrical: -2 + Math.random() * 1,
     objective_left_axis: Math.floor(Math.random() * 180),
     
-    // 客观验光 - 散瞳电脑验光
+    // 电脑验光检查 - 散瞳
     dilated_objective_right_spherical: -5.5 + Math.random() * 3,
     dilated_objective_right_cylindrical: -2 + Math.random() * 1,
     dilated_objective_right_axis: Math.floor(Math.random() * 180),
@@ -609,7 +694,7 @@ const generateMockData = () => {
     dilated_objective_left_cylindrical: -2 + Math.random() * 1,
     dilated_objective_left_axis: Math.floor(Math.random() * 180),
     
-    // 主观验光
+    // 主觉验光检查
     subjective_right_spherical: -5 + Math.random() * 3,
     subjective_right_cylindrical: -2 + Math.random() * 1,
     subjective_right_axis: Math.floor(Math.random() * 180),

@@ -100,8 +100,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { message } from 'ant-design-vue';
+import { broadcastProductAuxStorage, PRODUCT_AUX_STORAGE_EVENT } from '../../utils/productStorageSync.js';
 
 const POWER_TEMPLATE_STORAGE_KEY = 'PowerRangeTemplates';
 
@@ -280,6 +281,7 @@ const savePowerRangeTemplates = (list) => {
   const raw = list.map((t) => ({ id: t.id, sphereMin: t.sphereMin, sphereMax: t.sphereMax, cylinderMin: t.cylinderMin, cylinderMax: t.cylinderMax }));
   localStorage.setItem(POWER_TEMPLATE_STORAGE_KEY, JSON.stringify(raw));
   loadPowerRangeTemplates();
+  broadcastProductAuxStorage('powerTemplate');
 };
 
 const savePowerRangeAsTemplate = () => {
@@ -325,8 +327,21 @@ const deletePowerTemplate = (record) => {
   message.success('已删除');
 };
 
+function onPowerTemplateStorageSync(e) {
+  if (e.detail?.type === 'powerTemplate') loadPowerRangeTemplates();
+}
+
 onMounted(() => {
   loadPowerRangeTemplates();
+  if (typeof window !== 'undefined') {
+    window.addEventListener(PRODUCT_AUX_STORAGE_EVENT, onPowerTemplateStorageSync);
+  }
+});
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener(PRODUCT_AUX_STORAGE_EVENT, onPowerTemplateStorageSync);
+  }
 });
 </script>
 

@@ -1,0 +1,37 @@
+section,label,prop,type,span,readonly,optionKey,defaultValue,rules
+基础信息,姓名,patient_name,input,6,True,,,bindParent:patientInfo.name（不在检查记录字段内）
+基础信息,性别,patient_gender,select,4,True,genderOptions,,bindParent:patientInfo.gender
+基础信息,年龄,patient_age,input,4,True,,,bindParent:patientInfo 由出生日期计算
+基础信息,身高(cm),height,inputNumber,4,False,,160,
+基础信息,体重(kg),weight,inputNumber,4,False,,50,
+基础信息,BMI,bmi,input,4,True,,,formula: weight/(height/100)^2（与 RoutineExamStyleTwo.calculateBMI 一致）
+角膜曲率/眼轴,K1(OD),right_eye_k1,inputNumber,4,False,,42.25,
+角膜曲率/眼轴,K2(OD),right_eye_k2,inputNumber,4,False,,43.25,
+角膜曲率/眼轴,平均K(OD),avg_k_od,input,4,True,,,formula: (right_eye_k1+right_eye_k2)/2
+角膜曲率/眼轴,ΔK(OD),delta_k_od,input,4,True,,,formula: abs(right_eye_k1-right_eye_k2)
+角膜曲率/眼轴,眼轴(OD),right_eye_axial_length,inputNumber,4,False,,24.5,
+角膜曲率/眼轴,轴率比(OD),axial_ratio_od,input,4,True,,,formula: right_eye_axial_length/(337.5/((right_eye_k1+right_eye_k2)/2))（与 BiometryExamStyleTwo.calculateAxialRatio 一致）
+角膜曲率/眼轴,K1(OS),left_eye_k1,inputNumber,4,False,,42.5,
+角膜曲率/眼轴,K2(OS),left_eye_k2,inputNumber,4,False,,43.5,
+角膜曲率/眼轴,平均K(OS),avg_k_os,input,4,True,,,formula: (left_eye_k1+left_eye_k2)/2
+角膜曲率/眼轴,ΔK(OS),delta_k_os,input,4,True,,,formula: abs(left_eye_k1-left_eye_k2)
+角膜曲率/眼轴,眼轴(OS),left_eye_axial_length,inputNumber,4,False,,24.65,
+角膜曲率/眼轴,轴率比(OS),axial_ratio_os,input,4,True,,,formula: left_eye_axial_length/(337.5/((left_eye_k1+left_eye_k2)/2))
+眼压/角膜厚度,实测眼压(OD),right_intraocular_pressure,inputNumber,4,False,,16,
+眼压/角膜厚度,角膜厚度(OD),right_cct,inputNumber,4,False,,530,
+眼压/角膜厚度,修正眼压(OD),corrected_iop_od,input,4,True,,,formula: right_intraocular_pressure-(right_cct-520)/40（与 RoutineExamStyleTwo.calculateCorrectedIOP 一致）
+眼压/角膜厚度,实测眼压(OS),left_intraocular_pressure,inputNumber,4,False,,17,
+眼压/角膜厚度,角膜厚度(OS),left_cct,inputNumber,4,False,,525,
+眼压/角膜厚度,修正眼压(OS),corrected_iop_os,input,4,True,,,formula: left_intraocular_pressure-(left_cct-520)/40
+双眼视/调节,旧镜类型,vaec_right_glasses_type,select,6,False,glassesTypeOptions,,与 vaec_left_glasses_type 同步（RoutineExamStyleTwo 双眼镜别）
+双眼视/调节,调节幅度检查方式,accommodation_amplitude_style,select,6,False,ampMethodOptions,,
+双眼视/调节,调节灵敏度镜片,accommodation_sensitivity_lens_power,select,6,False,facilityLensOptions,±2.00D,兼容旧字段 accommodation_sensitivity_diopter
+双眼视/调节,调节灵敏度视标,accommodation_sensitivity_target,select,6,False,facilityTargetOptions,20/30,兼容旧字段 accommodation_sensitivity_vision
+双眼视/调节,PRA模糊点,positive_relative_accommodation_blur,inputNumber,4,False,,-2.0,
+双眼视/调节,PRA恢复点,positive_relative_accommodation_recovery,inputNumber,4,False,,,
+双眼视/调节,NRA模糊点,negative_relative_accommodation_blur,inputNumber,4,False,,2.0,
+双眼视/调节,NRA恢复点,negative_relative_accommodation_recovery,inputNumber,4,False,,,
+双眼视/调节,PD(mm),subjective_both_pupil_distance,inputNumber,4,False,,60,计算性AC/A 优先此字段，其次 objective_pupil_distance、vaec_both_pupil_distance
+双眼视/调节,5m水平眼位(隐斜),far_lateral_phoria_group,group,8,False,,,存储字段 pli_exo_distance_lateral_phoria / plo_eso_distance_lateral_phoria（方向+数值，见 FunctionalExamStyleTwo）
+双眼视/调节,40cm水平眼位(隐斜),near_lateral_phoria_group,group,8,False,,,存储字段 pli_exo_near_lateral_phoria / plo_eso_near_lateral_phoria
+双眼视/调节,计算性AC/A,calculated_ac_a,input,4,True,,,computed:FunctionalExamStyleTwo.calculatedACARatio（PD/10+(近-远)/2.5，眼位为解析后棱镜度）

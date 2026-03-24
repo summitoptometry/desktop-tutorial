@@ -83,6 +83,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { message } from 'ant-design-vue';
+import { broadcastProductAuxStorage } from '../../utils/productStorageSync.js';
 
 const ATTR_STORAGE_KEY = 'ProductAttributeData';
 const PARAM_TYPE_PURCHASE_ID = 2; // 采购参数类型 id，与采购弹窗筛选一致
@@ -109,6 +110,7 @@ const loadAttrList = () => {
 const saveAttrList = (list) => {
   localStorage.setItem(ATTR_STORAGE_KEY, JSON.stringify(list));
   loadAttrList();
+  broadcastProductAuxStorage('attr');
 };
 
 const addAttr = () => {

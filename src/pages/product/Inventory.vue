@@ -511,6 +511,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onActivated, onBeforeUnmount, h } from 'vue';
+import { PRODUCT_AUX_STORAGE_EVENT } from '../../utils/productStorageSync.js';
 import { message, Modal } from 'ant-design-vue';
 import { pinyin } from 'pinyin-pro';
 
@@ -1688,13 +1689,19 @@ function onInventoryTypeChanged() {
   refreshData();
 }
 
+function onProductAuxStorageSync(e) {
+  if (e.detail?.type === 'powerTemplate') loadPowerRangeTemplates();
+}
+
 onMounted(() => {
   refreshData();
   window.addEventListener(INVENTORY_TYPE_CHANGED_EVENT, onInventoryTypeChanged);
+  window.addEventListener(PRODUCT_AUX_STORAGE_EVENT, onProductAuxStorageSync);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener(INVENTORY_TYPE_CHANGED_EVENT, onInventoryTypeChanged);
+  window.removeEventListener(PRODUCT_AUX_STORAGE_EVENT, onProductAuxStorageSync);
 });
 
 onActivated(() => {

@@ -2,10 +2,8 @@
   <div class="product-info-page">
     <a-card :bordered="false">
       <a-tabs v-model:activeKey="activeTab" type="line" class="product-tabs">
-        <a-tab-pane key="new" tab="新建商品">
+        <a-tab-pane key="product-list" tab="商品列表">
           <div class="tab-content category-tab">
-            <a-tabs v-model:activeKey="categorySubTab" type="line" class="sub-tabs">
-              <a-tab-pane key="product-list" tab="商品列表">
                 <div class="category-toolbar">
                   <a-select
                     v-model:value="productListCategoryFilter"
@@ -148,7 +146,11 @@
                     </a-form-item>
                   </a-form>
                 </a-modal>
-              </a-tab-pane>
+          </div>
+        </a-tab-pane>
+        <a-tab-pane key="new" tab="类别管理">
+          <div class="tab-content category-tab">
+            <a-tabs v-model:activeKey="categorySubTab" type="line" class="sub-tabs">
               <a-tab-pane key="category-list" tab="类别列表">
                 <div class="category-toolbar">
                   <a-input
@@ -252,196 +254,6 @@
                       </a-checkbox-group>
                     </div>
                   </div>
-                </a-modal>
-                <!-- 新建商品弹窗 -->
-                <a-modal
-                  v-model:visible="newProductModalVisible"
-                  :title="newProductCategory ? `新建商品 - ${newProductCategory.name}` : '新建商品'"
-                  width="640px"
-                  ok-text="确定"
-                  cancel-text="取消"
-                  @ok="submitNewProduct"
-                  @cancel="closeNewProductModal"
-                >
-                  <a-form v-if="newProductCategory" layout="vertical" :model="newProductForm" class="new-product-form">
-                    <a-form-item class="new-product-inline-row">
-                      <div class="new-product-inline">
-                        <span class="new-product-inline-label">商品名称：</span>
-                        <a-input :value="generatedProductName" placeholder="根据品牌、系列、参数与类别自动生成" readonly class="new-product-inline-input new-product-name-input" />
-                      </div>
-                    </a-form-item>
-                    <a-form-item class="new-product-inline-row" required>
-                      <div class="new-product-inline">
-                        <span class="new-product-inline-label">品牌：</span>
-                        <a-select
-                          v-model:value="newProductForm.brandId"
-                          placeholder="请选择品牌"
-                          allow-clear
-                          :options="brandSelectOptions"
-                          :field-names="{ label: 'label', value: 'value' }"
-                          class="new-product-inline-input"
-                          @change="onNewProductBrandChange"
-                        />
-                      </div>
-                    </a-form-item>
-                    <a-form-item v-if="seriesOptionsForSelectedBrand.length" class="new-product-inline-row">
-                      <div class="new-product-inline">
-                        <span class="new-product-inline-label">系列：</span>
-                        <a-select
-                          v-model:value="newProductForm.seriesId"
-                          placeholder="请选择系列"
-                          allow-clear
-                          :options="seriesOptionsForSelectedBrand"
-                          :field-names="{ label: 'label', value: 'value' }"
-                          class="new-product-inline-input"
-                        />
-                      </div>
-                    </a-form-item>
-                    <template v-for="paramName in configuredParamNamesForNewProduct" :key="paramName">
-                      <a-form-item class="new-product-inline-row">
-                        <div class="new-product-inline">
-                          <span class="new-product-inline-label">{{ paramName }}：</span>
-                          <a-select
-                            v-model:value="newProductForm.parameterValues[paramName]"
-                            v-model:open="newProductParamDropdownOpen[paramName]"
-                            mode="tags"
-                            :placeholder="`请选择或输入${paramName}`"
-                            :options="getParamValueOptions(paramName)"
-                            allow-clear
-                            :max-tag-count="1"
-                            class="new-product-inline-input"
-                            @change="() => (newProductParamDropdownOpen[paramName] = false)"
-                          />
-                        </div>
-                      </a-form-item>
-                    </template>
-                    <a-form-item v-if="newProductCategory && newProductCategory.powerRangeEnabled" class="new-product-inline-row">
-                      <div class="new-product-inline">
-                        <span class="new-product-inline-label">光度范围：</span>
-                        <a-space>
-                          <a-select
-                            v-model:value="newProductForm.powerRangeTemplateId"
-                            placeholder="选择模版"
-                            allow-clear
-                            class="new-product-inline-input new-product-power-template-select"
-                            :options="powerTemplateSelectOptions"
-                            :field-names="{ label: 'label', value: 'value' }"
-                            :dropdown-style="{ minWidth: '400px' }"
-                          />
-                          <a-button size="small" @click="openPowerRangeModalFromNewProduct">光度范围</a-button>
-                        </a-space>
-                      </div>
-                    </a-form-item>
-                    <a-form-item class="new-product-inline-row">
-                      <div class="new-product-inline">
-                        <span class="new-product-inline-label">零售价格：</span>
-                        <a-input
-                          v-model:value="newProductForm.retailPrice"
-                          placeholder="零售价格"
-                          allow-clear
-                          class="new-product-inline-input"
-                        />
-                      </div>
-                    </a-form-item>
-                    <a-form-item>
-                      <a-checkbox v-model:checked="newProductForm.retailPriceHalf">零售价格/2（新建销售时该商品显示的零售价格为商品列表零售价格的一半）</a-checkbox>
-                    </a-form-item>
-                    <a-form-item>
-                      <a-checkbox v-model:checked="newProductForm.requireEyeSide">区分眼别（选中后该商品在新建销售中添加商品后需要选择眼别区分眼别）</a-checkbox>
-                    </a-form-item>
-                    <a-form-item>
-                      <a-checkbox v-model:checked="newProductForm.warrantyOneYear">1年售后（选中后该商品销售后会在售后列表中显示）</a-checkbox>
-                    </a-form-item>
-                    <a-form-item>
-                      <a-checkbox v-model:checked="newProductForm.modelEnabled">型号管理（采购与入库时需填写型号）</a-checkbox>
-                    </a-form-item>
-                    <a-form-item>
-                      <a-checkbox v-model:checked="newProductForm.zeroPurchase">零采购（不需要采购与库存管理，直接销售，如验光、视觉训练等）</a-checkbox>
-                    </a-form-item>
-                    <a-form-item>
-                      <a-checkbox v-model:checked="newProductForm.expiryManageEnabled">效期管理（入库时需填写生产编号、生产日期）</a-checkbox>
-                    </a-form-item>
-                    <a-form-item v-if="newProductForm.expiryManageEnabled" class="new-product-inline-row">
-                      <div class="new-product-inline">
-                        <span class="new-product-inline-label">有效期（月）：</span>
-                        <a-input-number
-                          v-model:value="newProductForm.expiryMonths"
-                          placeholder="月数"
-                          :min="1"
-                          :controls="false"
-                          class="new-product-inline-input new-product-expiry-input"
-                        />
-                      </div>
-                    </a-form-item>
-                  </a-form>
-                </a-modal>
-                <!-- 新建商品内光度范围选择弹窗 -->
-                <a-modal
-                  v-model:visible="powerRangeModalVisible"
-                  title="光度范围选择"
-                  width="1280px"
-                  :footer="null"
-                  cancel-text="取消"
-                  @cancel="closePowerRangeModal"
-                >
-                  <div class="power-range-tip">提示：左键拖拉批量选中，再次拖拉为取消选中！</div>
-                  <div
-                    ref="powerRangeGridWrapRef"
-                    class="power-range-grid-wrap"
-                    @mousedown="onPowerGridMouseDown"
-                    @mousemove="onPowerGridMouseMove"
-                    @mouseup="onPowerGridMouseUp"
-                    @mouseleave="onPowerGridMouseUp"
-                  >
-                    <table class="power-range-table">
-                      <thead>
-                        <tr>
-                          <th class="power-range-corner">球镜\柱镜</th>
-                          <th v-for="c in cylinderValues" :key="c" class="power-range-th">{{ formatPowerValue(c) }}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="s in sphereValues" :key="s" :data-sphere="s">
-                          <td class="power-range-td-label">{{ formatSphereValue(s) }}</td>
-                          <td
-                            v-for="c in cylinderValues"
-                            :key="`${s}-${c}`"
-                            class="power-range-td"
-                            :class="{ selected: isPowerCellSelected(s, c) }"
-                            :data-sphere="s"
-                            :data-cylinder="c"
-                          />
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <div class="power-range-templates">
-                    <a-button type="primary" size="small" :disabled="!powerRangeSelection || powerRangeSelection.size === 0" @click="savePowerRangeAsTemplate">保存为模版</a-button>
-                  </div>
-                  <a-modal
-                    v-model:visible="powerTemplateEditVisible"
-                    title="编辑光度模版"
-                    ok-text="保存"
-                    cancel-text="取消"
-                    @ok="submitPowerTemplateEdit"
-                  >
-                    <a-form layout="vertical">
-                      <a-form-item label="球镜范围（D）">
-                        <a-space>
-                          <a-input-number v-model:value="powerTemplateForm.sphereMin" :min="-20" :max="20" :step="0.25" :precision="2" placeholder="最小" style="width: 100px" />
-                          <span>~</span>
-                          <a-input-number v-model:value="powerTemplateForm.sphereMax" :min="-20" :max="20" :step="0.25" :precision="2" placeholder="最大" style="width: 100px" />
-                        </a-space>
-                      </a-form-item>
-                      <a-form-item label="柱镜范围（D）">
-                        <a-space>
-                          <a-input-number v-model:value="powerTemplateForm.cylinderMin" :min="-6" :max="0" :step="0.25" :precision="2" placeholder="最小" style="width: 100px" />
-                          <span>~</span>
-                          <a-input-number v-model:value="powerTemplateForm.cylinderMax" :min="-6" :max="0" :step="0.25" :precision="2" placeholder="最大" style="width: 100px" />
-                        </a-space>
-                      </a-form-item>
-                    </a-form>
-                  </a-modal>
                 </a-modal>
               </a-tab-pane>
               <a-tab-pane key="attr" tab="商品参数管理">
@@ -758,12 +570,213 @@
           </div>
         </a-tab-pane>
       </a-tabs>
+
+      <!-- 新建商品（与类别管理中共用） -->
+      <a-modal
+        v-model:visible="newProductModalVisible"
+        :title="newProductModalTitle"
+        width="760px"
+        ok-text="确定"
+        cancel-text="取消"
+        @ok="submitNewProduct"
+        @cancel="closeNewProductModal"
+      >
+        <a-form v-if="newProductCategory" layout="vertical" :model="newProductForm" class="new-product-form">
+          <div :key="'np-body-' + String(newProductCategory.id ?? '')" class="new-product-form-body">
+            <a-form-item class="new-product-inline-row">
+              <div class="new-product-inline">
+                <span class="new-product-inline-label">商品名称：</span>
+                <a-input :value="generatedProductName" placeholder="根据品牌、系列、参数与类别自动生成" readonly class="new-product-inline-input new-product-name-input" />
+              </div>
+            </a-form-item>
+            <a-form-item class="new-product-inline-row" required>
+              <div class="new-product-inline">
+                <span class="new-product-inline-label">品牌：</span>
+                <a-select
+                  v-model:value="newProductForm.brandId"
+                  placeholder="请选择品牌"
+                  allow-clear
+                  :options="brandSelectOptions"
+                  :field-names="{ label: 'label', value: 'value' }"
+                  class="new-product-inline-input"
+                  @change="onNewProductBrandChange"
+                />
+              </div>
+            </a-form-item>
+            <a-form-item v-if="seriesOptionsForSelectedBrand.length" class="new-product-inline-row">
+              <div class="new-product-inline">
+                <span class="new-product-inline-label">系列：</span>
+                <a-select
+                  v-model:value="newProductForm.seriesId"
+                  placeholder="请选择系列"
+                  allow-clear
+                  :options="seriesOptionsForSelectedBrand"
+                  :field-names="{ label: 'label', value: 'value' }"
+                  class="new-product-inline-input"
+                />
+              </div>
+            </a-form-item>
+            <template v-for="paramName in configuredParamNamesForNewProduct" :key="'np-' + paramName">
+              <a-form-item class="new-product-inline-row">
+                <div class="new-product-inline">
+                  <span class="new-product-inline-label">{{ paramName }}：</span>
+                  <a-select
+                    v-model:value="newProductForm.parameterValues[paramName]"
+                    v-model:open="newProductParamDropdownOpen[paramName]"
+                    mode="tags"
+                    :placeholder="`请选择或输入${paramName}`"
+                    :options="getParamValueOptions(paramName)"
+                    allow-clear
+                    :max-tag-count="1"
+                    class="new-product-inline-input"
+                    @change="() => (newProductParamDropdownOpen[paramName] = false)"
+                  />
+                </div>
+              </a-form-item>
+            </template>
+            <a-form-item v-if="newProductCategory && newProductCategory.powerRangeEnabled" class="new-product-inline-row">
+              <div class="new-product-inline">
+                <span class="new-product-inline-label">光度范围：</span>
+                <div class="new-product-power-range-row">
+                  <a-select
+                    v-model:value="newProductForm.powerRangeTemplateId"
+                    placeholder="选择模版"
+                    allow-clear
+                    class="new-product-inline-input new-product-power-template-select"
+                    :options="powerTemplateSelectOptions"
+                    :field-names="{ label: 'label', value: 'value' }"
+                    :dropdown-style="{ minWidth: '400px' }"
+                  />
+                  <a-button size="small" @click="openPowerRangeModalFromNewProduct">光度范围</a-button>
+                </div>
+              </div>
+            </a-form-item>
+            <a-form-item class="new-product-inline-row">
+              <div class="new-product-inline">
+                <span class="new-product-inline-label">零售价格：</span>
+                <a-input
+                  v-model:value="newProductForm.retailPrice"
+                  placeholder="零售价格"
+                  allow-clear
+                  class="new-product-inline-input"
+                />
+              </div>
+            </a-form-item>
+            <a-form-item>
+              <a-checkbox v-model:checked="newProductForm.retailPriceHalf">零售价格/2（新建销售时该商品显示的零售价格为商品列表零售价格的一半）</a-checkbox>
+            </a-form-item>
+            <a-form-item>
+              <a-checkbox v-model:checked="newProductForm.requireEyeSide">区分眼别（选中后该商品在新建销售中添加商品后需要选择眼别区分眼别）</a-checkbox>
+            </a-form-item>
+            <a-form-item>
+              <a-checkbox v-model:checked="newProductForm.warrantyOneYear">1年售后（选中后该商品销售后会在售后列表中显示）</a-checkbox>
+            </a-form-item>
+            <a-form-item>
+              <a-checkbox v-model:checked="newProductForm.modelEnabled">型号管理（采购与入库时需填写型号）</a-checkbox>
+            </a-form-item>
+            <a-form-item>
+              <a-checkbox v-model:checked="newProductForm.zeroPurchase">零采购（不需要采购与库存管理，直接销售，如验光、视觉训练等）</a-checkbox>
+            </a-form-item>
+            <a-form-item>
+              <a-checkbox v-model:checked="newProductForm.expiryManageEnabled">效期管理（入库时需填写生产编号、生产日期）</a-checkbox>
+            </a-form-item>
+            <a-form-item v-if="newProductForm.expiryManageEnabled" class="new-product-inline-row">
+              <div class="new-product-inline">
+                <span class="new-product-inline-label">有效期（月）：</span>
+                <a-input-number
+                  v-model:value="newProductForm.expiryMonths"
+                  placeholder="月数"
+                  :min="1"
+                  :controls="false"
+                  class="new-product-inline-input new-product-expiry-input"
+                />
+              </div>
+            </a-form-item>
+          </div>
+        </a-form>
+      </a-modal>
+      <a-modal
+        v-model:visible="powerRangeModalVisible"
+        title="光度范围选择"
+        width="1280px"
+        :footer="null"
+        cancel-text="取消"
+        @cancel="closePowerRangeModal"
+      >
+        <div class="power-range-tip">提示：左键拖拉批量选中，再次拖拉为取消选中！</div>
+        <div
+          ref="powerRangeGridWrapRef"
+          class="power-range-grid-wrap"
+          @mousedown="onPowerGridMouseDown"
+          @mousemove="onPowerGridMouseMove"
+          @mouseup="onPowerGridMouseUp"
+          @mouseleave="onPowerGridMouseUp"
+        >
+          <table class="power-range-table">
+            <thead>
+              <tr>
+                <th class="power-range-corner">球镜\柱镜</th>
+                <th v-for="c in cylinderValues" :key="c" class="power-range-th">{{ formatPowerValue(c) }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="s in sphereValues" :key="s" :data-sphere="s">
+                <td class="power-range-td-label">{{ formatSphereValue(s) }}</td>
+                <td
+                  v-for="c in cylinderValues"
+                  :key="`${s}-${c}`"
+                  class="power-range-td"
+                  :class="{ selected: isPowerCellSelected(s, c) }"
+                  :data-sphere="s"
+                  :data-cylinder="c"
+                />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="power-range-templates power-range-templates-footer">
+          <a-space>
+            <a-button @click="closePowerRangeModal">取消</a-button>
+            <a-button
+              type="primary"
+              :disabled="!powerRangeSelection || powerRangeSelection.size === 0"
+              @click="confirmPowerRangeFromNewProduct"
+            >
+              确认
+            </a-button>
+          </a-space>
+        </div>
+        <a-modal
+          v-model:visible="powerTemplateEditVisible"
+          title="编辑光度模版"
+          ok-text="保存"
+          cancel-text="取消"
+          @ok="submitPowerTemplateEdit"
+        >
+          <a-form layout="vertical">
+            <a-form-item label="球镜范围（D）">
+              <a-space>
+                <a-input-number v-model:value="powerTemplateForm.sphereMin" :min="-20" :max="20" :step="0.25" :precision="2" placeholder="最小" style="width: 100px" />
+                <span>~</span>
+                <a-input-number v-model:value="powerTemplateForm.sphereMax" :min="-20" :max="20" :step="0.25" :precision="2" placeholder="最大" style="width: 100px" />
+              </a-space>
+            </a-form-item>
+            <a-form-item label="柱镜范围（D）">
+              <a-space>
+                <a-input-number v-model:value="powerTemplateForm.cylinderMin" :min="-6" :max="0" :step="0.25" :precision="2" placeholder="最小" style="width: 100px" />
+                <span>~</span>
+                <a-input-number v-model:value="powerTemplateForm.cylinderMax" :min="-6" :max="0" :step="0.25" :precision="2" placeholder="最大" style="width: 100px" />
+              </a-space>
+            </a-form-item>
+          </a-form>
+        </a-modal>
+      </a-modal>
     </a-card>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted, nextTick, h } from 'vue';
+import { ref, computed, reactive, onMounted, onUnmounted, nextTick, h } from 'vue';
 import { message, Modal, Button, Space, Popconfirm } from 'ant-design-vue';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons-vue';
 import { pinyin } from 'pinyin-pro';
@@ -772,6 +785,7 @@ import 'dayjs/locale/zh-cn';
 import datePickerLocale from 'ant-design-vue/es/date-picker/locale/zh_CN';
 import ProductAttrMgmt from './ProductAttrMgmt.vue';
 import PowerRange from './PowerRange.vue';
+import { broadcastProductAuxStorage, PRODUCT_AUX_STORAGE_EVENT } from '../../utils/productStorageSync.js';
 
 dayjs.locale('zh-cn');
 
@@ -796,8 +810,8 @@ function cloneQual(src, keys) {
   return o;
 }
 
-const activeTab = ref('new');
-const categorySubTab = ref('product-list'); // 新建商品下子标签：商品列表 | 类别列表 | 商品参数管理 | 光度范围
+const activeTab = ref('product-list'); // 主标签：商品列表 | 类别管理 | …
+const categorySubTab = ref('category-list'); // 类别管理下子标签：类别列表 | 商品参数管理 | 光度范围
 const priceListSubTab = ref('lens'); // 价目册管理下子标签：镜片价目册 | 镜架价目册
 
 // 功能键列表（程序预置，仅展示）
@@ -840,6 +854,8 @@ const formatSphereValue = (v) => {
 };
 
 const powerRangeModalVisible = ref(false);
+/** 从「新建商品」进入光度选择时为 true，取消/关闭需回到新建商品弹窗 */
+const powerRangeModalOpenedFromNewProduct = ref(false);
 const powerRangeSelection = ref(new Set()); // Set<string> 每个元素 "s,c" 表示选中的格子
 const powerRangeDrag = ref({ start: null, current: null, mode: 'add' }); // mode: 'add' | 'remove'
 
@@ -859,10 +875,23 @@ function getCellsInRect(sMin, sMax, cMin, cMax) {
 
 const powerRangeGridWrapRef = ref(null);
 
-const openPowerRangeModal = () => {
-  powerRangeSelection.value = new Set();
+const openPowerRangeModal = (prefillTemplateId) => {
   powerRangeDrag.value = { start: null, current: null, mode: 'add' };
   loadPowerRangeTemplates();
+  if (prefillTemplateId != null) {
+    const t = powerRangeTemplates.value.find((x) => String(x.id) === String(prefillTemplateId));
+    if (t) {
+      const set = new Set();
+      getCellsInRect(t.sphereMin, t.sphereMax, t.cylinderMin, t.cylinderMax).forEach(({ s, c }) => {
+        set.add(powerRangeKey(s, c));
+      });
+      powerRangeSelection.value = set;
+    } else {
+      powerRangeSelection.value = new Set();
+    }
+  } else {
+    powerRangeSelection.value = new Set();
+  }
   powerRangeModalVisible.value = true;
   nextTick(() => {
     setTimeout(scrollPowerGridToSphereZero, 150);
@@ -883,6 +912,10 @@ function scrollPowerGridToSphereZero() {
 const closePowerRangeModal = () => {
   powerRangeModalVisible.value = false;
   powerRangeSelection.value = new Set();
+  if (powerRangeModalOpenedFromNewProduct.value) {
+    powerRangeModalOpenedFromNewProduct.value = false;
+    newProductModalVisible.value = true;
+  }
 };
 
 const getCellFromEvent = (e) => {
@@ -993,17 +1026,85 @@ const loadPowerRangeTemplates = () => {
 const savePowerRangeTemplates = (list) => {
   const raw = list.map((t) => ({ id: t.id, sphereMin: t.sphereMin, sphereMax: t.sphereMax, cylinderMin: t.cylinderMin, cylinderMax: t.cylinderMax }));
   localStorage.setItem(POWER_TEMPLATE_STORAGE_KEY, JSON.stringify(raw));
-  loadPowerRangeTemplates();
+  broadcastProductAuxStorage('powerTemplate');
 };
 
-const savePowerRangeAsTemplate = () => {
-  const d = powerRangeDisplay.value;
-  if (!d) return;
-  const list = [...powerRangeTemplates.value.map((t) => ({ id: t.id, sphereMin: t.sphereMin, sphereMax: t.sphereMax, cylinderMin: t.cylinderMin, cylinderMax: t.cylinderMax }))];
+function powerRangeBoundsEqual(a, b) {
+  const eq = (x, y) => Math.abs(Number(x) - Number(y)) < 1e-4;
+  return (
+    eq(a.sphereMin, b.sphereMin) &&
+    eq(a.sphereMax, b.sphereMax) &&
+    eq(a.cylinderMin, b.cylinderMin) &&
+    eq(a.cylinderMax, b.cylinderMax)
+  );
+}
+
+function powerRangeRectContains(outer, inner) {
+  const eps = 1e-4;
+  return (
+    inner.sphereMin >= outer.sphereMin - eps &&
+    inner.sphereMax <= outer.sphereMax + eps &&
+    inner.cylinderMin >= outer.cylinderMin - eps &&
+    inner.cylinderMax <= outer.cylinderMax + eps
+  );
+}
+
+function powerRangeRectArea(r) {
+  return (r.sphereMax - r.sphereMin) * (r.cylinderMax - r.cylinderMin);
+}
+
+/**
+ * 确认光度：与已有模版范围一致或存在包含关系（重叠）时引用已有模版，否则新建并持久化。
+ */
+function resolveOrCreatePowerTemplateForConfirm(d) {
+  const list = powerRangeTemplates.value.map((t) => ({
+    id: t.id,
+    sphereMin: t.sphereMin,
+    sphereMax: t.sphereMax,
+    cylinderMin: t.cylinderMin,
+    cylinderMax: t.cylinderMax
+  }));
+
+  const exact = list.find((t) => powerRangeBoundsEqual(t, d));
+  if (exact) return { id: exact.id, reused: true };
+
+  const containers = list.filter((t) => powerRangeRectContains(t, d));
+  if (containers.length) {
+    containers.sort((a, b) => powerRangeRectArea(a) - powerRangeRectArea(b));
+    return { id: containers[0].id, reused: true };
+  }
+
+  const inside = list.filter((t) => powerRangeRectContains(d, t));
+  if (inside.length) {
+    inside.sort((a, b) => powerRangeRectArea(b) - powerRangeRectArea(a));
+    return { id: inside[0].id, reused: true };
+  }
+
   const newId = list.length ? Math.max(...list.map((x) => x.id)) + 1 : 1;
-  list.push({ id: newId, sphereMin: d.sphereMin, sphereMax: d.sphereMax, cylinderMin: d.cylinderMin, cylinderMax: d.cylinderMax });
+  list.push({
+    id: newId,
+    sphereMin: d.sphereMin,
+    sphereMax: d.sphereMax,
+    cylinderMin: d.cylinderMin,
+    cylinderMax: d.cylinderMax
+  });
   savePowerRangeTemplates(list);
-  message.success('已保存为模版');
+  return { id: newId, reused: false };
+}
+
+const confirmPowerRangeFromNewProduct = () => {
+  const d = powerRangeDisplay.value;
+  if (!d || !powerRangeSelection.value || powerRangeSelection.value.size === 0) {
+    message.warning('请先框选光度范围');
+    return;
+  }
+  const { id, reused } = resolveOrCreatePowerTemplateForConfirm(d);
+  newProductForm.value.powerRangeTemplateId = id;
+  powerRangeModalOpenedFromNewProduct.value = false;
+  powerRangeModalVisible.value = false;
+  powerRangeSelection.value = new Set();
+  newProductModalVisible.value = true;
+  message.success(reused ? '已引用已有光度模版' : '已保存为新光度模版');
 };
 
 const openPowerTemplateEdit = (record) => {
@@ -1039,6 +1140,25 @@ const deletePowerTemplate = (record) => {
   message.success('已删除');
 };
 
+/** a-select 的 option.value 不能为 object/array，否则 Ant Design Vue 校验 props 时 join 会抛 Cannot convert object to primitive value */
+function isSelectCompatiblePrimitive(v) {
+  if (v == null) return false;
+  const t = typeof v;
+  return t === 'string' || t === 'number' || t === 'boolean';
+}
+
+function safeOptionLabel(raw) {
+  if (raw == null) return '';
+  const t = typeof raw;
+  if (t === 'string') return raw;
+  if (t === 'number' || t === 'boolean' || t === 'bigint') return String(raw);
+  try {
+    return String(raw);
+  } catch {
+    return '';
+  }
+}
+
 // 商品列表
 const productSearchKeyword = ref('');
 const productListCategoryFilter = ref(null);
@@ -1046,7 +1166,13 @@ const productList = ref([]);
 
 const productListCategoryOptions = computed(() => {
   const options = [{ label: '全部类型', value: null }];
-  categoryList.value.forEach((c) => options.push({ label: c.name, value: c.id }));
+  categoryList.value.forEach((c) => {
+    if (!isSelectCompatiblePrimitive(c.id)) return;
+    options.push({
+      label: safeOptionLabel(c.name) || '（未命名类别）',
+      value: c.id
+    });
+  });
   return options;
 });
 const productListColumns = [
@@ -1093,26 +1219,57 @@ const configuredParamNamesForProductEdit = computed(() => {
   return getParamNamesForCategory(cat);
 });
 
+/** 类别 parameterValueOptions 里可能混入 {label,value} 对象，直接传给 a-select 会在 Vue 校验 props 时 join 抛错 */
+function normalizeParamOptionEntry(v) {
+  if (v == null) return null;
+  if (typeof v === 'object' && !Array.isArray(v)) {
+    const label = v.label != null ? String(v.label) : (v.value != null ? String(v.value) : '');
+    const value = v.value != null ? String(v.value) : label;
+    if (!label && !value) return null;
+    return { label: label || value, value: value || label };
+  }
+  const s = String(v).trim();
+  return s ? { label: s, value: s } : null;
+}
+
+function buildParamSelectOptionsFromStorage(optsArray, selectedRaw) {
+  const baseList = Array.isArray(optsArray) ? optsArray.slice() : [];
+  const out = [];
+  const seen = new Set();
+  baseList.forEach((v) => {
+    const o = normalizeParamOptionEntry(v);
+    if (o && !seen.has(o.value)) {
+      seen.add(o.value);
+      out.push(o);
+    }
+  });
+  const selectedArr = Array.isArray(selectedRaw) ? selectedRaw : (selectedRaw != null && selectedRaw !== '' ? [selectedRaw] : []);
+  selectedArr.forEach((v) => {
+    const o = normalizeParamOptionEntry(v);
+    const key = o ? o.value : String(v).trim();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      out.push(o || { label: key, value: key });
+    }
+  });
+  return out;
+}
+
 const getParamValueOptionsForProductEdit = (paramName) => {
   const categoryId = productForm.value.categoryId;
   const cat = categoryList.value.find((c) => c.id === categoryId);
   const opts = cat && cat.parameterValueOptions && cat.parameterValueOptions[paramName] ? cat.parameterValueOptions[paramName] : [];
-  const baseList = Array.isArray(opts) ? opts.slice() : [];
   const selected = productForm.value.parameterValues && productForm.value.parameterValues[paramName];
-  const selectedArr = Array.isArray(selected) ? selected : (selected != null && selected !== '' ? [selected] : []);
-  const seen = new Set(baseList.map((v) => String(v).trim()).filter(Boolean));
-  selectedArr.forEach((v) => {
-    const s = v != null ? String(v).trim() : '';
-    if (s && !seen.has(s)) {
-      seen.add(s);
-      baseList.push(s);
-    }
-  });
-  return baseList.map((v) => ({ label: v, value: v }));
+  return buildParamSelectOptionsFromStorage(opts, selected);
 };
 
 const categorySelectOptions = computed(() =>
-  categoryList.value.map((c) => ({ label: c.name, value: c.id }))
+  categoryList.value
+    .filter((c) => isSelectCompatiblePrimitive(c.id))
+    .map((c) => ({
+      label: safeOptionLabel(c.name) || '（未命名类别）',
+      value: c.id
+    }))
 );
 
 const getProductListRaw = () => {
@@ -1481,49 +1638,74 @@ const newProductForm = ref({
   expiryMonths: undefined
 });
 const brandSelectOptions = computed(() =>
-  brandList.value.map((b) => ({ label: b.name, value: b.id }))
+  brandList.value
+    .filter((b) => isSelectCompatiblePrimitive(b.id))
+    .map((b) => ({
+      label: safeOptionLabel(b.name) || '（未命名品牌）',
+      value: b.id
+    }))
 );
 
 const seriesOptionsForSelectedBrand = computed(() => {
   const brandId = newProductForm.value.brandId;
   if (brandId == null) return [];
-  const brand = brandList.value.find((b) => b.id === brandId);
+  const brand = brandList.value.find((b) => String(b.id) === String(brandId));
   if (!brand || !brand.series || !brand.series.length) return [];
-  return brand.series.map((s) => ({ label: s.name, value: s.id }));
+  return brand.series
+    .filter((s) => isSelectCompatiblePrimitive(s.id))
+    .map((s) => ({
+      label: safeOptionLabel(s.name) || '（未命名系列）',
+      value: s.id
+    }));
 });
 
-const configuredParamNamesForNewProduct = computed(() => {
-  const cat = newProductCategory.value;
+/** 新建商品弹窗：参数名列表（与 applyCategoryToNewProductModal 保持一致） */
+function getParamNamesForNewProductCategory(cat) {
   if (!cat) return [];
+  const asParamKey = (p) => {
+    if (typeof p === 'string') return p.trim();
+    if (p != null && typeof p !== 'object') return String(p).trim();
+    return '';
+  };
   const fromAttrs = (cat.attributeIds || [])
-    .map((id) => attrList.value.find((a) => a.id === id)?.name)
+    .map((id) => attrList.value.find((a) => String(a.id) === String(id))?.name)
+    .map(asParamKey)
     .filter(Boolean);
-  const fromHistory = cat.parameterNameHistory || [];
-  const fromSelected = cat.selectedParameterNames || [];
-  const set = new Set([...fromAttrs, ...fromHistory, ...fromSelected]);
-  return Array.from(set);
-});
+  const fromHistory = (cat.parameterNameHistory || []).map(asParamKey).filter(Boolean);
+  const fromSelected = (cat.selectedParameterNames || []).map(asParamKey).filter(Boolean);
+  const fromOpts =
+    cat.parameterValueOptions &&
+    typeof cat.parameterValueOptions === 'object' &&
+    !Array.isArray(cat.parameterValueOptions)
+      ? Object.keys(cat.parameterValueOptions).filter((k) => typeof k === 'string' && k.trim() !== '')
+      : [];
+  return Array.from(new Set([...fromAttrs, ...fromHistory, ...fromSelected, ...fromOpts]));
+}
+
+const configuredParamNamesForNewProduct = computed(() => getParamNamesForNewProductCategory(newProductCategory.value));
 
 const getParamValueOptions = (paramName) => {
   const cat = newProductCategory.value;
   const opts = cat && cat.parameterValueOptions && cat.parameterValueOptions[paramName] ? cat.parameterValueOptions[paramName] : [];
-  const baseList = Array.isArray(opts) ? opts.slice() : [];
   const selected = newProductForm.value.parameterValues && newProductForm.value.parameterValues[paramName];
-  const selectedArr = Array.isArray(selected) ? selected : (selected != null && selected !== '' ? [selected] : []);
-  const seen = new Set(baseList.map((v) => String(v).trim()).filter(Boolean));
-  selectedArr.forEach((v) => {
-    const s = v != null ? String(v).trim() : '';
-    if (s && !seen.has(s)) {
-      seen.add(s);
-      baseList.push(s);
-    }
-  });
-  return baseList.map((v) => ({ label: v, value: v }));
+  return buildParamSelectOptionsFromStorage(opts, selected);
 };
 
 const powerTemplateSelectOptions = computed(() =>
-  powerRangeTemplates.value.map((t) => ({ label: t.description, value: t.id }))
+  powerRangeTemplates.value
+    .filter((t) => isSelectCompatiblePrimitive(t.id))
+    .map((t) => ({
+      label: safeOptionLabel(t.description) || '（光度模版）',
+      value: t.id
+    }))
 );
+
+const newProductModalTitle = computed(() => {
+  const cat = newProductCategory.value;
+  if (!cat) return '新建商品';
+  const name = safeOptionLabel(cat.name);
+  return name ? `新建商品 - ${name}` : '新建商品';
+});
 
 const isPriceParameter = (paramName) => {
   const n = (paramName || '').trim();
@@ -1555,13 +1737,9 @@ const generatedProductName = computed(() => {
   return parts.join(' ');
 });
 
-const openNewProductModal = (record) => {
+function applyCategoryToNewProductModal(record) {
   newProductCategory.value = record;
-  const paramNames = (record.attributeIds || [])
-    .map((id) => attrList.value.find((a) => a.id === id)?.name)
-    .filter(Boolean);
-  const more = [...(record.parameterNameHistory || []), ...(record.selectedParameterNames || [])];
-  const allParams = Array.from(new Set([...paramNames, ...more]));
+  const allParams = getParamNamesForNewProductCategory(record);
   const parameterValues = {};
   allParams.forEach((p) => { parameterValues[p] = []; });
   Object.keys(newProductParamDropdownOpen).forEach((k) => delete newProductParamDropdownOpen[k]);
@@ -1580,6 +1758,10 @@ const openNewProductModal = (record) => {
     expiryManageEnabled: false,
     expiryMonths: undefined
   };
+}
+
+const openNewProductModal = (record) => {
+  applyCategoryToNewProductModal(record);
   newProductModalVisible.value = true;
 };
 
@@ -1593,13 +1775,17 @@ const closeNewProductModal = () => {
 };
 
 const openPowerRangeModalFromNewProduct = () => {
+  powerRangeModalOpenedFromNewProduct.value = true;
   newProductModalVisible.value = false;
-  openPowerRangeModal();
+  openPowerRangeModal(newProductForm.value.powerRangeTemplateId);
 };
 
 const submitNewProduct = () => {
   const cat = newProductCategory.value;
-  if (!cat) return;
+  if (!cat) {
+    message.warning('请选择类别');
+    return;
+  }
   const name = (generatedProductName.value || '').trim();
   if (!name) {
     message.warning('请至少选择品牌或填写参数后再保存，以生成商品名称');
@@ -1705,76 +1891,23 @@ const submitNewProduct = () => {
   }
 };
 
-// 商品参数管理
-const attrNameInput = ref('');
+// 商品参数：列表数据由「商品参数管理」子组件写入 localStorage；此处仅维护供类别「参数配置」等使用的副本，通过 storage 广播同步
 const attrList = ref([]);
-const attrColumns = [
-  { title: '序号', key: 'index', width: 80, align: 'center' },
-  { title: '参数名称', dataIndex: 'name', key: 'name' },
-  { title: '参数说明', dataIndex: 'description', key: 'description', width: 320, ellipsis: true },
-  { title: '操作', key: 'action', width: 160 }
-];
-const attrEditVisible = ref(false);
-const attrEditName = ref('');
-const attrEditDescription = ref('');
-const attrEditingId = ref(null);
 
 const loadAttrList = () => {
   const raw = localStorage.getItem(ATTR_STORAGE_KEY);
   attrList.value = raw ? JSON.parse(raw) : [];
 };
 
-const saveAttrList = (list) => {
-  localStorage.setItem(ATTR_STORAGE_KEY, JSON.stringify(list));
-  loadAttrList();
-};
-
-const addAttr = () => {
-  const name = (attrNameInput.value || '').trim();
-  if (!name) {
-    message.warning('请输入参数名称');
-    return;
-  }
-  const list = [...attrList.value];
-  if (list.some((item) => item.name === name)) {
-    message.warning('该参数已存在');
-    return;
-  }
-  const newId = list.length ? Math.max(...list.map((a) => a.id)) + 1 : 1;
-  list.push({ id: newId, name, description: '' });
-  saveAttrList(list);
-  attrNameInput.value = '';
-  message.success('添加成功');
-};
-
-const openAttrEdit = (record) => {
-  attrEditingId.value = record.id;
-  attrEditName.value = record.name;
-  attrEditDescription.value = record.description || '';
-  attrEditVisible.value = true;
-};
-
-const submitAttrEdit = () => {
-  const name = (attrEditName.value || '').trim();
-  if (!name) {
-    message.warning('请输入参数名称');
-    return;
-  }
-  const description = (attrEditDescription.value || '').trim();
-  const list = attrList.value.map((a) =>
-    a.id === attrEditingId.value ? { ...a, name, description } : a
-  );
-  saveAttrList(list);
-  attrEditVisible.value = false;
-  attrEditingId.value = null;
-  message.success('保存成功');
-};
-
-const deleteAttr = (record) => {
-  const list = attrList.value.filter((a) => a.id !== record.id);
-  saveAttrList(list);
-  message.success('已删除');
-};
+function onProductAuxStorageSync(e) {
+  const t = e.detail?.type;
+  if (!t) return;
+  if (t === 'brand') loadBrandList();
+  else if (t === 'supplier') loadSupplierList();
+  else if (t === 'manufacturer') loadManufacturerList();
+  else if (t === 'attr') loadAttrList();
+  else if (t === 'powerTemplate') loadPowerRangeTemplates();
+}
 
 // 品牌管理
 const brandNameInput = ref('');
@@ -1829,7 +1962,7 @@ const loadBrandList = () => {
 
 const saveBrandList = (list) => {
   localStorage.setItem(BRAND_STORAGE_KEY, JSON.stringify(list));
-  loadBrandList();
+  broadcastProductAuxStorage('brand');
 };
 
 const addBrand = () => {
@@ -1883,7 +2016,7 @@ const brandColumns = computed(() => [
     key: 'index',
     width: 80,
     align: 'center',
-    customCell: ({ record }) => ({ props: { rowSpan: record._seriesRowIndex === 0 ? record._rowSpan : 0 } }),
+    customCell: (row) => ({ rowSpan: row._seriesRowIndex === 0 ? row._rowSpan : 0 }),
     customRender: ({ record }) => (record._seriesRowIndex === 0 ? record._brandIndex + 1 : null)
   },
   {
@@ -1891,7 +2024,7 @@ const brandColumns = computed(() => [
     dataIndex: 'name',
     key: 'name',
     width: 160,
-    customCell: ({ record }) => ({ props: { rowSpan: record._seriesRowIndex === 0 ? record._rowSpan : 0 } }),
+    customCell: (row) => ({ rowSpan: row._seriesRowIndex === 0 ? row._rowSpan : 0 }),
     customRender: ({ record }) => (record._seriesRowIndex === 0 ? record._brand.name : null)
   },
   { title: '系列', key: 'series', ellipsis: false },
@@ -1900,7 +2033,7 @@ const brandColumns = computed(() => [
     key: 'addSeries',
     width: 100,
     align: 'center',
-    customCell: ({ record }) => ({ props: { rowSpan: record._seriesRowIndex === 0 ? record._rowSpan : 0 } }),
+    customCell: (row) => ({ rowSpan: row._seriesRowIndex === 0 ? row._rowSpan : 0 }),
     customRender: ({ record }) =>
       record._seriesRowIndex === 0
         ? h(Button, { type: 'link', size: 'small', onClick: () => openAddSeries(record._brand) }, '添加系列')
@@ -1911,7 +2044,7 @@ const brandColumns = computed(() => [
     key: 'action',
     width: 160,
     align: 'right',
-    customCell: ({ record }) => ({ props: { rowSpan: record._seriesRowIndex === 0 ? record._rowSpan : 0 } }),
+    customCell: (row) => ({ rowSpan: row._seriesRowIndex === 0 ? row._rowSpan : 0 }),
     customRender: ({ record }) =>
       record._seriesRowIndex === 0
         ? h(Space, [
@@ -2022,7 +2155,7 @@ const loadSupplierList = () => {
 
 const saveSupplierList = (list) => {
   localStorage.setItem(SUPPLIER_STORAGE_KEY, JSON.stringify(list));
-  loadSupplierList();
+  broadcastProductAuxStorage('supplier');
 };
 
 const addSupplier = () => {
@@ -2113,7 +2246,7 @@ const loadManufacturerList = () => {
 
 const saveManufacturerList = (list) => {
   localStorage.setItem(MANUFACTURER_STORAGE_KEY, JSON.stringify(list));
-  loadManufacturerList();
+  broadcastProductAuxStorage('manufacturer');
 };
 
 const addManufacturer = () => {
@@ -2158,6 +2291,9 @@ const deleteManufacturer = (record) => {
 };
 
 onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener(PRODUCT_AUX_STORAGE_EVENT, onProductAuxStorageSync);
+  }
   loadCategoryList();
   loadAttrList();
   loadProductList();
@@ -2165,6 +2301,12 @@ onMounted(() => {
   loadSupplierList();
   loadManufacturerList();
   loadPowerRangeTemplates();
+});
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener(PRODUCT_AUX_STORAGE_EVENT, onProductAuxStorageSync);
+  }
 });
 </script>
 
@@ -2268,31 +2410,54 @@ onMounted(() => {
   margin-bottom: 0;
 }
 .new-product-inline {
+  --np-content: calc(100% - 7em - 8px);
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }
 .new-product-inline .new-product-inline-label {
   color: rgba(0, 0, 0, 0.65);
   white-space: nowrap;
   width: 7em;
+  flex-shrink: 0;
   text-align: right;
   display: inline-block;
 }
+/* 标签右侧可用宽度 = --np-content；「其他」表单项为其一半；商品名称为 2/3；光度模版下拉略加宽便于显示「选择模版」 */
 .new-product-inline .new-product-inline-input {
-  width: 160px;
+  flex: 0 0 auto;
+  width: calc(var(--np-content) * 0.5) !important;
+  max-width: calc(var(--np-content) * 0.5);
+  min-width: 0;
+}
+.new-product-inline .new-product-inline-input.new-product-name-input {
+  width: calc(var(--np-content) * 2 / 3) !important;
+  max-width: calc(var(--np-content) * 2 / 3);
+}
+.new-product-inline .new-product-inline-input.new-product-power-template-select {
+  width: calc(var(--np-content) * 0.88) !important;
+  max-width: calc(var(--np-content) * 0.88);
+  min-width: 220px;
+}
+.new-product-inline :deep(.ant-select),
+.new-product-inline :deep(.ant-input-affix-wrapper) {
+  width: 100% !important;
+}
+/* 光度范围：模版下拉与商品名称同宽，按钮在右侧另占空间（不用 a-space，避免嵌套导致宽度被压窄） */
+.new-product-inline .new-product-power-range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.new-product-inline .new-product-power-range-row .new-product-power-template-select {
   flex-shrink: 0;
 }
-.new-product-inline .new-product-name-input {
-  width: 360px;
-  max-width: 100%;
-}
-.new-product-inline .new-product-power-template-select {
-  min-width: 280px;
-  width: 320px;
-}
-.new-product-inline .new-product-expiry-input {
-  width: 88px;
+.new-product-inline .new-product-inline-input.new-product-expiry-input {
+  width: 100px !important;
+  max-width: 100px;
+  min-width: 100px;
 }
 .power-range-grid-wrap {
   overflow: auto;
@@ -2366,6 +2531,10 @@ onMounted(() => {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid #f0f0f0;
+}
+.power-range-templates-footer {
+  display: flex;
+  justify-content: flex-end;
 }
 .power-range-templates-head {
   display: flex;

@@ -728,7 +728,9 @@ const updateChart = () => {
                 treatments.push(`OK镜: ${ok}`);
               }
               if (visualTraining && visualTraining !== 'none' && visualTraining !== '否') {
-                treatments.push('视训: 是');
+                const trainingMap = { '0': '斜视训练', '1': '弱视训练', '2': '近视训练' };
+                const trainingText = trainingMap[String(visualTraining)] || String(visualTraining);
+                treatments.push(`视觉训练: ${trainingText}`);
               }
               if (physiotherapy && physiotherapy !== 'none' && physiotherapy !== '否') {
                 treatments.push('理疗: 是');

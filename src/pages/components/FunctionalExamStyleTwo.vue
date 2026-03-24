@@ -1,12 +1,12 @@
 <template>
   <div class="functional-exam-style-two">
     <!-- 眼位和聚散检查 -->
-    <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasEyePositionData" 
-         v-show="!showOnlySection || showOnlySection === 'functional'"
+    <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasEyePositionData || (reportLayout && hasACACAData)"
+         v-show="!showOnlySection || showOnlySection === 'functional' || showOnlySection === 'functional-core'"
          class="section-block"
          :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['eye-position'] }">
       <h3 
-        v-if="viewMode === 'view' || !isReportMode"
+        v-if="!reportLayout && (viewMode === 'view' || !isReportMode)"
         class="section-title"
         :class="{ 'clickable': enableCollapse }"
         @click="enableCollapse && handleToggleSection('eye-position')"
@@ -18,10 +18,346 @@
         </span>
       </h3>
       <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.['eye-position'] : true)">
-      <table class="eye-position-table">
+      <table v-if="reportLayout" class="exam-sheet exam-table-binocular">
+        <colgroup>
+          <col class="binocol-side" />
+          <col class="binocol-distance" />
+          <col class="binocol-phoria-h" />
+          <col class="binocol-tight" span="6" />
+          <col class="binocol-phoria-v" />
+          <col class="binocol-tight" span="4" />
+        </colgroup>
+        <tbody>
+          <tr class="func-report-row-tall">
+            <th class="side-title" rowspan="5">
+              <span class="report-section-side-title-text">眼位和聚散检查</span>
+            </th>
+            <th class="group-head group-head-nowrap" rowspan="2">检测距离</th>
+            <th class="group-head group-head-nowrap" rowspan="2">水平眼位/△（内/外）</th>
+            <th class="group-head" colspan="3">集合</th>
+            <th class="group-head" colspan="3">散开</th>
+            <th class="group-head group-head-nowrap" rowspan="2">垂直眼位/△（高位）</th>
+            <th class="group-head" colspan="2">集合</th>
+            <th class="group-head" colspan="2">散开</th>
+          </tr>
+          <tr class="func-report-row-tall">
+            <th class="sub-head">模糊点</th>
+            <th class="sub-head">破裂点</th>
+            <th class="sub-head">恢复点</th>
+            <th class="sub-head">模糊点</th>
+            <th class="sub-head">破裂点</th>
+            <th class="sub-head">恢复点</th>
+            <th class="sub-head">模糊点</th>
+            <th class="sub-head">破裂点</th>
+            <th class="sub-head">模糊点</th>
+            <th class="sub-head">破裂点</th>
+          </tr>
+          <tr class="func-report-row-tall">
+            <th class="eye-cell eye-name">5m</th>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <div class="binocular-cell-edit">
+                    <div class="binocular-dir-row">
+                      <div class="binocular-dir-btns binocular-dir-btns--horizontal">
+                        <a-button size="small" class="binocular-dir-tap" :type="farEyeDirection === '外' ? 'primary' : 'default'" @click="toggleFarEyeDirection('外')">外</a-button>
+                        <a-button size="small" class="binocular-dir-tap" :type="farEyeDirection === '内' ? 'primary' : 'default'" @click="toggleFarEyeDirection('内')">内</a-button>
+                      </div>
+                    </div>
+                    <a-input-number
+                      :key="'far-lat-phoria'"
+                      v-model:value="farEyeValue"
+                      class="cell-number prism-phoria-placeholder"
+                      :precision="2"
+                      :step="0.25"
+                      style="width: 52px"
+                      placeholder="填0为正位"
+                    />
+                  </div>
+                </template>
+                <template v-else><span v-html="formatEyePositionWithUnit(record?.pli_exo_distance_lateral_phoria, record?.plo_eso_distance_lateral_phoria)"></span></template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_convergence_distance_blur" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_convergence_distance_blur, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_convergence_distance_break" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_convergence_distance_break, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_convergence_distance_recovery" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_convergence_distance_recovery, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_disvergence_distance_blur" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_disvergence_distance_blur, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_disvergence_distance_break" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_disvergence_distance_break, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_disvergence_distance_recovery" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_disvergence_distance_recovery, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <div class="binocular-cell-edit">
+                    <div class="binocular-dir-row">
+                      <div class="binocular-dir-btns binocular-dir-btns--horizontal">
+                        <a-button size="small" class="binocular-dir-tap" :type="farVerticalEyeDirection === '右' ? 'primary' : 'default'" @click="toggleFarVerticalEyeDirection('右')">右</a-button>
+                        <a-button size="small" class="binocular-dir-tap" :type="farVerticalEyeDirection === '左' ? 'primary' : 'default'" @click="toggleFarVerticalEyeDirection('左')">左</a-button>
+                      </div>
+                    </div>
+                    <a-input-number
+                      :key="'far-ver-phoria'"
+                      v-model:value="farVerticalEyeBreak"
+                      class="cell-number prism-phoria-placeholder"
+                      :precision="2"
+                      :step="0.25"
+                      style="width: 52px"
+                      placeholder="填0为正位"
+                    />
+                  </div>
+                </template>
+                <template v-else>
+                  <span>{{ formatVerticalEyePosition(record?.vertical_eye_position_far || record?.fusional_convergence_distance_vertical_direction || record?.far_vertical_eye_direction || null, record?.vertical_eye_position_far_value || record?.far_vertical_eye_break) }}</span>
+                </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_vertical_up_distance_blur" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_vertical_up_distance_blur, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_vertical_up_distance_break" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_vertical_up_distance_break || record?.fusional_convergence_distance_vertical_break, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_vertical_down_distance_blur" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_vertical_down_distance_blur, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_vertical_down_distance_break" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_vertical_down_distance_break || record?.fusional_disvergence_distance_vertical_break, true) }}</template>
+              </div>
+            </td>
+          </tr>
+          <tr class="func-report-row-tall">
+            <th class="eye-cell eye-name">40cm</th>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <div class="binocular-cell-edit">
+                    <div class="binocular-dir-row">
+                      <div class="binocular-dir-btns binocular-dir-btns--horizontal">
+                        <a-button size="small" class="binocular-dir-tap" :type="nearEyeDirection === '外' ? 'primary' : 'default'" @click="toggleNearEyeDirection('外')">外</a-button>
+                        <a-button size="small" class="binocular-dir-tap" :type="nearEyeDirection === '内' ? 'primary' : 'default'" @click="toggleNearEyeDirection('内')">内</a-button>
+                      </div>
+                    </div>
+                    <a-input-number
+                      :key="'near-lat-phoria'"
+                      v-model:value="nearEyeValue"
+                      class="cell-number prism-phoria-placeholder"
+                      :precision="2"
+                      :step="0.25"
+                      style="width: 52px"
+                      placeholder="填0为正位"
+                    />
+                  </div>
+                </template>
+                <template v-else><span v-html="formatEyePositionWithUnit(record?.pli_exo_near_lateral_phoria, record?.plo_eso_near_lateral_phoria)"></span></template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_convergence_near_blur" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_convergence_near_blur, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_convergence_near_break" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_convergence_near_break, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_convergence_near_recovery" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_convergence_near_recovery, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_disvergence_near_blur" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_disvergence_near_blur, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_disvergence_near_break" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_disvergence_near_break, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_disvergence_near_recovery" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_disvergence_near_recovery, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <div class="binocular-cell-edit">
+                    <div class="binocular-dir-row">
+                      <div class="binocular-dir-btns binocular-dir-btns--horizontal">
+                        <a-button size="small" class="binocular-dir-tap" :type="nearVerticalEyeDirection === '右' ? 'primary' : 'default'" @click="toggleNearVerticalEyeDirection('右')">右</a-button>
+                        <a-button size="small" class="binocular-dir-tap" :type="nearVerticalEyeDirection === '左' ? 'primary' : 'default'" @click="toggleNearVerticalEyeDirection('左')">左</a-button>
+                      </div>
+                    </div>
+                    <a-input-number
+                      :key="'near-ver-phoria'"
+                      v-model:value="nearVerticalEyeBreak"
+                      class="cell-number prism-phoria-placeholder"
+                      :precision="2"
+                      :step="0.25"
+                      style="width: 52px"
+                      placeholder="填0为正位"
+                    />
+                  </div>
+                </template>
+                <template v-else>
+                  <span>{{ formatVerticalEyePosition(record?.vertical_eye_position_near || record?.fusional_convergence_near_vertical_direction || record?.near_vertical_eye_direction || null, record?.vertical_eye_position_near_value || record?.near_vertical_eye_break) }}</span>
+                </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_vertical_up_near_blur" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_vertical_up_near_blur, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_vertical_up_near_break" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_vertical_up_near_break || record?.fusional_convergence_near_vertical_break, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_vertical_down_near_blur" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_vertical_down_near_blur, true) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.fusional_vertical_down_near_break" class="cell-number" :precision="1" /></template>
+                <template v-else>{{ formatValue(record?.fusional_vertical_down_near_break || record?.fusional_disvergence_near_vertical_break, true) }}</template>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="13" class="inner-table-cell">
+              <table class="inner-exam-table binocular-bottom-table">
+                <colgroup>
+                  <col class="aca-col-gradient" />
+                  <col class="aca-col-lens" span="3" />
+                  <col class="aca-col-ref1" />
+                  <col class="aca-col-calc" />
+                  <col class="aca-col-exam" />
+                  <col class="aca-col-ref2" />
+                  <col class="cac-col-label" />
+                  <col class="cac-col-result" />
+                  <col class="cac-col-ref" />
+                </colgroup>
+                <tbody>
+                  <tr class="func-report-row-tall">
+                    <th class="group-head" colspan="8">AC/A检查(△/D)</th>
+                    <th class="group-head" colspan="3">CA/C检查(D/MA)</th>
+                  </tr>
+                  <tr class="func-report-row-tall">
+                    <th class="sub-head" rowspan="2">梯度性AC/A</th>
+                    <th class="sub-head">±1.00</th>
+                    <th class="sub-head">+1.00</th>
+                    <th class="sub-head">-1.00</th>
+                    <th class="sub-head">参考值</th>
+                    <th class="sub-head aca-calculated-head" rowspan="2">
+                      计算性AC/A
+                    </th>
+                    <th class="sub-head">检查结果</th>
+                    <th class="sub-head">参考值</th>
+                    <th class="sub-head" rowspan="2">CA/C</th>
+                    <th class="sub-head">检查结果</th>
+                    <th class="sub-head">参考值</th>
+                  </tr>
+                  <tr class="func-report-row-tall">
+                    <td>
+                      <div class="cell-field">
+                        <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.ac_a_gradient_ratio_average" class="cell-number" :precision="1" :step="0.1" /></template>
+                        <template v-else>{{ formatACACARatio(record?.ac_a_gradient_ratio_average) }}</template>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="cell-field">
+                        <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.ac_a_gradient_ratio_plus" class="cell-number" :precision="1" :step="0.1" /></template>
+                        <template v-else>{{ formatACACARatio(record?.ac_a_gradient_ratio_plus) }}</template>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="cell-field">
+                        <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.ac_a_gradient_ratio_minus" class="cell-number" :precision="1" :step="0.1" /></template>
+                        <template v-else>{{ formatACACARatio(record?.ac_a_gradient_ratio_minus) }}</template>
+                      </div>
+                    </td>
+                    <td><div class="cell-field italic-text accommodation-ref-value">4±1</div></td>
+                    <td>
+                      <div class="cell-field">
+                        <span class="value-display calculated-value">{{ calculatedACARatio }}</span>
+                      </div>
+                    </td>
+                    <td><div class="cell-field accommodation-ref-value" :class="{ 'italic-text aca-ref-pd10-hint': calculatedACARatioReferenceIsFormula }">{{ calculatedACARatioReference }}</div></td>
+                    <td>
+                      <div class="cell-field">
+                        <template v-if="viewMode === 'edit'"><a-input-number v-model:value="editForm.ca_c_ratio" class="cell-number" :precision="2" :step="0.01" /></template>
+                        <template v-else>{{ formatACACARatio(record?.ca_c_ratio) }}</template>
+                      </div>
+                    </td>
+                    <td><div class="cell-field italic-text accommodation-ref-value">0.3~0.6</div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <table v-else class="eye-position-table">
         <thead>
           <tr>
-            <th rowspan="2">眼位和聚散检查</th>
+            <th rowspan="2">
+              <span class="report-section-side-title-text">眼位和聚散检查</span>
+            </th>
             <th rowspan="2">眼位</th>
             <th colspan="3">集合</th>
             <th colspan="3">散开</th>
@@ -37,17 +373,18 @@
         </thead>
         <tbody>
           <tr>
-            <td>5m水平眼位</td>
+            <td>5m水平眼位/△（内/外）</td>
             <td>
               <template v-if="viewMode === 'edit'">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <a-select v-model:value="farEyeDirection" style="width: 70px" placeholder="选择" allowClear>
-                    <a-select-option value="外">外</a-select-option>
-                    <a-select-option value="内">内</a-select-option>
-                    <a-select-option value="正">正</a-select-option>
-                  </a-select>
-                  <div v-if="farEyeDirection && farEyeDirection !== '正'" class="eye-position-input-wrapper">
-                    <a-input-number v-model:value="farEyeValue" :precision="2" :step="0.25" style="width: 80px" placeholder="数值" />
+                <div class="eye-position-dir-flex">
+                  <div class="binocular-dir-row">
+                    <div class="binocular-dir-btns binocular-dir-btns--horizontal">
+                      <a-button size="small" class="binocular-dir-tap" :type="farEyeDirection === '外' ? 'primary' : 'default'" @click="toggleFarEyeDirection('外')">外</a-button>
+                      <a-button size="small" class="binocular-dir-tap" :type="farEyeDirection === '内' ? 'primary' : 'default'" @click="toggleFarEyeDirection('内')">内</a-button>
+                    </div>
+                  </div>
+                  <div class="eye-position-input-wrapper">
+                    <a-input-number v-model:value="farEyeValue" class="prism-phoria-placeholder" :precision="2" :step="0.25" style="width: 80px" placeholder="填0为正位" />
                     <span class="eye-position-unit">△</span>
                   </div>
                 </div>
@@ -92,17 +429,18 @@
             </td>
           </tr>
           <tr>
-            <td>40cm水平眼位</td>
+            <td>40cm水平眼位/△（内/外）</td>
             <td>
               <template v-if="viewMode === 'edit'">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <a-select v-model:value="nearEyeDirection" style="width: 70px" placeholder="选择" allowClear>
-                    <a-select-option value="外">外</a-select-option>
-                    <a-select-option value="内">内</a-select-option>
-                    <a-select-option value="正">正</a-select-option>
-                  </a-select>
-                  <div v-if="nearEyeDirection && nearEyeDirection !== '正'" class="eye-position-input-wrapper">
-                    <a-input-number v-model:value="nearEyeValue" :precision="2" :step="0.25" style="width: 80px" placeholder="数值" />
+                <div class="eye-position-dir-flex">
+                  <div class="binocular-dir-row">
+                    <div class="binocular-dir-btns binocular-dir-btns--horizontal">
+                      <a-button size="small" class="binocular-dir-tap" :type="nearEyeDirection === '外' ? 'primary' : 'default'" @click="toggleNearEyeDirection('外')">外</a-button>
+                      <a-button size="small" class="binocular-dir-tap" :type="nearEyeDirection === '内' ? 'primary' : 'default'" @click="toggleNearEyeDirection('内')">内</a-button>
+                    </div>
+                  </div>
+                  <div class="eye-position-input-wrapper">
+                    <a-input-number v-model:value="nearEyeValue" class="prism-phoria-placeholder" :precision="2" :step="0.25" style="width: 80px" placeholder="填0为正位" />
                     <span class="eye-position-unit">△</span>
                   </div>
                 </div>
@@ -148,17 +486,18 @@
           </tr>
           <!-- 垂直眼位 - 5m -->
           <tr>
-            <td>5m垂直眼位</td>
+            <td>5m垂直眼位/△（高位）</td>
             <td>
               <template v-if="viewMode === 'edit'">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <a-select v-model:value="farVerticalEyeDirection" style="width: 70px" placeholder="选择" allowClear>
-                    <a-select-option value="正位">正位</a-select-option>
-                    <a-select-option value="右高">右高</a-select-option>
-                    <a-select-option value="左高">左高</a-select-option>
-                  </a-select>
-                  <div v-if="farVerticalEyeDirection && farVerticalEyeDirection !== '正位' && farVerticalEyeDirection !== null" class="eye-position-input-wrapper">
-                    <a-input-number v-model:value="farVerticalEyeBreak" :precision="2" :step="0.25" style="width: 80px" placeholder="数值" />
+                <div class="eye-position-dir-flex">
+                  <div class="binocular-dir-row">
+                    <div class="binocular-dir-btns binocular-dir-btns--horizontal">
+                      <a-button size="small" class="binocular-dir-tap" :type="farVerticalEyeDirection === '右' ? 'primary' : 'default'" @click="toggleFarVerticalEyeDirection('右')">右</a-button>
+                      <a-button size="small" class="binocular-dir-tap" :type="farVerticalEyeDirection === '左' ? 'primary' : 'default'" @click="toggleFarVerticalEyeDirection('左')">左</a-button>
+                    </div>
+                  </div>
+                  <div class="eye-position-input-wrapper">
+                    <a-input-number v-model:value="farVerticalEyeBreak" class="prism-phoria-placeholder" :precision="2" :step="0.25" style="width: 80px" placeholder="填0为正位" />
                     <span class="eye-position-unit">△</span>
                   </div>
                 </div>
@@ -196,17 +535,18 @@
           </tr>
           <!-- 垂直眼位 - 40cm -->
           <tr>
-            <td>40cm垂直眼位</td>
+            <td>40cm垂直眼位/△（高位）</td>
             <td>
               <template v-if="viewMode === 'edit'">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <a-select v-model:value="nearVerticalEyeDirection" style="width: 70px" placeholder="选择" allowClear>
-                    <a-select-option value="正位">正位</a-select-option>
-                    <a-select-option value="右高">右高</a-select-option>
-                    <a-select-option value="左高">左高</a-select-option>
-                  </a-select>
-                  <div v-if="nearVerticalEyeDirection && nearVerticalEyeDirection !== '正位' && nearVerticalEyeDirection !== null" class="eye-position-input-wrapper">
-                    <a-input-number v-model:value="nearVerticalEyeBreak" :precision="2" :step="0.25" style="width: 80px" placeholder="数值" />
+                <div class="eye-position-dir-flex">
+                  <div class="binocular-dir-row">
+                    <div class="binocular-dir-btns binocular-dir-btns--horizontal">
+                      <a-button size="small" class="binocular-dir-tap" :type="nearVerticalEyeDirection === '右' ? 'primary' : 'default'" @click="toggleNearVerticalEyeDirection('右')">右</a-button>
+                      <a-button size="small" class="binocular-dir-tap" :type="nearVerticalEyeDirection === '左' ? 'primary' : 'default'" @click="toggleNearVerticalEyeDirection('左')">左</a-button>
+                    </div>
+                  </div>
+                  <div class="eye-position-input-wrapper">
+                    <a-input-number v-model:value="nearVerticalEyeBreak" class="prism-phoria-placeholder" :precision="2" :step="0.25" style="width: 80px" placeholder="填0为正位" />
                     <span class="eye-position-unit">△</span>
                   </div>
                 </div>
@@ -248,12 +588,12 @@
     </div>
 
     <!-- AC/A和CA/C检查 -->
-    <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasACACAData" 
-         v-show="!showOnlySection || showOnlySection === 'functional'"
+    <div v-if="((viewMode !== 'view' && viewMode !== 'print') || hasACACAData) && !reportLayout"
+         v-show="!showOnlySection || showOnlySection === 'functional' || showOnlySection === 'functional-core'"
          class="section-block"
          :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['ac-aca'] }">
       <h3 
-        v-if="viewMode === 'view' || !isReportMode"
+        v-if="!reportLayout && (viewMode === 'view' || !isReportMode)"
         class="section-title"
         :class="{ 'clickable': enableCollapse }"
         @click="enableCollapse && handleToggleSection('ac-aca')"
@@ -265,7 +605,63 @@
         </span>
       </h3>
       <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.['ac-aca'] : true)">
-      <div class="func-exam-col">
+      <!-- 报告式：与其它表一致，左侧整列竖排标题占满表高 -->
+      <table v-if="reportLayout" class="aca-report-table">
+        <thead>
+          <tr>
+            <th rowspan="4" class="report-section-side-title">
+              <span class="report-section-side-title-text">AC/A和CA/C检查</span>
+            </th>
+            <th>项目</th>
+            <th>检查结果</th>
+            <th>参考值</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>计算性AC/A（△/D）</td>
+            <td class="aca-report-result">
+              <span class="value-display calculated-value">{{ calculatedACARatio }}</span>
+            </td>
+            <td :class="{ 'italic-text aca-ref-pd10-hint': calculatedACARatioReferenceIsFormula }">{{ calculatedACARatioReference }}</td>
+          </tr>
+          <tr>
+            <td>梯度型AC/A（△/D）</td>
+            <td class="aca-report-result">
+              <template v-if="viewMode === 'edit'">
+                <span class="input-label">+1.00：</span>
+                <a-input-number v-model:value="editForm.ac_a_gradient_ratio_plus" :precision="1" :step="0.1" style="width: 100px; margin-right: 8px" placeholder="输入数值" />
+                <span class="input-label">-1.00：</span>
+                <a-input-number v-model:value="editForm.ac_a_gradient_ratio_minus" :precision="1" :step="0.1" style="width: 100px; margin-right: 8px" placeholder="输入数值" />
+                <span class="input-label">平均AC/A：</span>
+                <a-input-number v-model:value="editForm.ac_a_gradient_ratio_average" :precision="1" :step="0.1" style="width: 100px" placeholder="输入数值" />
+              </template>
+              <template v-else>
+                <span class="input-label">+1.00：</span>
+                <span class="value-display">{{ formatACACARatio(record?.ac_a_gradient_ratio_plus) }}</span>
+                <span class="input-label">-1.00：</span>
+                <span class="value-display">{{ formatACACARatio(record?.ac_a_gradient_ratio_minus) }}</span>
+                <span class="input-label">平均AC/A：</span>
+                <span class="value-display">{{ formatACACARatio(record?.ac_a_gradient_ratio_average) }}</span>
+              </template>
+            </td>
+            <td>3~5△/D</td>
+          </tr>
+          <tr>
+            <td>CA/C（D/MA）</td>
+            <td class="aca-report-result">
+              <template v-if="viewMode === 'edit'">
+                <a-input-number v-model:value="editForm.ca_c_ratio" :precision="2" :step="0.01" style="width: 100px" placeholder="输入数值" />
+              </template>
+              <template v-else>
+                <span class="value-display">{{ formatACACARatio(record?.ca_c_ratio) }}</span>
+              </template>
+            </td>
+            <td>0.3~0.6D/MA</td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-else class="func-exam-col">
         <div class="func-exam-col-bg">
           <div class="func-table-header">
             <div class="func-table-col item">AC/A和CA/C检查</div>
@@ -282,7 +678,7 @@
                 <span class="value-display calculated-value">{{ calculatedACARatio }}</span>
               </template>
             </div>
-            <div class="func-table-col reference">{{ calculatedACARatioReference }}</div>
+            <div class="func-table-col reference" :class="{ 'aca-ref-pd10-hint': calculatedACARatioReferenceIsFormula }">{{ calculatedACARatioReference }}</div>
           </div>
           <div class="func-table-row">
             <div class="func-table-col item">梯度型AC/A（△/D）</div>
@@ -325,11 +721,11 @@
 
     <!-- 调节检查 -->
     <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasAccommodationData" 
-         v-show="!showOnlySection || showOnlySection === 'functional'"
+         v-show="!showOnlySection || showOnlySection === 'functional' || showOnlySection === 'functional-core'"
          class="section-block"
          :class="{ 'collapsed': enableCollapse && !sectionExpanded?.accommodation }">
       <h3 
-        v-if="viewMode === 'view' || !isReportMode"
+        v-if="!reportLayout && (viewMode === 'view' || !isReportMode)"
         class="section-title"
         :class="{ 'clickable': enableCollapse }"
         @click="enableCollapse && handleToggleSection('accommodation')"
@@ -341,11 +737,336 @@
         </span>
       </h3>
       <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.accommodation : true)">
-      <div class="func-exam-col">
+      <!-- 报告式：顶部 NRA/PRA + 下部眼别×灵敏度/反应/幅度（侧栏 rowspan 与下方 10 列对齐） -->
+      <table v-if="reportLayout" class="exam-sheet exam-table-accommodation">
+        <colgroup>
+          <col class="acc-col-side" />
+          <col class="acc-col-eye" />
+          <col class="acc-col-sens-result" />
+          <col class="acc-col-sens-pass" />
+          <col class="acc-col-sens-ref" />
+          <col class="acc-col-sens-param" />
+          <col class="acc-col-react-result" />
+          <col class="acc-col-react-ref" />
+          <col class="acc-col-amp-result" />
+          <col class="acc-col-amp-ref" />
+          <col class="acc-col-amp-style" />
+        </colgroup>
+        <tbody>
+          <tr>
+            <th class="side-title" rowspan="8">
+              <span class="report-section-side-title-text">调节检查</span>
+            </th>
+            <td colspan="10" class="inner-table-cell accommodation-top-block">
+              <table class="inner-exam-table accommodation-nra-pra-inner">
+                <tbody>
+                  <tr class="func-report-row-tall">
+                    <th class="group-head" colspan="3">正相对调节NRA</th>
+                    <th class="group-head" colspan="3">负相对调节PRA</th>
+                  </tr>
+                  <tr class="func-report-row-tall">
+                    <th class="sub-head">模糊值</th>
+                    <th class="sub-head">恢复值</th>
+                    <th class="sub-head">参考值</th>
+                    <th class="sub-head">模糊值</th>
+                    <th class="sub-head">恢复值</th>
+                    <th class="sub-head">参考值</th>
+                  </tr>
+                  <tr class="func-report-row-tall">
+                    <td>
+                      <div class="cell-field">
+                        <template v-if="viewMode === 'edit'">
+                          <div class="accommodation-input-wrapper positive">
+                            <span class="accommodation-sign">+</span>
+                            <a-input-number v-model:value="negativeRelativeAccommodationBlur" class="cell-number" :precision="2" :min="0" :step="0.01" style="width: 44px" />
+                          </div>
+                        </template>
+                        <template v-else>{{ formatRelativeAccommodation(record?.negative_relative_accommodation_blur) }}</template>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="cell-field">
+                        <template v-if="viewMode === 'edit'">
+                          <div class="accommodation-input-wrapper positive">
+                            <span class="accommodation-sign">+</span>
+                            <a-input-number v-model:value="negativeRelativeAccommodationRecovery" class="cell-number" :precision="2" :min="0" :step="0.01" style="width: 44px" />
+                          </div>
+                        </template>
+                        <template v-else>{{ formatRelativeAccommodation(record?.negative_relative_accommodation_recovery) }}</template>
+                      </div>
+                    </td>
+                    <td><div class="cell-field accommodation-ref-value">+2.25D±0.25D</div></td>
+                    <td>
+                      <div class="cell-field">
+                        <template v-if="viewMode === 'edit'">
+                          <div class="accommodation-input-wrapper negative">
+                            <span class="accommodation-sign">-</span>
+                            <a-input-number v-model:value="positiveRelativeAccommodationBlur" class="cell-number" :precision="2" :min="0" :step="0.01" style="width: 44px" />
+                          </div>
+                        </template>
+                        <template v-else>{{ formatRelativeAccommodation(record?.positive_relative_accommodation_blur) }}</template>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="cell-field">
+                        <template v-if="viewMode === 'edit'">
+                          <div class="accommodation-input-wrapper negative">
+                            <span class="accommodation-sign">-</span>
+                            <a-input-number v-model:value="positiveRelativeAccommodationRecovery" class="cell-number" :precision="2" :min="0" :step="0.01" style="width: 44px" />
+                          </div>
+                        </template>
+                        <template v-else>{{ formatRelativeAccommodation(record?.positive_relative_accommodation_recovery) }}</template>
+                      </div>
+                    </td>
+                    <td><div class="cell-field accommodation-pra-ref"><span>-2.25D</span><span class="accommodation-pra-ref-up">↑</span></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+          <tr class="func-report-row-tall">
+            <th class="row-head" rowspan="2">眼别</th>
+            <th class="group-head" colspan="4">调节灵敏度</th>
+            <th class="group-head" colspan="2">调节反应</th>
+            <th class="group-head" colspan="3">调节幅度</th>
+          </tr>
+          <tr class="func-report-row-tall">
+            <th class="sub-head">检查结果</th>
+            <th class="sub-head">通过情况</th>
+            <th class="sub-head">参考值</th>
+            <th class="sub-head">检查参数</th>
+            <th class="sub-head">检查结果</th>
+            <th class="sub-head">参考值</th>
+            <th class="sub-head">检查结果</th>
+            <th class="sub-head">参考值</th>
+            <th class="sub-head">检查方式</th>
+          </tr>
+          <tr class="func-report-row-tall">
+            <th class="eye-cell eye-name">右眼</th>
+            <td>
+              <div class="cell-field accommodation-sensitivity-result-cell">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="accommodationSensitivityRight" class="cell-number" :min="0" :precision="0" />
+                  <span class="accommodation-cpm-suffix">cpm</span>
+                </template>
+                <template v-else>{{ formatAccommodationSensitivityCpmDisplay(record?.accommodation_sensitivity_right_value || record?.accommodation_sensitivity_right) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field accommodation-pass-cell">
+                <template v-if="viewMode === 'edit'">
+                  <div class="accommodation-pass-btns">
+                    <button
+                      v-for="sym in accommodationPassSymbols"
+                      :key="'r-pass-' + sym"
+                      type="button"
+                      class="accommodation-pass-btn"
+                      :class="{ active: getAccommodationSensitivityPass('right') === sym }"
+                      @click="toggleAccommodationSensitivityPass('right', sym)"
+                    >{{ sym }}</button>
+                  </div>
+                </template>
+                <template v-else>{{ formatAccommodationPassDisplay(record?.accommodation_sensitivity_pass_right) }}</template>
+              </div>
+            </td>
+            <td><div class="cell-field accommodation-ref-value">11cpm</div></td>
+            <td rowspan="3">
+              <div class="cell-field cell-field-column">
+                <template v-if="viewMode === 'edit'">
+                  <div class="accommodation-param-btns">
+                    <div class="accommodation-param-cols">
+                      <div class="accommodation-param-col">
+                        <div class="accommodation-param-col-title">检查光度</div>
+                        <button
+                          v-for="opt in accommodationSensitivityLensOptions"
+                          :key="'l-' + opt"
+                          type="button"
+                          class="accommodation-param-choice"
+                          :class="{ 'is-active': accommodationSensitivityDiopter === opt }"
+                          @click="setAccommodationSensitivityLens(opt)"
+                        >
+                          <span class="accommodation-param-dot" aria-hidden="true"></span>
+                          <span class="accommodation-param-label">{{ opt }}</span>
+                        </button>
+                      </div>
+                      <div class="accommodation-param-col">
+                        <div class="accommodation-param-col-title">检查视标</div>
+                        <button
+                          v-for="opt in accommodationSensitivityVisionOptions"
+                          :key="'v-' + opt"
+                          type="button"
+                          class="accommodation-param-choice"
+                          :class="{ 'is-active': accommodationSensitivityVision === opt }"
+                          @click="setAccommodationSensitivityVision(opt)"
+                        >
+                          <span class="accommodation-param-dot" aria-hidden="true"></span>
+                          <span class="accommodation-param-label">{{ opt }}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="accommodation-param-view-stack">
+                    <div class="accommodation-param-view-line">检查光度：{{ (record?.accommodation_sensitivity_lens_power || record?.accommodation_sensitivity_diopter) || '±2.00D' }}</div>
+                    <div class="accommodation-param-view-line">检查视标：{{ (record?.accommodation_sensitivity_target || record?.accommodation_sensitivity_vision) || '20/30' }}</div>
+                  </div>
+                </template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input v-model:value="editForm.accommodation_mem_right_text" class="cell-number" style="width: 72px" allow-clear @blur="syncReactionNumericFromText('right')" />
+                </template>
+                <template v-else>{{ displayReaction(record, 'right') }}</template>
+              </div>
+            </td>
+            <td><div class="cell-field accommodation-ref-value">+0.50D±0.25D</div></td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="editForm.accommodative_amplitude_right" class="cell-number" :precision="2" :min="0" :step="0.01" />
+                </template>
+                <template v-else>{{ formatAmplitudeValue(record?.accommodative_amplitude_right) }}</template>
+              </div>
+            </td>
+            <td><div class="cell-field accommodation-ref-value">{{ getAmplitudeReference() }}</div></td>
+            <td>
+              <div class="cell-field cell-field--amplitude-style">
+                <template v-if="viewMode === 'edit'">
+                  <div class="accommodation-pass-btns accommodation-amplitude-style-btns">
+                    <button
+                      v-for="opt in accommodationAmplitudeStyleOptions"
+                      :key="'amp-style-r-' + opt"
+                      type="button"
+                      class="accommodation-pass-btn accommodation-amplitude-style-btn"
+                      :class="{ active: editForm.accommodation_amplitude_style === opt }"
+                      @click="toggleAccommodationAmplitudeStyle(opt)"
+                    >{{ opt }}</button>
+                  </div>
+                </template>
+                <template v-else>{{ formatAmplitudeStyle(record?.accommodation_amplitude_style) }}</template>
+              </div>
+            </td>
+          </tr>
+          <tr class="func-report-row-tall">
+            <th class="eye-cell eye-name">左眼</th>
+            <td>
+              <div class="cell-field accommodation-sensitivity-result-cell">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="accommodationSensitivityLeft" class="cell-number" :min="0" :precision="0" />
+                  <span class="accommodation-cpm-suffix">cpm</span>
+                </template>
+                <template v-else>{{ formatAccommodationSensitivityCpmDisplay(record?.accommodation_sensitivity_left_value || record?.accommodation_sensitivity_left) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field accommodation-pass-cell">
+                <template v-if="viewMode === 'edit'">
+                  <div class="accommodation-pass-btns">
+                    <button
+                      v-for="sym in accommodationPassSymbols"
+                      :key="'l-pass-' + sym"
+                      type="button"
+                      class="accommodation-pass-btn"
+                      :class="{ active: getAccommodationSensitivityPass('left') === sym }"
+                      @click="toggleAccommodationSensitivityPass('left', sym)"
+                    >{{ sym }}</button>
+                  </div>
+                </template>
+                <template v-else>{{ formatAccommodationPassDisplay(record?.accommodation_sensitivity_pass_left) }}</template>
+              </div>
+            </td>
+            <td><div class="cell-field accommodation-ref-value">11cpm</div></td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input v-model:value="editForm.accommodation_mem_left_text" class="cell-number" style="width: 72px" allow-clear @blur="syncReactionNumericFromText('left')" />
+                </template>
+                <template v-else>{{ displayReaction(record, 'left') }}</template>
+              </div>
+            </td>
+            <td><div class="cell-field accommodation-ref-value">+0.50D±0.25D</div></td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="editForm.accommodative_amplitude_left" class="cell-number" :precision="2" :min="0" :step="0.01" />
+                </template>
+                <template v-else>{{ formatAmplitudeValue(record?.accommodative_amplitude_left) }}</template>
+              </div>
+            </td>
+            <td><div class="cell-field accommodation-ref-value">{{ getAmplitudeReference() }}</div></td>
+            <td>
+              <div class="cell-field cell-field--amplitude-style">
+                <template v-if="viewMode === 'edit'">
+                  <div class="accommodation-pass-btns accommodation-amplitude-style-btns">
+                    <button
+                      v-for="opt in accommodationAmplitudeStyleOptions"
+                      :key="'amp-style-l-' + opt"
+                      type="button"
+                      class="accommodation-pass-btn accommodation-amplitude-style-btn"
+                      :class="{ active: editForm.accommodation_amplitude_style === opt }"
+                      @click="toggleAccommodationAmplitudeStyle(opt)"
+                    >{{ opt }}</button>
+                  </div>
+                </template>
+                <template v-else>{{ formatAmplitudeStyle(record?.accommodation_amplitude_style) }}</template>
+              </div>
+            </td>
+          </tr>
+          <tr class="func-report-row-tall">
+            <th class="eye-cell eye-name">双眼</th>
+            <td>
+              <div class="cell-field accommodation-sensitivity-result-cell">
+                <template v-if="viewMode === 'edit'">
+                  <a-input-number v-model:value="accommodationSensitivityBoth" class="cell-number" :min="0" :precision="0" />
+                  <span class="accommodation-cpm-suffix">cpm</span>
+                </template>
+                <template v-else>{{ formatAccommodationSensitivityCpmDisplay(record?.accommodation_sensitivity_both_value || record?.accommodation_sensitivity_both) }}</template>
+              </div>
+            </td>
+            <td>
+              <div class="cell-field accommodation-pass-cell">
+                <template v-if="viewMode === 'edit'">
+                  <div class="accommodation-pass-btns">
+                    <button
+                      v-for="sym in accommodationPassSymbols"
+                      :key="'b-pass-' + sym"
+                      type="button"
+                      class="accommodation-pass-btn"
+                      :class="{ active: getAccommodationSensitivityPass('both') === sym }"
+                      @click="toggleAccommodationSensitivityPass('both', sym)"
+                    >{{ sym }}</button>
+                  </div>
+                </template>
+                <template v-else>{{ formatAccommodationPassDisplay(record?.accommodation_sensitivity_pass_both) }}</template>
+              </div>
+            </td>
+            <td><div class="cell-field accommodation-ref-value">8cpm</div></td>
+            <td>
+              <div class="cell-field">
+                <template v-if="viewMode === 'edit'">
+                  <a-input v-model:value="editForm.accommodation_mem_bcc_text" class="cell-number" style="width: 72px" allow-clear @blur="syncReactionNumericFromText('both')" />
+                </template>
+                <template v-else>{{ displayReaction(record, 'both') }}</template>
+              </div>
+            </td>
+            <td><div class="cell-field accommodation-ref-value">+0.50D±0.25D</div></td>
+            <td colspan="3" class="accommodation-amplitude-both-merged">
+              <div class="cell-field accommodation-amplitude-both-merged-inner">
+                <span class="accommodation-amplitude-both-placeholder">—</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-else class="func-exam-col">
         <div class="func-exam-col-bg">
           <div class="func-table-header">
             <div class="func-table-col item">调节检查</div>
             <div class="func-table-col result">检查结果</div>
+            <div class="func-table-col pass-col">通过情况</div>
             <div class="func-table-col reference">参考值</div>
           </div>
           <div class="func-table-row">
@@ -370,7 +1091,8 @@
                 <span class="value-display">{{ formatRelativeAccommodation(record?.positive_relative_accommodation_recovery) }}</span>
               </template>
             </div>
-            <div class="func-table-col reference">小于-3.00D</div>
+            <div class="func-table-col pass-col cell-pass-empty-col">—</div>
+            <div class="func-table-col reference accommodation-pra-ref"><span>-2.25D</span><span class="accommodation-pra-ref-up">↑</span></div>
           </div>
           <div class="func-table-row">
             <div class="func-table-col item">负相对调节（D）</div>
@@ -394,6 +1116,7 @@
                 <span class="value-display">{{ formatRelativeAccommodation(record?.negative_relative_accommodation_recovery) }}</span>
               </template>
             </div>
+            <div class="func-table-col pass-col cell-pass-empty-col">—</div>
             <div class="func-table-col reference">+2.25D±0.25D</div>
           </div>
           <div class="func-table-row">
@@ -404,10 +1127,17 @@
                 <a-input-number v-model:value="editForm.accommodative_amplitude_right" :precision="2" :min="0" :step="0.01" style="width: 80px; margin-right: 8px" />
                 <span class="input-label">左眼：</span>
                 <a-input-number v-model:value="editForm.accommodative_amplitude_left" :precision="2" :min="0" :step="0.01" style="width: 80px; margin-right: 8px" />
-                <a-select v-model:value="editForm.accommodation_amplitude_style" style="width: 100px" placeholder="方式">
-                  <a-select-option value="推近法">推近法</a-select-option>
-                  <a-select-option value="负镜片法">负镜片法</a-select-option>
-                </a-select>
+                <span class="input-label">方式：</span>
+                <span class="accommodation-pass-btns accommodation-amplitude-style-btns accommodation-amplitude-style-btns--inline">
+                  <button
+                    v-for="opt in accommodationAmplitudeStyleOptions"
+                    :key="'amp-style-nl-' + opt"
+                    type="button"
+                    class="accommodation-pass-btn accommodation-amplitude-style-btn"
+                    :class="{ active: editForm.accommodation_amplitude_style === opt }"
+                    @click="toggleAccommodationAmplitudeStyle(opt)"
+                  >{{ opt }}</button>
+                </span>
               </template>
               <template v-else>
                 <span class="input-label">右眼：</span>
@@ -417,110 +1147,126 @@
                 <span class="value-display">{{ formatAmplitudeStyle(record?.accommodation_amplitude_style) }}</span>
               </template>
             </div>
+            <div class="func-table-col pass-col cell-pass-empty-col">—</div>
             <div class="func-table-col reference">{{ getAmplitudeReference() }}</div>
           </div>
           <div class="func-table-row">
             <div class="func-table-col item">调节灵敏度（cpm）</div>
             <div class="func-table-col result">
               <template v-if="viewMode === 'edit'">
-                <a-select v-model:value="accommodationSensitivityDiopter" style="width: 95px; margin-right: 4px" placeholder="选择">
-                  <a-select-option value="±1.00D">±1.00D</a-select-option>
-                  <a-select-option value="±1.50D">±1.50D</a-select-option>
-                  <a-select-option value="±2.00D">±2.00D</a-select-option>
-                </a-select>
-                <a-select v-model:value="accommodationSensitivityVision" style="width: 80px; margin-right: 4px" placeholder="选择">
-                  <a-select-option value="20/30">20/30</a-select-option>
-                  <a-select-option value="20/40">20/40</a-select-option>
-                  <a-select-option value="20/50">20/50</a-select-option>
-                </a-select>
+                <div class="accommodation-param-btns accommodation-param-btns--inline">
+                  <div class="accommodation-param-cols">
+                    <div class="accommodation-param-col">
+                      <div class="accommodation-param-col-title">检查光度</div>
+                      <button
+                        v-for="opt in accommodationSensitivityLensOptions"
+                        :key="'l-' + opt"
+                        type="button"
+                        class="accommodation-param-choice"
+                        :class="{ 'is-active': accommodationSensitivityDiopter === opt }"
+                        @click="setAccommodationSensitivityLens(opt)"
+                      >
+                        <span class="accommodation-param-dot" aria-hidden="true"></span>
+                        <span class="accommodation-param-label">{{ opt }}</span>
+                      </button>
+                    </div>
+                    <div class="accommodation-param-col">
+                      <div class="accommodation-param-col-title">检查视标</div>
+                      <button
+                        v-for="opt in accommodationSensitivityVisionOptions"
+                        :key="'v-' + opt"
+                        type="button"
+                        class="accommodation-param-choice"
+                        :class="{ 'is-active': accommodationSensitivityVision === opt }"
+                        @click="setAccommodationSensitivityVision(opt)"
+                      >
+                        <span class="accommodation-param-dot" aria-hidden="true"></span>
+                        <span class="accommodation-param-label">{{ opt }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
                 <span class="input-label">右眼：</span>
-                <a-input-number v-model:value="accommodationSensitivityRight" :min="0" :precision="0" style="width: 40px; margin-right: 4px" />
+                <a-input-number v-model:value="accommodationSensitivityRight" :min="0" :precision="0" style="width: 40px; margin-right: 2px" />
+                <span class="accommodation-cpm-suffix accommodation-cpm-suffix--inline">cpm</span>
                 <span class="input-label">左眼：</span>
-                <a-input-number v-model:value="accommodationSensitivityLeft" :min="0" :precision="0" style="width: 40px; margin-right: 4px" />
+                <a-input-number v-model:value="accommodationSensitivityLeft" :min="0" :precision="0" style="width: 40px; margin-right: 2px" />
+                <span class="accommodation-cpm-suffix accommodation-cpm-suffix--inline">cpm</span>
                 <span class="input-label">双眼：</span>
-                <a-input-number v-model:value="accommodationSensitivityBoth" :min="0" :precision="0" style="width: 40px" />
+                <a-input-number v-model:value="accommodationSensitivityBoth" :min="0" :precision="0" style="width: 40px; margin-right: 2px" />
+                <span class="accommodation-cpm-suffix accommodation-cpm-suffix--inline">cpm</span>
               </template>
               <template v-else>
-                <span class="value-display" style="margin-right: 8px;">{{ (record?.accommodation_sensitivity_lens_power || record?.accommodation_sensitivity_diopter) || '±2.00D' }}</span>
-                <span class="value-display" style="margin-right: 8px;">{{ (record?.accommodation_sensitivity_target || record?.accommodation_sensitivity_vision) || '20/30' }}</span>
+                <div class="accommodation-param-view-stack accommodation-param-view-stack--inline">
+                  <div class="accommodation-param-view-line">检查光度：{{ (record?.accommodation_sensitivity_lens_power || record?.accommodation_sensitivity_diopter) || '±2.00D' }}</div>
+                  <div class="accommodation-param-view-line">检查视标：{{ (record?.accommodation_sensitivity_target || record?.accommodation_sensitivity_vision) || '20/30' }}</div>
+                </div>
                 <span class="input-label">右眼：</span>
-                <span class="value-display">{{ formatValue(record?.accommodation_sensitivity_right_value || record?.accommodation_sensitivity_right) }}</span>
+                <span class="value-display">{{ formatAccommodationSensitivityCpmDisplay(record?.accommodation_sensitivity_right_value || record?.accommodation_sensitivity_right) }}</span>
                 <span class="input-label">左眼：</span>
-                <span class="value-display">{{ formatValue(record?.accommodation_sensitivity_left_value || record?.accommodation_sensitivity_left) }}</span>
+                <span class="value-display">{{ formatAccommodationSensitivityCpmDisplay(record?.accommodation_sensitivity_left_value || record?.accommodation_sensitivity_left) }}</span>
                 <span class="input-label">双眼：</span>
-                <span class="value-display">{{ formatValue(record?.accommodation_sensitivity_both_value || record?.accommodation_sensitivity_both) }}</span>
+                <span class="value-display">{{ formatAccommodationSensitivityCpmDisplay(record?.accommodation_sensitivity_both_value || record?.accommodation_sensitivity_both) }}</span>
               </template>
             </div>
-            <div class="func-table-col reference">单眼11cpm<br>双眼8cpm</div>
+            <div class="func-table-col pass-col">
+              <template v-if="viewMode === 'edit'">
+                <div class="accommodation-pass-stack">
+                  <div
+                    v-for="spec in accommodationSensitivityPassSides"
+                    :key="'nl-pass-' + spec.key"
+                    class="accommodation-pass-line"
+                  >
+                    <span class="accommodation-pass-line-label">{{ spec.label }}</span>
+                    <div class="accommodation-pass-btns">
+                      <button
+                        v-for="sym in accommodationPassSymbols"
+                        :key="'nl-pass-' + spec.key + sym"
+                        type="button"
+                        class="accommodation-pass-btn"
+                        :class="{ active: getAccommodationSensitivityPass(spec.key) === sym }"
+                        @click="toggleAccommodationSensitivityPass(spec.key, sym)"
+                      >{{ sym }}</button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="accommodation-pass-stack accommodation-pass-stack--view">
+                  <div
+                    v-for="spec in accommodationSensitivityPassSides"
+                    :key="'nv-pass-' + spec.key"
+                    class="accommodation-pass-line"
+                  >
+                    <span class="accommodation-pass-line-label">{{ spec.label }}</span>
+                    <span class="accommodation-pass-view">{{ formatRecordAccommodationPass(record, spec.key) }}</span>
+                  </div>
+                </div>
+              </template>
+            </div>
+            <div class="func-table-col reference">11cpm<br>8cpm</div>
           </div>
           <div class="func-table-row">
             <div class="func-table-col item">调节反应（D）</div>
             <div class="func-table-col result">
               <template v-if="viewMode === 'edit'">
                 <span class="input-label">右眼：</span>
-                <div class="accommodation-reaction-wrapper">
-                  <div class="accommodation-sign-buttons">
-                    <button 
-                      type="button"
-                      class="accommodation-sign-btn accommodation-plus-btn"
-                      :class="{ active: getReactionSign('right') === '+' }"
-                      @click="toggleReactionSign('right', '+')"
-                    >+</button>
-                    <button 
-                      type="button"
-                      class="accommodation-sign-btn accommodation-minus-btn"
-                      :class="{ active: getReactionSign('right') === '-' }"
-                      @click="toggleReactionSign('right', '-')"
-                    >-</button>
-                  </div>
-                  <a-input-number v-model:value="fusedCrossCylinderRight" :precision="2" :step="0.01" placeholder="MEM" style="width: 70px; margin-right: 8px" />
-                </div>
+                <a-input v-model:value="editForm.accommodation_mem_right_text" placeholder="MEM" style="width: 76px; margin-right: 8px" allow-clear @blur="syncReactionNumericFromText('right')" />
                 <span class="input-label">左眼：</span>
-                <div class="accommodation-reaction-wrapper">
-                  <div class="accommodation-sign-buttons">
-                    <button 
-                      type="button"
-                      class="accommodation-sign-btn accommodation-plus-btn"
-                      :class="{ active: getReactionSign('left') === '+' }"
-                      @click="toggleReactionSign('left', '+')"
-                    >+</button>
-                    <button 
-                      type="button"
-                      class="accommodation-sign-btn accommodation-minus-btn"
-                      :class="{ active: getReactionSign('left') === '-' }"
-                      @click="toggleReactionSign('left', '-')"
-                    >-</button>
-                  </div>
-                  <a-input-number v-model:value="fusedCrossCylinderLeft" :precision="2" :step="0.01" placeholder="MEM" style="width: 70px; margin-right: 8px" />
-                </div>
+                <a-input v-model:value="editForm.accommodation_mem_left_text" placeholder="MEM" style="width: 76px; margin-right: 8px" allow-clear @blur="syncReactionNumericFromText('left')" />
                 <span class="input-label">BCC：</span>
-                <div class="accommodation-reaction-wrapper">
-                  <div class="accommodation-sign-buttons">
-                    <button 
-                      type="button"
-                      class="accommodation-sign-btn accommodation-plus-btn"
-                      :class="{ active: getReactionSign('both') === '+' }"
-                      @click="toggleReactionSign('both', '+')"
-                    >+</button>
-                    <button 
-                      type="button"
-                      class="accommodation-sign-btn accommodation-minus-btn"
-                      :class="{ active: getReactionSign('both') === '-' }"
-                      @click="toggleReactionSign('both', '-')"
-                    >-</button>
-                  </div>
-                  <a-input-number v-model:value="fusedCrossCylinderBoth" :precision="2" :step="0.01" style="width: 70px" />
-                </div>
+                <a-input v-model:value="editForm.accommodation_mem_bcc_text" style="width: 76px" allow-clear @blur="syncReactionNumericFromText('both')" />
               </template>
               <template v-else>
                 <span class="input-label">右眼：</span>
-                <span class="value-display">{{ formatReactionValue(record?.accommodation_mem_right_value || record?.fused_cross_cylinder_right, record?.accommodation_mem_right_sign) }}</span>
+                <span class="value-display">{{ displayReaction(record, 'right') }}</span>
                 <span class="input-label">左眼：</span>
-                <span class="value-display">{{ formatReactionValue(record?.accommodation_mem_left_value || record?.fused_cross_cylinder_left, record?.accommodation_mem_left_sign) }}</span>
+                <span class="value-display">{{ displayReaction(record, 'left') }}</span>
                 <span class="input-label">BCC：</span>
-                <span class="value-display">{{ formatReactionValue(record?.accommodation_amplitude_bcc_style || record?.fused_cross_cylinder_both, record?.accommodation_bcc_sign) }}</span>
+                <span class="value-display">{{ displayReaction(record, 'both') }}</span>
               </template>
             </div>
+            <div class="func-table-col pass-col cell-pass-empty-col">—</div>
             <div class="func-table-col reference">+0.50D±0.25D</div>
           </div>
         </div>
@@ -528,26 +1274,63 @@
       </div>
     </div>
 
-    <!-- 其他相关检查 -->
+    <!-- 其他相关检查（子标签：综合验光仪 / 四孔灯 / 同视机；结果分析仅在独立「结果分析」页面展示） -->
     <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasOtherRelatedData" 
-         v-show="showOnlySection !== 'functional' && (!showOnlySection || showOnlySection === 'other-related')"
-         class="section-block"
-         :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['other-related'] }">
-      <h3 
-        v-if="viewMode === 'view' || !isReportMode"
-        class="section-title"
-        :class="{ 'clickable': enableCollapse }"
-        @click="enableCollapse && handleToggleSection('other-related')"
+         v-show="showOnlySection !== 'functional' && showOnlySection !== 'functional-core' && (!showOnlySection || showOnlySection === 'other-related' || showOnlySection === 'related-functional')"
+         class="section-block other-related-block">
+      <div
+        v-if="!reportLayout && (viewMode === 'view' || !isReportMode) && viewMode !== 'print'"
+        class="other-related-tabs-row"
       >
-        其他相关检查
-        <span v-if="enableCollapse" class="section-toggle-icon">
-          <UpOutlined v-if="sectionExpanded?.['other-related']" />
-          <DownOutlined v-else />
-        </span>
-      </h3>
-      <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.['other-related'] : true)">
+        <div class="other-related-main-tabs" role="tablist" aria-label="其他相关检查">
+          <button
+            type="button"
+            role="tab"
+            class="other-related-tab-item"
+            :class="{ active: otherRelatedSubTab === 'optometer' }"
+            :aria-selected="otherRelatedSubTab === 'optometer'"
+            @click="otherRelatedSubTab = 'optometer'"
+          >
+            综合验光仪
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="other-related-tab-item"
+            :class="{ active: otherRelatedSubTab === 'four-hole' }"
+            :aria-selected="otherRelatedSubTab === 'four-hole'"
+            @click="otherRelatedSubTab = 'four-hole'"
+          >
+            四孔灯检查
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="other-related-tab-item"
+            :class="{ active: otherRelatedSubTab === 'synoptophore' }"
+            :aria-selected="otherRelatedSubTab === 'synoptophore'"
+            @click="otherRelatedSubTab = 'synoptophore'"
+          >
+            同视机检查
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="other-related-tab-item"
+            :class="{ active: otherRelatedSubTab === 'match-params' }"
+            :aria-selected="otherRelatedSubTab === 'match-params'"
+            @click="otherRelatedSubTab = 'match-params'"
+          >
+            匹配参数设置
+          </button>
+        </div>
+      </div>
+      <div
+        v-show="viewMode === 'print' || reportLayout || otherRelatedSubTab === 'optometer'"
+        class="other-related-panel"
+      >
       <div class="func-exam-col">
-        <div class="func-exam-col-bg">
+        <div class="func-exam-col-bg optometer-related-table">
           <div class="func-table-header">
             <div class="func-table-col item">综合验光仪</div>
             <div class="func-table-col result">检查结果</div>
@@ -611,7 +1394,11 @@
           </div>
         </div>
       </div>
-      
+      </div>
+      <div
+        v-show="viewMode === 'print' || reportLayout || otherRelatedSubTab === 'four-hole'"
+        class="other-related-panel"
+      >
       <!-- 四孔灯检查 -->
       <div class="func-exam-col">
         <div class="func-exam-col-bg four-hole-lamp-table">
@@ -625,42 +1412,65 @@
             <div class="func-table-col result">
               <template v-if="viewMode === 'edit'">
                 <div class="four-hole-container">
-                  <div class="button-group">
-                    <button 
-                      type="button"
-                      class="four-hole-btn"
-                      :class="{ active: editForm.check_distance_2m === '4' }"
-                      @click="handleFourHole2mClick('4')"
-                    >4</button>
-                    <button 
-                      type="button"
-                      class="four-hole-btn"
-                      :class="{ active: editForm.check_distance_2m === '5' }"
-                      @click="handleFourHole2mClick('5')"
-                    >5</button>
-                  </div>
-                  <div v-if="editForm.check_distance_2m === '4'" class="dominant-eye-select">
-                    <span class="input-label">优势眼：</span>
-                    <a-select v-model:value="editForm.dominant_eye_color_2m" style="width: 140px" allowClear>
+                  <div class="four-hole-primary-row">
+                    <div class="button-group">
+                      <button 
+                        type="button"
+                        class="four-hole-btn"
+                        :class="{ active: editForm.check_distance_2m === '4' }"
+                        @click="handleFourHole2mClick('4')"
+                      >4</button>
+                      <button 
+                        type="button"
+                        class="four-hole-btn"
+                        :class="{ active: editForm.check_distance_2m === '5' }"
+                        @click="handleFourHole2mClick('5')"
+                      >5</button>
+                    </div>
+                    <div v-if="editForm.check_distance_2m === '4'" class="dominant-eye-select">
+                      <span class="input-label">优势眼：</span>
+                      <a-select
+                        v-model:value="editForm.dominant_eye_color_2m"
+                        class="four-hole-lamp-select four-hole-lamp-select--compact"
+                        size="large"
+                        dropdown-class-name="four-hole-select-dropdown"
+                        :dropdown-match-select-width="false"
+                        allowClear
+                      >
                       <a-select-option value="黄">黄</a-select-option>
                       <a-select-option value="红">红</a-select-option>
                       <a-select-option value="绿">绿</a-select-option>
                       <a-select-option value="红绿交替">红绿交替</a-select-option>
                     </a-select>
+                    </div>
                   </div>
-                  <div v-if="editForm.check_distance_2m === '5'" class="five-options-container">
+                  <div v-if="editForm.check_distance_2m === '5'" class="five-options-container five-options-container--second-row">
                     <div class="five-option-item">
                       <span class="input-label">水平：</span>
-                      <a-select v-model:value="editForm.horizontal_option_2m" style="width: 140px" allowClear>
+                      <a-select
+                        v-model:value="editForm.horizontal_option_2m"
+                        class="four-hole-lamp-select four-hole-lamp-select--narrow"
+                        size="large"
+                        dropdown-class-name="four-hole-select-dropdown"
+                        :dropdown-match-select-width="false"
+                        allowClear
+                      >
                         <a-select-option value="左红右绿">左红右绿</a-select-option>
                         <a-select-option value="右红左绿">右红左绿</a-select-option>
                       </a-select>
                     </div>
                     <div class="five-option-item">
                       <span class="input-label">垂直：</span>
-                      <a-select v-model:value="editForm.vertical_option_2m" style="width: 140px" allowClear>
-                        <a-select-option value="右高">右高</a-select-option>
-                        <a-select-option value="左高">左高</a-select-option>
+                      <a-select
+                        v-model:value="editForm.vertical_option_2m"
+                        class="four-hole-lamp-select four-hole-lamp-select--narrow"
+                        size="large"
+                        dropdown-class-name="four-hole-select-dropdown"
+                        :dropdown-match-select-width="false"
+                        allowClear
+                      >
+                        <a-select-option value="右高">右</a-select-option>
+                        <a-select-option value="左高">左</a-select-option>
                       </a-select>
                     </div>
                   </div>
@@ -677,42 +1487,65 @@
             <div class="func-table-col result">
               <template v-if="viewMode === 'edit'">
                 <div class="four-hole-container">
-                  <div class="button-group">
-                    <button 
-                      type="button"
-                      class="four-hole-btn"
-                      :class="{ active: editForm.check_distance_40cm === '4' }"
-                      @click="handleFourHole40cmClick('4')"
-                    >4</button>
-                    <button 
-                      type="button"
-                      class="four-hole-btn"
-                      :class="{ active: editForm.check_distance_40cm === '5' }"
-                      @click="handleFourHole40cmClick('5')"
-                    >5</button>
-                  </div>
-                  <div v-if="editForm.check_distance_40cm === '4'" class="dominant-eye-select">
-                    <span class="input-label">优势眼：</span>
-                    <a-select v-model:value="editForm.dominant_eye_color_40cm" style="width: 140px" allowClear>
+                  <div class="four-hole-primary-row">
+                    <div class="button-group">
+                      <button 
+                        type="button"
+                        class="four-hole-btn"
+                        :class="{ active: editForm.check_distance_40cm === '4' }"
+                        @click="handleFourHole40cmClick('4')"
+                      >4</button>
+                      <button 
+                        type="button"
+                        class="four-hole-btn"
+                        :class="{ active: editForm.check_distance_40cm === '5' }"
+                        @click="handleFourHole40cmClick('5')"
+                      >5</button>
+                    </div>
+                    <div v-if="editForm.check_distance_40cm === '4'" class="dominant-eye-select">
+                      <span class="input-label">优势眼：</span>
+                      <a-select
+                        v-model:value="editForm.dominant_eye_color_40cm"
+                        class="four-hole-lamp-select four-hole-lamp-select--compact"
+                        size="large"
+                        dropdown-class-name="four-hole-select-dropdown"
+                        :dropdown-match-select-width="false"
+                        allowClear
+                      >
                       <a-select-option value="黄">黄</a-select-option>
                       <a-select-option value="红">红</a-select-option>
                       <a-select-option value="绿">绿</a-select-option>
                       <a-select-option value="红绿交替">红绿交替</a-select-option>
                     </a-select>
+                    </div>
                   </div>
-                  <div v-if="editForm.check_distance_40cm === '5'" class="five-options-container">
+                  <div v-if="editForm.check_distance_40cm === '5'" class="five-options-container five-options-container--second-row">
                     <div class="five-option-item">
                       <span class="input-label">水平：</span>
-                      <a-select v-model:value="editForm.horizontal_option_40cm" style="width: 140px" allowClear>
+                      <a-select
+                        v-model:value="editForm.horizontal_option_40cm"
+                        class="four-hole-lamp-select four-hole-lamp-select--narrow"
+                        size="large"
+                        dropdown-class-name="four-hole-select-dropdown"
+                        :dropdown-match-select-width="false"
+                        allowClear
+                      >
                         <a-select-option value="左红右绿">左红右绿</a-select-option>
                         <a-select-option value="右红左绿">右红左绿</a-select-option>
                       </a-select>
                     </div>
                     <div class="five-option-item">
                       <span class="input-label">垂直：</span>
-                      <a-select v-model:value="editForm.vertical_option_40cm" style="width: 140px" allowClear>
-                        <a-select-option value="右高">右高</a-select-option>
-                        <a-select-option value="左高">左高</a-select-option>
+                      <a-select
+                        v-model:value="editForm.vertical_option_40cm"
+                        class="four-hole-lamp-select four-hole-lamp-select--narrow"
+                        size="large"
+                        dropdown-class-name="four-hole-select-dropdown"
+                        :dropdown-match-select-width="false"
+                        allowClear
+                      >
+                        <a-select-option value="右高">右</a-select-option>
+                        <a-select-option value="左高">左</a-select-option>
                       </a-select>
                     </div>
                   </div>
@@ -855,123 +1688,124 @@
         </div>
       </div>
       </div>
-    </div>
-
-    <!-- 同视机检查 -->
-    <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasSynoptophoreData" 
-         v-show="!showOnlySection || showOnlySection === 'functional'"
-         class="section-block"
-         :class="{ 'collapsed': enableCollapse && !sectionExpanded?.synoptophore }">
-      <h3 
-        v-if="viewMode === 'view' || !isReportMode"
-        class="section-title"
-        :class="{ 'clickable': enableCollapse }"
-        @click="enableCollapse && handleToggleSection('synoptophore')"
+      <!-- 同视机检查：Ⅰ/Ⅱ/Ⅲ 级同一表纵向排列 -->
+      <div
+        v-show="viewMode === 'print' || reportLayout || otherRelatedSubTab === 'synoptophore'"
+        class="other-related-panel other-related-panel--synoptophore"
       >
-        同视机检查
-        <span v-if="enableCollapse" class="section-toggle-icon">
-          <UpOutlined v-if="sectionExpanded?.synoptophore" />
-          <DownOutlined v-else />
-        </span>
-      </h3>
-      <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.synoptophore : true)">
-      <div class="func-exam-col">
-        <div class="func-exam-col-bg synoptophore-table">
-          <div class="func-table-header">
-            <div class="func-table-col item">检查项目</div>
-            <div class="func-table-col result">检查结果</div>
-            <div class="func-table-col reference">参考值</div>
-          </div>
-          <div class="func-table-row">
-            <div class="func-table-col item">Ⅰ级</div>
-            <div class="func-table-col result">
-              <template v-if="viewMode === 'edit'">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
-                  <a-select v-model:value="editForm.synoptophore_level1_sign" style="width: 120px; flex-shrink: 0;" allowClear placeholder="选择">
-                    <a-select-option value="-">-</a-select-option>
-                    <a-select-option value="+">+</a-select-option>
-                    <a-select-option value="正位">正位</a-select-option>
-                  </a-select>
-                  <a-input-number 
-                    v-model:value="editForm.synoptophore_level1_value" 
-                    :min="0" 
-                    :precision="2" 
-                    :step="0.25" 
-                    style="width: 150px; flex-shrink: 0;" 
-                    placeholder="输入结果"
-                    addon-after="°"
-                  />
-                </div>
-              </template>
-              <template v-else>
-                <span class="value-display" v-html="formatSynoptophoreGradeI(record)"></span>
-              </template>
+        <div class="func-exam-col">
+          <div class="func-exam-col-bg synoptophore-table">
+            <div class="func-table-header">
+              <div class="func-table-col item">检查项目</div>
+              <div class="func-table-col result">检查结果</div>
+              <div class="func-table-col reference">参考值</div>
             </div>
-            <div class="func-table-col reference">-</div>
-          </div>
-          <div class="func-table-row">
-            <div class="func-table-col item">Ⅱ级</div>
-            <div class="func-table-col result">
-              <template v-if="viewMode === 'edit'">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
-                  <a-input-number 
-                    v-model:value="editForm.synoptophore_level2_positive" 
-                    :min="0" 
-                    :precision="2" 
-                    :step="0.25" 
-                    style="width: 150px; flex-shrink: 0;" 
-                    placeholder="输入"
-                    addon-before="+"
-                    addon-after="°"
-                  />
-                  <span style="flex-shrink: 0;">~</span>
-                  <a-input-number 
-                    v-model:value="editForm.synoptophore_level2_negative" 
-                    :min="0" 
-                    :precision="2" 
-                    :step="0.25" 
-                    style="width: 150px; flex-shrink: 0;" 
-                    placeholder="输入"
-                    addon-before="-"
-                    addon-after="°"
-                  />
-                </div>
-              </template>
-              <template v-else>
-                <span class="value-display" v-html="formatSynoptophoreGradeII(record)"></span>
-              </template>
+            <div class="func-table-row">
+              <div class="func-table-col item">Ⅰ级</div>
+              <div class="func-table-col result">
+                <template v-if="viewMode === 'edit'">
+                  <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+                    <a-select v-model:value="editForm.synoptophore_level1_sign" style="width: 120px; flex-shrink: 0;" allowClear placeholder="选择">
+                      <a-select-option value="-">-</a-select-option>
+                      <a-select-option value="+">+</a-select-option>
+                      <a-select-option value="正位">正位</a-select-option>
+                    </a-select>
+                    <a-input-number 
+                      v-model:value="editForm.synoptophore_level1_value" 
+                      :min="0" 
+                      :precision="2" 
+                      :step="0.25" 
+                      style="width: 150px; flex-shrink: 0;" 
+                      placeholder="输入结果"
+                      addon-after="°"
+                    />
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="value-display" v-html="formatSynoptophoreGradeI(record)"></span>
+                </template>
+              </div>
+              <div class="func-table-col reference">-</div>
             </div>
-            <div class="func-table-col reference">-</div>
-          </div>
-          <div class="func-table-row">
-            <div class="func-table-col item">Ⅲ级</div>
-            <div class="func-table-col result">
-              <template v-if="viewMode === 'edit'">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
-                  <a-select v-model:value="editForm.synoptophore_level3_stereo" style="width: 120px; flex-shrink: 0;" placeholder="选择结果" allowClear>
-                    <a-select-option value="有">有</a-select-option>
-                    <a-select-option value="无">无</a-select-option>
-                  </a-select>
-                  <a-input-number 
-                    v-model:value="editForm.synoptophore_level3_value" 
-                    :min="0" 
-                    :precision="2" 
-                    :step="0.25" 
-                    style="width: 150px; flex-shrink: 0;" 
-                    placeholder="输入值"
-                    addon-after="°"
-                    :disabled="editForm.synoptophore_level3_stereo !== '有'"
-                  />
-                </div>
-              </template>
-              <template v-else>
-                <span class="value-display" v-html="formatSynoptophoreGradeIII(record)"></span>
-              </template>
+            <div class="func-table-row">
+              <div class="func-table-col item">Ⅱ级</div>
+              <div class="func-table-col result">
+                <template v-if="viewMode === 'edit'">
+                  <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+                    <a-input-number 
+                      v-model:value="editForm.synoptophore_level2_positive" 
+                      :min="0" 
+                      :precision="2" 
+                      :step="0.25" 
+                      style="width: 150px; flex-shrink: 0;" 
+                      placeholder="输入"
+                      addon-before="+"
+                      addon-after="°"
+                    />
+                    <span style="flex-shrink: 0;">~</span>
+                    <a-input-number 
+                      v-model:value="editForm.synoptophore_level2_negative" 
+                      :min="0" 
+                      :precision="2" 
+                      :step="0.25" 
+                      style="width: 150px; flex-shrink: 0;" 
+                      placeholder="输入"
+                      addon-before="-"
+                      addon-after="°"
+                    />
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="value-display" v-html="formatSynoptophoreGradeII(record)"></span>
+                </template>
+              </div>
+              <div class="func-table-col reference">-</div>
             </div>
-            <div class="func-table-col reference">-</div>
+            <div class="func-table-row">
+              <div class="func-table-col item">Ⅲ级</div>
+              <div class="func-table-col result">
+                <template v-if="viewMode === 'edit'">
+                  <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+                    <a-select v-model:value="editForm.synoptophore_level3_stereo" style="width: 120px; flex-shrink: 0;" placeholder="选择结果" allowClear>
+                      <a-select-option value="有">有</a-select-option>
+                      <a-select-option value="无">无</a-select-option>
+                    </a-select>
+                    <a-input-number 
+                      v-model:value="editForm.synoptophore_level3_value" 
+                      :min="0" 
+                      :precision="2" 
+                      :step="0.25" 
+                      style="width: 150px; flex-shrink: 0;" 
+                      placeholder="输入值"
+                      addon-after="°"
+                      :disabled="editForm.synoptophore_level3_stereo !== '有'"
+                    />
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="value-display" v-html="formatSynoptophoreGradeIII(record)"></span>
+                </template>
+              </div>
+              <div class="func-table-col reference">-</div>
+            </div>
           </div>
         </div>
       </div>
+      <div
+        v-show="viewMode === 'print' || reportLayout || otherRelatedSubTab === 'match-params'"
+        class="other-related-panel other-related-panel--analysis"
+      >
+        <AnalysisExam
+          :record="record"
+          :previous-record="previousRecord"
+          :examination-records="examinationRecords"
+          :patient-id="analysisPatientId"
+          :patient-info="patientInfo"
+          :view-mode="viewMode"
+          :initial-main-tab="'params'"
+          :hide-main-tabs="true"
+          @refresh="emit('refresh')"
+        />
       </div>
     </div>
   </div>
@@ -980,11 +1814,24 @@
 <script setup>
 import { computed, ref, watch, nextTick } from 'vue';
 import { UpOutlined, DownOutlined } from '@ant-design/icons-vue';
+import AnalysisExam from './AnalysisExam.vue';
 
 const props = defineProps({
   record: {
     type: Object,
     default: () => ({})
+  },
+  previousRecord: {
+    type: Object,
+    default: null
+  },
+  examinationRecords: {
+    type: Array,
+    default: () => []
+  },
+  patientId: {
+    type: [String, Number],
+    default: null
   },
   patientInfo: {
     type: Object,
@@ -1007,6 +1854,10 @@ const props = defineProps({
     default: false
   },
   enableCollapse: {
+    type: Boolean,
+    default: false
+  },
+  reportLayout: {
     type: Boolean,
     default: false
   }
@@ -1052,7 +1903,17 @@ watch(() => props.record, (newVal) => {
   }
 }, { immediate: true, deep: true });
 
-const emit = defineEmits(['toggle-section', 'update-record']);
+const emit = defineEmits(['toggle-section', 'update-record', 'refresh']);
+
+/** 其他相关检查：综合验光仪 / 四孔灯 / 同视机 */
+const otherRelatedSubTab = ref('optometer');
+
+const analysisPatientId = computed(() => {
+  if (props.patientId != null && props.patientId !== '') return props.patientId;
+  const p = props.patientInfo;
+  if (!p) return '';
+  return p.patient_id ?? p.id ?? '';
+});
 
 // 切换section展开/收起状态
 const handleToggleSection = (sectionKey) => {
@@ -1233,7 +2094,8 @@ watch(() => props.record, (newVal) => {
         processedData.fusional_disvergence_near_vertical_recovery !== null && processedData.fusional_disvergence_near_vertical_recovery !== undefined && processedData.fusional_disvergence_near_vertical_recovery !== '') {
       processedData.fusional_vertical_down_near_recovery = processedData.fusional_disvergence_near_vertical_recovery;
     }
-    
+
+    ensureReactionDisplayText(processedData);
     editForm.value = processedData;
     // 使用nextTick确保标志在watch执行后重置
     nextTick(() => {
@@ -1249,7 +2111,6 @@ watch(() => props.viewMode, (newMode) => {
     const clonedData = JSON.parse(JSON.stringify(props.record));
     let processedData = initOptometerFields(clonedData);
     processedData = initFourHoleLampFields(processedData);
-    editForm.value = processedData;
     // 处理垂直眼位字段的兼容性：如果新字段为空但旧字段有值，则复制到新字段
     const verticalFieldMap = {
       'vertical_eye_position_far': ['fusional_convergence_distance_vertical_direction', 'far_vertical_eye_direction'],
@@ -1291,6 +2152,9 @@ watch(() => props.viewMode, (newMode) => {
         }
       }
     });
+
+    ensureReactionDisplayText(processedData);
+    editForm.value = processedData;
     
     // 调试：打印从record同步到editForm的垂直眼位数据
     if (props.record.vertical_eye_position_far || props.record.fusional_convergence_distance_vertical_direction || props.record.far_vertical_eye_direction || props.record.vertical_eye_position_far_value || props.record.far_vertical_eye_break) {
@@ -1349,6 +2213,7 @@ watch([
 // 监听editForm变化，通知父组件更新
 watch(() => editForm.value, (newVal) => {
   if (props.viewMode === 'edit' && !isUpdatingFromRecord) {
+    syncAllReactionNumericFromText();
     // 调试：打印垂直眼位相关字段
     if (newVal.vertical_eye_position_far || newVal.fusional_convergence_distance_vertical_direction || newVal.far_vertical_eye_direction || newVal.vertical_eye_position_far_value || newVal.far_vertical_eye_break) {
       console.log('[FunctionalExamStyleTwo] 更新记录 - 5m垂直眼位数据:', {
@@ -1404,16 +2269,20 @@ const farEyeDirection = computed({
   get() {
     const exo = editForm.value?.pli_exo_distance_lateral_phoria;
     const eso = editForm.value?.plo_eso_distance_lateral_phoria;
-    // 检查外隐斜字段（包括空字符串，表示方向已选择）
+    // exo/eso 含 '' 表示已选外/内但尚未填数，须保留；仅字面量 '0' 表示无按钮时填 0 的正位
     if (exo !== null && exo !== undefined) {
+      if (exo === '0' && (eso === null || eso === undefined)) {
+        return undefined;
+      }
       return '外';
     }
-    // 检查内隐斜字段（包括空字符串，表示方向已选择）
     if (eso !== null && eso !== undefined) {
+      if (eso === '0' && (exo === null || exo === undefined)) {
+        return undefined;
+      }
       return '内';
     }
-    // 如果都没有值，返回'正'（表示正位）
-    return '正';
+    return undefined;
   },
   set(val) {
     if (!editForm.value) {
@@ -1491,9 +2360,14 @@ const farEyeValue = computed({
       editForm.value.plo_eso_distance_lateral_phoria = `+${num}`;
       editForm.value.pli_exo_distance_lateral_phoria = null;
     } else {
-      // 如果方向为空，根据值的正负来决定（但通常应该先选择方向）
-      editForm.value.pli_exo_distance_lateral_phoria = null;
-      editForm.value.plo_eso_distance_lateral_phoria = null;
+      // 未选外/内：仅 0 存为字面量正位，其它非空不保存（清空）
+      if (val === 0 && num === '0') {
+        editForm.value.pli_exo_distance_lateral_phoria = '0';
+        editForm.value.plo_eso_distance_lateral_phoria = null;
+      } else {
+        editForm.value.pli_exo_distance_lateral_phoria = null;
+        editForm.value.plo_eso_distance_lateral_phoria = null;
+      }
     }
   }
 });
@@ -1503,16 +2377,19 @@ const nearEyeDirection = computed({
   get() {
     const exo = editForm.value?.pli_exo_near_lateral_phoria;
     const eso = editForm.value?.plo_eso_near_lateral_phoria;
-    // 检查外隐斜字段（包括空字符串，表示方向已选择）
     if (exo !== null && exo !== undefined) {
+      if (exo === '0' && (eso === null || eso === undefined)) {
+        return undefined;
+      }
       return '外';
     }
-    // 检查内隐斜字段（包括空字符串，表示方向已选择）
     if (eso !== null && eso !== undefined) {
+      if (eso === '0' && (exo === null || exo === undefined)) {
+        return undefined;
+      }
       return '内';
     }
-    // 如果都没有值，返回'正'（表示正位）
-    return '正';
+    return undefined;
   },
   set(val) {
     if (!editForm.value) {
@@ -1588,45 +2465,63 @@ const nearEyeValue = computed({
       editForm.value.plo_eso_near_lateral_phoria = `+${num}`;
       editForm.value.pli_exo_near_lateral_phoria = null;
     } else {
-      // 如果方向为空，根据值的正负来决定（但通常应该先选择方向）
-      editForm.value.pli_exo_near_lateral_phoria = null;
-      editForm.value.plo_eso_near_lateral_phoria = null;
+      if (val === 0 && num === '0') {
+        editForm.value.pli_exo_near_lateral_phoria = '0';
+        editForm.value.plo_eso_near_lateral_phoria = null;
+      } else {
+        editForm.value.pli_exo_near_lateral_phoria = null;
+        editForm.value.plo_eso_near_lateral_phoria = null;
+      }
     }
   }
 });
+
+/** 垂直眼位：存库为 右高/左高（或历史 右/左），界面按钮与回显统一为 右/左 */
+function verticalDirStoredToUi(stored) {
+  if (stored === '右高' || stored === '右') return '右';
+  if (stored === '左高' || stored === '左') return '左';
+  return stored;
+}
+function verticalDirUiToStored(ui) {
+  if (ui === '右') return '右高';
+  if (ui === '左') return '左高';
+  return ui;
+}
 
 // 远距离垂直眼位方向和值
 // 兼容后端字段 vertical_eye_position_far 和旧字段
 const farVerticalEyeDirection = computed({
   get() {
-    if (!editForm.value) return '正位';
+    if (!editForm.value) return undefined;
     // 优先从后端字段 vertical_eye_position_far 读取，如果没有则从旧字段读取
-    const direction = editForm.value.vertical_eye_position_far || 
-                      editForm.value.fusional_convergence_distance_vertical_direction || 
+    const direction = editForm.value.vertical_eye_position_far ||
+                      editForm.value.fusional_convergence_distance_vertical_direction ||
                       editForm.value.far_vertical_eye_direction;
-    // 如果方向为空、null、undefined 或空字符串，返回 '正位'（表示正位）
-    return direction || '正位';
+    // 无数据时返回 undefined，选择框为空（不默认「正位」）
+    if (direction === null || direction === undefined || direction === '') return undefined;
+    return verticalDirStoredToUi(direction);
   },
   set(val) {
     if (!editForm.value) {
       editForm.value = {};
     }
-    // 同时更新后端字段和旧字段以确保兼容性
-    // 如果 val 是 '正位'、null 或 undefined，设置为 null；否则设置为 val
-    const valueToSet = (val === '正位' || val === null || val === undefined) ? null : val;
-    // 确保所有字段都正确设置
-    if (valueToSet !== null) {
-      // 优先保存到后端字段
-      editForm.value.vertical_eye_position_far = valueToSet;
-      // 同时保存到旧字段（兼容性）
-      editForm.value.fusional_convergence_distance_vertical_direction = valueToSet;
-      editForm.value.far_vertical_eye_direction = valueToSet;
-    } else {
-      // 当选择"正位"时，将所有字段都设置为 null
+    // 仅清除（allowClear）时清空；选「正位」须保存字符串，否则 getter 得到 null 下拉无法回显
+    if (val === null || val === undefined) {
       editForm.value.vertical_eye_position_far = null;
       editForm.value.fusional_convergence_distance_vertical_direction = null;
       editForm.value.far_vertical_eye_direction = null;
-      // 同时清空 break 值
+      editForm.value.vertical_eye_position_far_value = null;
+      editForm.value.far_vertical_eye_break = null;
+      return;
+    }
+    const toStore = verticalDirUiToStored(val);
+    const prev = editForm.value.vertical_eye_position_far ||
+      editForm.value.fusional_convergence_distance_vertical_direction ||
+      editForm.value.far_vertical_eye_direction;
+    editForm.value.vertical_eye_position_far = toStore;
+    editForm.value.fusional_convergence_distance_vertical_direction = toStore;
+    editForm.value.far_vertical_eye_direction = toStore;
+    if (prev === '正位' && (toStore === '右高' || toStore === '左高')) {
       editForm.value.vertical_eye_position_far_value = null;
       editForm.value.far_vertical_eye_break = null;
     }
@@ -1637,18 +2532,72 @@ const farVerticalEyeDirection = computed({
 const farVerticalEyeBreak = computed({
   get() {
     if (!editForm.value) return null;
-    // 优先从后端字段读取，如果没有则从旧字段读取
-    return editForm.value.vertical_eye_position_far_value || 
-           editForm.value.far_vertical_eye_break || 
-           null;
+    const rawDir = editForm.value.vertical_eye_position_far ||
+      editForm.value.fusional_convergence_distance_vertical_direction ||
+      editForm.value.far_vertical_eye_direction;
+    if (rawDir === '正位') {
+      const v = editForm.value.vertical_eye_position_far_value ?? editForm.value.far_vertical_eye_break;
+      if (v === null || v === undefined || v === '') return 0;
+      const n = typeof v === 'number' ? v : parseFloat(String(v));
+      return isNaN(n) ? 0 : n;
+    }
+    return editForm.value.vertical_eye_position_far_value ||
+      editForm.value.far_vertical_eye_break ||
+      null;
   },
   set(val) {
     if (!editForm.value) {
       editForm.value = {};
     }
-    // 同时保存到后端字段和旧字段（兼容性）
-    editForm.value.vertical_eye_position_far_value = val;
-    editForm.value.far_vertical_eye_break = val;
+    const rawDir = editForm.value.vertical_eye_position_far ||
+      editForm.value.fusional_convergence_distance_vertical_direction ||
+      editForm.value.far_vertical_eye_direction;
+
+    if (!val && val !== 0) {
+      if (rawDir === '正位') {
+        editForm.value.vertical_eye_position_far = null;
+        editForm.value.fusional_convergence_distance_vertical_direction = null;
+        editForm.value.far_vertical_eye_direction = null;
+        editForm.value.vertical_eye_position_far_value = null;
+        editForm.value.far_vertical_eye_break = null;
+      } else if (rawDir === '右高' || rawDir === '左高') {
+        editForm.value.vertical_eye_position_far_value = null;
+        editForm.value.far_vertical_eye_break = null;
+      } else {
+        editForm.value.vertical_eye_position_far_value = null;
+        editForm.value.far_vertical_eye_break = null;
+      }
+      return;
+    }
+
+    if (val === 0) {
+      if (!rawDir || rawDir === '') {
+        editForm.value.vertical_eye_position_far = '正位';
+        editForm.value.fusional_convergence_distance_vertical_direction = '正位';
+        editForm.value.far_vertical_eye_direction = '正位';
+        editForm.value.vertical_eye_position_far_value = null;
+        editForm.value.far_vertical_eye_break = null;
+        return;
+      }
+      if (rawDir === '正位') {
+        editForm.value.vertical_eye_position_far_value = null;
+        editForm.value.far_vertical_eye_break = null;
+        return;
+      }
+      editForm.value.vertical_eye_position_far_value = val;
+      editForm.value.far_vertical_eye_break = val;
+      return;
+    }
+
+    const uiDir = verticalDirStoredToUi(rawDir);
+    if (uiDir === '右' || uiDir === '左') {
+      editForm.value.vertical_eye_position_far_value = val;
+      editForm.value.far_vertical_eye_break = val;
+      return;
+    }
+
+    editForm.value.vertical_eye_position_far_value = null;
+    editForm.value.far_vertical_eye_break = null;
   }
 });
 
@@ -1665,34 +2614,33 @@ const farVerticalEyeRecovery = computed({
 // 兼容后端字段 vertical_eye_position_near 和旧字段
 const nearVerticalEyeDirection = computed({
   get() {
-    if (!editForm.value) return '正位';
-    // 优先从后端字段 vertical_eye_position_near 读取，如果没有则从旧字段读取
-    const direction = editForm.value.vertical_eye_position_near || 
-                      editForm.value.fusional_convergence_near_vertical_direction || 
+    if (!editForm.value) return undefined;
+    const direction = editForm.value.vertical_eye_position_near ||
+                      editForm.value.fusional_convergence_near_vertical_direction ||
                       editForm.value.near_vertical_eye_direction;
-    // 如果方向为空、null、undefined 或空字符串，返回 '正位'（表示正位）
-    return direction || '正位';
+    if (direction === null || direction === undefined || direction === '') return undefined;
+    return verticalDirStoredToUi(direction);
   },
   set(val) {
     if (!editForm.value) {
       editForm.value = {};
     }
-    // 同时更新后端字段和旧字段以确保兼容性
-    // 如果 val 是 '正位'、null 或 undefined，设置为 null；否则设置为 val
-    const valueToSet = (val === '正位' || val === null || val === undefined) ? null : val;
-    // 确保所有字段都正确设置
-    if (valueToSet !== null) {
-      // 优先保存到后端字段
-      editForm.value.vertical_eye_position_near = valueToSet;
-      // 同时保存到旧字段（兼容性）
-      editForm.value.fusional_convergence_near_vertical_direction = valueToSet;
-      editForm.value.near_vertical_eye_direction = valueToSet;
-    } else {
-      // 当选择"正位"时，将所有字段都设置为 null
+    if (val === null || val === undefined) {
       editForm.value.vertical_eye_position_near = null;
       editForm.value.fusional_convergence_near_vertical_direction = null;
       editForm.value.near_vertical_eye_direction = null;
-      // 同时清空 break 值
+      editForm.value.vertical_eye_position_near_value = null;
+      editForm.value.near_vertical_eye_break = null;
+      return;
+    }
+    const toStore = verticalDirUiToStored(val);
+    const prev = editForm.value.vertical_eye_position_near ||
+      editForm.value.fusional_convergence_near_vertical_direction ||
+      editForm.value.near_vertical_eye_direction;
+    editForm.value.vertical_eye_position_near = toStore;
+    editForm.value.fusional_convergence_near_vertical_direction = toStore;
+    editForm.value.near_vertical_eye_direction = toStore;
+    if (prev === '正位' && (toStore === '右高' || toStore === '左高')) {
       editForm.value.vertical_eye_position_near_value = null;
       editForm.value.near_vertical_eye_break = null;
     }
@@ -1703,18 +2651,72 @@ const nearVerticalEyeDirection = computed({
 const nearVerticalEyeBreak = computed({
   get() {
     if (!editForm.value) return null;
-    // 优先从后端字段读取，如果没有则从旧字段读取
-    return editForm.value.vertical_eye_position_near_value || 
-           editForm.value.near_vertical_eye_break || 
-           null;
+    const rawDir = editForm.value.vertical_eye_position_near ||
+      editForm.value.fusional_convergence_near_vertical_direction ||
+      editForm.value.near_vertical_eye_direction;
+    if (rawDir === '正位') {
+      const v = editForm.value.vertical_eye_position_near_value ?? editForm.value.near_vertical_eye_break;
+      if (v === null || v === undefined || v === '') return 0;
+      const n = typeof v === 'number' ? v : parseFloat(String(v));
+      return isNaN(n) ? 0 : n;
+    }
+    return editForm.value.vertical_eye_position_near_value ||
+      editForm.value.near_vertical_eye_break ||
+      null;
   },
   set(val) {
     if (!editForm.value) {
       editForm.value = {};
     }
-    // 同时保存到后端字段和旧字段（兼容性）
-    editForm.value.vertical_eye_position_near_value = val;
-    editForm.value.near_vertical_eye_break = val;
+    const rawDir = editForm.value.vertical_eye_position_near ||
+      editForm.value.fusional_convergence_near_vertical_direction ||
+      editForm.value.near_vertical_eye_direction;
+
+    if (!val && val !== 0) {
+      if (rawDir === '正位') {
+        editForm.value.vertical_eye_position_near = null;
+        editForm.value.fusional_convergence_near_vertical_direction = null;
+        editForm.value.near_vertical_eye_direction = null;
+        editForm.value.vertical_eye_position_near_value = null;
+        editForm.value.near_vertical_eye_break = null;
+      } else if (rawDir === '右高' || rawDir === '左高') {
+        editForm.value.vertical_eye_position_near_value = null;
+        editForm.value.near_vertical_eye_break = null;
+      } else {
+        editForm.value.vertical_eye_position_near_value = null;
+        editForm.value.near_vertical_eye_break = null;
+      }
+      return;
+    }
+
+    if (val === 0) {
+      if (!rawDir || rawDir === '') {
+        editForm.value.vertical_eye_position_near = '正位';
+        editForm.value.fusional_convergence_near_vertical_direction = '正位';
+        editForm.value.near_vertical_eye_direction = '正位';
+        editForm.value.vertical_eye_position_near_value = null;
+        editForm.value.near_vertical_eye_break = null;
+        return;
+      }
+      if (rawDir === '正位') {
+        editForm.value.vertical_eye_position_near_value = null;
+        editForm.value.near_vertical_eye_break = null;
+        return;
+      }
+      editForm.value.vertical_eye_position_near_value = val;
+      editForm.value.near_vertical_eye_break = val;
+      return;
+    }
+
+    const uiDir = verticalDirStoredToUi(rawDir);
+    if (uiDir === '右' || uiDir === '左') {
+      editForm.value.vertical_eye_position_near_value = val;
+      editForm.value.near_vertical_eye_break = val;
+      return;
+    }
+
+    editForm.value.vertical_eye_position_near_value = null;
+    editForm.value.near_vertical_eye_break = null;
   }
 });
 
@@ -1726,6 +2728,50 @@ const nearVerticalEyeRecovery = computed({
     editForm.value.near_vertical_eye_recovery = val;
   }
 });
+
+/** 眼位方向清空（供切换逻辑复用） */
+function clearFarEyeDirection() {
+  farEyeDirection.value = undefined;
+}
+function clearNearEyeDirection() {
+  nearEyeDirection.value = undefined;
+}
+function clearFarVerticalEyeDirection() {
+  farVerticalEyeDirection.value = undefined;
+}
+function clearNearVerticalEyeDirection() {
+  nearVerticalEyeDirection.value = undefined;
+}
+
+/** 外/内、右/左（存库 右高/左高）：点选切换，再次点击已选项则取消（正/正位由数据回显，无单独按钮） */
+function toggleFarEyeDirection(val) {
+  if (farEyeDirection.value === val) {
+    clearFarEyeDirection();
+  } else {
+    farEyeDirection.value = val;
+  }
+}
+function toggleNearEyeDirection(val) {
+  if (nearEyeDirection.value === val) {
+    clearNearEyeDirection();
+  } else {
+    nearEyeDirection.value = val;
+  }
+}
+function toggleFarVerticalEyeDirection(val) {
+  if (farVerticalEyeDirection.value === val) {
+    clearFarVerticalEyeDirection();
+  } else {
+    farVerticalEyeDirection.value = val;
+  }
+}
+function toggleNearVerticalEyeDirection(val) {
+  if (nearVerticalEyeDirection.value === val) {
+    clearNearVerticalEyeDirection();
+  } else {
+    nearVerticalEyeDirection.value = val;
+  }
+}
 
 // 正相对调节 - 模糊点（输入框显示绝对值，存储负值）
 const positiveRelativeAccommodationBlur = computed({
@@ -1823,6 +2869,17 @@ const negativeRelativeAccommodationRecovery = computed({
   }
 });
 
+/** 调节灵敏度检查参数：检查光度 / 检查视标（按钮式选项） */
+const accommodationSensitivityLensOptions = ['±2.00D', '±1.50D', '±1.00D'];
+const accommodationSensitivityVisionOptions = ['20/30', '20/40', '20/50'];
+/** 调节灵敏度「通过情况」：+ / - / ±，点选切换，再次点击同选项取消 */
+const accommodationPassSymbols = ['+', '-', '±'];
+const accommodationSensitivityPassSides = [
+  { key: 'right', label: '右' },
+  { key: 'left', label: '左' },
+  { key: 'both', label: '双' }
+];
+
 // 调节灵敏度 - 屈光度选择（±1.00D/±1.50D/±2.00D）
 // 兼容旧字段 accommodation_sensitivity_diopter 和新字段 accommodation_sensitivity_lens_power
 const accommodationSensitivityDiopter = computed({
@@ -1864,6 +2921,168 @@ const accommodationSensitivityVision = computed({
     editForm.value.accommodation_sensitivity_vision = value;
   }
 });
+
+function setAccommodationSensitivityLens(opt) {
+  accommodationSensitivityDiopter.value = opt;
+}
+
+function setAccommodationSensitivityVision(opt) {
+  accommodationSensitivityVision.value = opt;
+}
+
+function getAccommodationSensitivityPass(side) {
+  if (!editForm.value) return null;
+  const k = `accommodation_sensitivity_pass_${side}`;
+  return editForm.value[k] ?? null;
+}
+
+function toggleAccommodationSensitivityPass(side, sym) {
+  if (!editForm.value) editForm.value = {};
+  const k = `accommodation_sensitivity_pass_${side}`;
+  const cur = editForm.value[k];
+  editForm.value[k] = cur === sym ? null : sym;
+}
+
+/** 调节幅度检查方式：推近法 / 负镜片法，点选切换，再点同一项取消 */
+const accommodationAmplitudeStyleOptions = ['推近法', '负镜片法'];
+
+/** 无保存文本时，由数值生成默认展示串（老数据） */
+function formatReactionSignedDisplay(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return null;
+  const neg = n < 0;
+  const a = Math.abs(n);
+  if (a === 0 || Object.is(a, 0)) {
+    return neg ? '-0' : '+0';
+  }
+  const body = parseFloat(a.toPrecision(15)).toString();
+  return neg ? `-${body}` : `+${body}`;
+}
+
+function getSignedReactionNFromFormData(data, side) {
+  if (!data) return null;
+  if (side === 'right') {
+    const v = data.fused_cross_cylinder_right;
+    if (v !== null && v !== undefined && v !== '') {
+      const p = typeof v === 'number' ? v : parseFloat(v);
+      if (!isNaN(p)) return p;
+    }
+    if (data.accommodation_mem_right_value !== null && data.accommodation_mem_right_value !== undefined && data.accommodation_mem_right_value !== '') {
+      const abs = Math.abs(parseFloat(data.accommodation_mem_right_value));
+      if (isNaN(abs)) return null;
+      return data.accommodation_mem_right_sign === '-' ? -abs : abs;
+    }
+  } else if (side === 'left') {
+    const v = data.fused_cross_cylinder_left;
+    if (v !== null && v !== undefined && v !== '') {
+      const p = typeof v === 'number' ? v : parseFloat(v);
+      if (!isNaN(p)) return p;
+    }
+    if (data.accommodation_mem_left_value !== null && data.accommodation_mem_left_value !== undefined && data.accommodation_mem_left_value !== '') {
+      const abs = Math.abs(parseFloat(data.accommodation_mem_left_value));
+      if (isNaN(abs)) return null;
+      return data.accommodation_mem_left_sign === '-' ? -abs : abs;
+    }
+  } else if (side === 'both') {
+    const v = data.fused_cross_cylinder_both;
+    if (v !== null && v !== undefined && v !== '') {
+      const p = typeof v === 'number' ? v : parseFloat(v);
+      if (!isNaN(p)) return p;
+    }
+    if (data.accommodation_amplitude_bcc_style !== null && data.accommodation_amplitude_bcc_style !== undefined && data.accommodation_amplitude_bcc_style !== '') {
+      const abs = Math.abs(parseFloat(data.accommodation_amplitude_bcc_style));
+      if (isNaN(abs)) return null;
+      return data.accommodation_bcc_sign === '-' ? -abs : abs;
+    }
+  }
+  return null;
+}
+
+/** 载入记录：若无原始输入文本，则用数值生成一格内展示（不覆盖已有 text） */
+function ensureReactionDisplayText(data) {
+  if (!data) return;
+  const rows = [
+    { textKey: 'accommodation_mem_right_text', side: 'right' },
+    { textKey: 'accommodation_mem_left_text', side: 'left' },
+    { textKey: 'accommodation_mem_bcc_text', side: 'both' }
+  ];
+  for (const { textKey, side } of rows) {
+    const existing = data[textKey];
+    if (existing !== null && existing !== undefined && String(existing).trim() !== '') continue;
+    const n = getSignedReactionNFromFormData(data, side);
+    if (n !== null && !Number.isNaN(n)) {
+      data[textKey] = formatReactionSignedDisplay(n);
+    }
+  }
+}
+
+/** 未完成的小数输入（如 +0. ）不解析，避免误写成 0 */
+function isIncompleteReactionText(raw) {
+  const s = String(raw ?? '').trim();
+  if (s === '' || s === '+' || s === '-') return true;
+  if (/^[+\-]?\d+\.$/.test(s)) return true;
+  return false;
+}
+
+/** 从文本解析并写回数值字段（供保存/计算）；保留 text 不动 */
+function syncReactionNumericFromText(side) {
+  if (!editForm.value || isUpdatingFromRecord) return;
+  const map = {
+    right: {
+      textKey: 'accommodation_mem_right_text',
+      valueKey: 'accommodation_mem_right_value',
+      signKey: 'accommodation_mem_right_sign',
+      fusedKey: 'fused_cross_cylinder_right'
+    },
+    left: {
+      textKey: 'accommodation_mem_left_text',
+      valueKey: 'accommodation_mem_left_value',
+      signKey: 'accommodation_mem_left_sign',
+      fusedKey: 'fused_cross_cylinder_left'
+    },
+    both: {
+      textKey: 'accommodation_mem_bcc_text',
+      valueKey: 'accommodation_amplitude_bcc_style',
+      signKey: 'accommodation_bcc_sign',
+      fusedKey: 'fused_cross_cylinder_both'
+    }
+  };
+  const m = map[side];
+  const raw = editForm.value[m.textKey];
+  const t = raw === null || raw === undefined ? '' : String(raw).trim();
+  if (t === '') {
+    editForm.value[m.valueKey] = null;
+    editForm.value[m.signKey] = null;
+    editForm.value[m.fusedKey] = null;
+    return;
+  }
+  if (isIncompleteReactionText(t)) return;
+  const n = parseFloat(t.replace(/^\+/, ''));
+  if (Number.isNaN(n)) return;
+  const abs = Math.abs(n);
+  editForm.value[m.valueKey] = abs;
+  editForm.value[m.signKey] = n < 0 ? '-' : '+';
+  editForm.value[m.fusedKey] = n;
+}
+
+function syncAllReactionNumericFromText() {
+  ['right', 'left', 'both'].forEach((s) => syncReactionNumericFromText(s));
+}
+
+function toggleAccommodationAmplitudeStyle(value) {
+  if (!editForm.value) editForm.value = {};
+  const cur = editForm.value.accommodation_amplitude_style;
+  editForm.value.accommodation_amplitude_style = cur === value ? null : value;
+}
+
+function formatAccommodationPassDisplay(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  return String(v);
+}
+
+function formatRecordAccommodationPass(rec, side) {
+  if (!rec) return '—';
+  return formatAccommodationPassDisplay(rec[`accommodation_sensitivity_pass_${side}`]);
+}
 
 // 调节灵敏度 - 右眼（兼容旧字段和新字段）
 const accommodationSensitivityRight = computed({
@@ -1922,258 +3141,6 @@ const accommodationSensitivityBoth = computed({
   }
 });
 
-// 调节反应 - 右眼（处理符号和数值）
-// 兼容旧字段 fused_cross_cylinder_right 和新字段 accommodation_mem_right_value + accommodation_mem_right_sign
-const fusedCrossCylinderRight = computed({
-  get() {
-    if (!editForm.value) return null;
-    // 优先读取新字段（分离的符号和值）
-    if (editForm.value.accommodation_mem_right_value !== null && 
-        editForm.value.accommodation_mem_right_value !== undefined && 
-        editForm.value.accommodation_mem_right_value !== '') {
-      return Math.abs(parseFloat(editForm.value.accommodation_mem_right_value));
-    }
-    // 兼容旧字段（合并的符号和值）
-    const value = editForm.value.fused_cross_cylinder_right;
-    if (value === null || value === undefined || value === '') return null;
-    const num = typeof value === 'number' ? value : parseFloat(value.toString().replace(/^[+\-]/, ''));
-    if (isNaN(num)) return null;
-    return Math.abs(num);
-  },
-  set(val) {
-    if (!editForm.value) {
-      editForm.value = {};
-    }
-    if (val === null || val === undefined || val === '') {
-      // 清除新字段和旧字段
-      editForm.value.accommodation_mem_right_value = null;
-      editForm.value.fused_cross_cylinder_right = null;
-    } else {
-      const sign = getReactionSign('right');
-      const num = Math.abs(parseFloat(val));
-      // 保存到新字段（分离的符号和值）
-      editForm.value.accommodation_mem_right_value = num;
-      editForm.value.accommodation_mem_right_sign = sign || null;
-      // 同时保存到旧字段（兼容性）
-      editForm.value.fused_cross_cylinder_right = sign === '-' ? -num : num;
-    }
-  }
-});
-
-// 调节反应 - 左眼（处理符号和数值）
-// 兼容旧字段 fused_cross_cylinder_left 和新字段 accommodation_mem_left_value + accommodation_mem_left_sign
-const fusedCrossCylinderLeft = computed({
-  get() {
-    if (!editForm.value) return null;
-    // 优先读取新字段（分离的符号和值）
-    if (editForm.value.accommodation_mem_left_value !== null && 
-        editForm.value.accommodation_mem_left_value !== undefined && 
-        editForm.value.accommodation_mem_left_value !== '') {
-      return Math.abs(parseFloat(editForm.value.accommodation_mem_left_value));
-    }
-    // 兼容旧字段（合并的符号和值）
-    const value = editForm.value.fused_cross_cylinder_left;
-    if (value === null || value === undefined || value === '') return null;
-    const num = typeof value === 'number' ? value : parseFloat(value.toString().replace(/^[+\-]/, ''));
-    if (isNaN(num)) return null;
-    return Math.abs(num);
-  },
-  set(val) {
-    if (!editForm.value) {
-      editForm.value = {};
-    }
-    if (val === null || val === undefined || val === '') {
-      // 清除新字段和旧字段
-      editForm.value.accommodation_mem_left_value = null;
-      editForm.value.fused_cross_cylinder_left = null;
-    } else {
-      const sign = getReactionSign('left');
-      const num = Math.abs(parseFloat(val));
-      // 保存到新字段（分离的符号和值）
-      editForm.value.accommodation_mem_left_value = num;
-      editForm.value.accommodation_mem_left_sign = sign || null;
-      // 同时保存到旧字段（兼容性）
-      editForm.value.fused_cross_cylinder_left = sign === '-' ? -num : num;
-    }
-  }
-});
-
-// 调节反应 - 双眼/BCC（处理符号和数值）
-// 兼容旧字段 fused_cross_cylinder_both 和新字段 accommodation_amplitude_bcc_style + accommodation_bcc_sign
-const fusedCrossCylinderBoth = computed({
-  get() {
-    if (!editForm.value) return null;
-    // 优先读取新字段（分离的符号和值）
-    if (editForm.value.accommodation_amplitude_bcc_style !== null && 
-        editForm.value.accommodation_amplitude_bcc_style !== undefined && 
-        editForm.value.accommodation_amplitude_bcc_style !== '') {
-      return Math.abs(parseFloat(editForm.value.accommodation_amplitude_bcc_style));
-    }
-    // 兼容旧字段（合并的符号和值）
-    const value = editForm.value.fused_cross_cylinder_both;
-    if (value === null || value === undefined || value === '') return null;
-    const num = typeof value === 'number' ? value : parseFloat(value.toString().replace(/^[+\-]/, ''));
-    if (isNaN(num)) return null;
-    return Math.abs(num);
-  },
-  set(val) {
-    if (!editForm.value) {
-      editForm.value = {};
-    }
-    if (val === null || val === undefined || val === '') {
-      // 清除新字段和旧字段
-      editForm.value.accommodation_amplitude_bcc_style = null;
-      editForm.value.fused_cross_cylinder_both = null;
-    } else {
-      const sign = getReactionSign('both');
-      const num = Math.abs(parseFloat(val));
-      // 保存到新字段（分离的符号和值）
-      editForm.value.accommodation_amplitude_bcc_style = num;
-      editForm.value.accommodation_bcc_sign = sign || null;
-      // 同时保存到旧字段（兼容性）
-      editForm.value.fused_cross_cylinder_both = sign === '-' ? -num : num;
-    }
-  }
-});
-
-// 获取调节反应的符号
-// 兼容旧字段（合并的符号和值）和新字段（分离的符号和值）
-const getReactionSign = (type) => {
-  if (!editForm.value) return null;
-  
-  // 优先读取新字段（分离的符号）
-  if (type === 'right') {
-    if (editForm.value.accommodation_mem_right_sign) {
-      return editForm.value.accommodation_mem_right_sign;
-    }
-    // 兼容旧字段
-    const value = editForm.value.fused_cross_cylinder_right;
-    if (value !== null && value !== undefined && value !== '') {
-      const actualValue = typeof value === 'number' ? value : parseFloat(value);
-      if (!isNaN(actualValue)) {
-        return actualValue < 0 ? '-' : '+';
-      }
-    }
-  } else if (type === 'left') {
-    if (editForm.value.accommodation_mem_left_sign) {
-      return editForm.value.accommodation_mem_left_sign;
-    }
-    // 兼容旧字段
-    const value = editForm.value.fused_cross_cylinder_left;
-    if (value !== null && value !== undefined && value !== '') {
-      const actualValue = typeof value === 'number' ? value : parseFloat(value);
-      if (!isNaN(actualValue)) {
-        return actualValue < 0 ? '-' : '+';
-      }
-    }
-  } else if (type === 'both') {
-    if (editForm.value.accommodation_bcc_sign) {
-      return editForm.value.accommodation_bcc_sign;
-    }
-    // 兼容旧字段
-    const value = editForm.value.fused_cross_cylinder_both;
-    if (value !== null && value !== undefined && value !== '') {
-      const actualValue = typeof value === 'number' ? value : parseFloat(value);
-      if (!isNaN(actualValue)) {
-        return actualValue < 0 ? '-' : '+';
-      }
-    }
-  }
-  
-  return null;
-};
-
-// 切换调节反应的符号
-// 兼容旧字段和新字段，同时更新两者
-const toggleReactionSign = (type, sign) => {
-  if (!editForm.value) {
-    editForm.value = {};
-  }
-  
-  if (type === 'right') {
-    // 获取当前值（优先新字段）
-    let currentValue = editForm.value.accommodation_mem_right_value;
-    if (currentValue === null || currentValue === undefined || currentValue === '') {
-      currentValue = editForm.value.fused_cross_cylinder_right;
-    }
-    
-    if (currentValue === null || currentValue === undefined || currentValue === '') {
-      // 如果没有值，设置一个默认值0并应用符号
-      editForm.value.accommodation_mem_right_value = 0;
-      editForm.value.accommodation_mem_right_sign = sign;
-      editForm.value.fused_cross_cylinder_right = sign === '-' ? -0 : 0;
-    } else {
-      const num = typeof currentValue === 'number' ? Math.abs(currentValue) : Math.abs(parseFloat(currentValue.toString().replace(/^[+\-]/, '')));
-      if (!isNaN(num)) {
-        const currentSign = getReactionSign(type);
-        if (currentSign === sign) {
-          // 如果当前符号与点击的符号相同，则清除值
-          editForm.value.accommodation_mem_right_value = null;
-          editForm.value.accommodation_mem_right_sign = null;
-          editForm.value.fused_cross_cylinder_right = null;
-        } else {
-          // 切换符号
-          editForm.value.accommodation_mem_right_value = num;
-          editForm.value.accommodation_mem_right_sign = sign;
-          editForm.value.fused_cross_cylinder_right = sign === '-' ? -num : num;
-        }
-      }
-    }
-  } else if (type === 'left') {
-    // 获取当前值（优先新字段）
-    let currentValue = editForm.value.accommodation_mem_left_value;
-    if (currentValue === null || currentValue === undefined || currentValue === '') {
-      currentValue = editForm.value.fused_cross_cylinder_left;
-    }
-    
-    if (currentValue === null || currentValue === undefined || currentValue === '') {
-      editForm.value.accommodation_mem_left_value = 0;
-      editForm.value.accommodation_mem_left_sign = sign;
-      editForm.value.fused_cross_cylinder_left = sign === '-' ? -0 : 0;
-    } else {
-      const num = typeof currentValue === 'number' ? Math.abs(currentValue) : Math.abs(parseFloat(currentValue.toString().replace(/^[+\-]/, '')));
-      if (!isNaN(num)) {
-        const currentSign = getReactionSign(type);
-        if (currentSign === sign) {
-          editForm.value.accommodation_mem_left_value = null;
-          editForm.value.accommodation_mem_left_sign = null;
-          editForm.value.fused_cross_cylinder_left = null;
-        } else {
-          editForm.value.accommodation_mem_left_value = num;
-          editForm.value.accommodation_mem_left_sign = sign;
-          editForm.value.fused_cross_cylinder_left = sign === '-' ? -num : num;
-        }
-      }
-    }
-  } else if (type === 'both') {
-    // 获取当前值（优先新字段）
-    let currentValue = editForm.value.accommodation_amplitude_bcc_style;
-    if (currentValue === null || currentValue === undefined || currentValue === '') {
-      currentValue = editForm.value.fused_cross_cylinder_both;
-    }
-    
-    if (currentValue === null || currentValue === undefined || currentValue === '') {
-      editForm.value.accommodation_amplitude_bcc_style = 0;
-      editForm.value.accommodation_bcc_sign = sign;
-      editForm.value.fused_cross_cylinder_both = sign === '-' ? -0 : 0;
-    } else {
-      const num = typeof currentValue === 'number' ? Math.abs(currentValue) : Math.abs(parseFloat(currentValue.toString().replace(/^[+\-]/, '')));
-      if (!isNaN(num)) {
-        const currentSign = getReactionSign(type);
-        if (currentSign === sign) {
-          editForm.value.accommodation_amplitude_bcc_style = null;
-          editForm.value.accommodation_bcc_sign = null;
-          editForm.value.fused_cross_cylinder_both = null;
-        } else {
-          editForm.value.accommodation_amplitude_bcc_style = num;
-          editForm.value.accommodation_bcc_sign = sign;
-          editForm.value.fused_cross_cylinder_both = sign === '-' ? -num : num;
-        }
-      }
-    }
-  }
-};
-
 // 判断字段是否有值（包括0值）
 const hasFieldValue = (value) => {
   return value !== null && value !== undefined && value !== '';
@@ -2193,7 +3160,12 @@ const hasEyePositionData = computed(() => {
     hasFieldValue(record.fusional_disvergence_distance_blur) || hasFieldValue(record.fusional_disvergence_distance_break) ||
     hasFieldValue(record.fusional_disvergence_distance_recovery) ||
     hasFieldValue(record.fusional_disvergence_near_blur) || hasFieldValue(record.fusional_disvergence_near_break) ||
-    hasFieldValue(record.fusional_disvergence_near_recovery)
+    hasFieldValue(record.fusional_disvergence_near_recovery) ||
+    hasFieldValue(record.vertical_eye_position_far) || hasFieldValue(record.vertical_eye_position_near) ||
+    hasFieldValue(record.vertical_eye_position_far_value) || hasFieldValue(record.vertical_eye_position_near_value) ||
+    hasFieldValue(record.fusional_convergence_distance_vertical_direction) || hasFieldValue(record.fusional_convergence_near_vertical_direction) ||
+    hasFieldValue(record.fusional_vertical_up_distance_break) || hasFieldValue(record.fusional_vertical_up_near_break) ||
+    hasFieldValue(record.fusional_vertical_down_distance_break) || hasFieldValue(record.fusional_vertical_down_near_break)
   );
 });
 
@@ -2222,26 +3194,8 @@ const hasAccommodationData = computed(() => {
     hasFieldValue(record.negative_relative_accommodation_blur) || hasFieldValue(record.negative_relative_accommodation_recovery) ||
     hasFieldValue(record.accommodative_amplitude_right) || hasFieldValue(record.accommodative_amplitude_left) ||
     hasFieldValue(record.accommodation_amplitude_style) ||
-    hasFieldValue(record.accommodative_facility) || hasFieldValue(record.accommodative_response)
-  );
-});
-
-const hasOtherRelatedData = computed(() => {
-  const record = props.record;
-  if (!record) return false;
-  return (
-    hasFieldValue(record.worth_4_type) || hasFieldValue(record.stereopsis_testing) ||
-    hasFieldValue(record.aniseikonia) ||
-    // 四孔灯检查字段
-    hasFieldValue(record.four_hole_lamp_2m) || hasFieldValue(record.four_hole_lamp_2m_dominant) ||
-    hasFieldValue(record.four_hole_lamp_2m_horizontal) || hasFieldValue(record.four_hole_lamp_2m_vertical) ||
-    hasFieldValue(record.four_hole_lamp_40cm) || hasFieldValue(record.four_hole_lamp_40cm_dominant) ||
-    hasFieldValue(record.four_hole_lamp_40cm_horizontal) || hasFieldValue(record.four_hole_lamp_40cm_vertical) ||
-    hasFieldValue(record.four_hole_lamp_suppression) || hasFieldValue(record.four_hole_lamp_suppression_2_type) ||
-    hasFieldValue(record.four_hole_lamp_suppression_2_distance) || hasFieldValue(record.four_hole_lamp_suppression_2_direction) ||
-    hasFieldValue(record.four_hole_lamp_suppression_3_type) || hasFieldValue(record.four_hole_lamp_suppression_3_distance) ||
-    hasFieldValue(record.four_hole_lamp_suppression_3_direction) || hasFieldValue(record.four_hole_lamp_suppression_alternate_within_distance) ||
-    hasFieldValue(record.four_hole_lamp_suppression_alternate_within_eye)
+    hasFieldValue(record.accommodative_facility) || hasFieldValue(record.accommodative_response) ||
+    hasFieldValue(record.accommodation_sensitivity_pass_right) || hasFieldValue(record.accommodation_sensitivity_pass_left) || hasFieldValue(record.accommodation_sensitivity_pass_both)
   );
 });
 
@@ -2255,13 +3209,43 @@ const hasSynoptophoreData = computed(() => {
   );
 });
 
+const hasOtherRelatedData = computed(() => {
+  const record = props.record;
+  if (!record) return false;
+  return (
+    hasFieldValue(record.worth_4_type) || hasFieldValue(record.stereopsis_testing) ||
+    hasFieldValue(record.aniseikonia) ||
+    // 四孔灯检查字段（新平铺字段）
+    hasFieldValue(record.check_distance_2m) || hasFieldValue(record.check_distance_40cm) ||
+    hasFieldValue(record.dominant_eye_color_2m) || hasFieldValue(record.dominant_eye_color_40cm) ||
+    hasFieldValue(record.horizontal_option_2m) || hasFieldValue(record.vertical_option_2m) ||
+    hasFieldValue(record.horizontal_option_40cm) || hasFieldValue(record.vertical_option_40cm) ||
+    hasFieldValue(record.value) ||
+    hasFieldValue(record.right_eye_suppression_type) || hasFieldValue(record.right_eye_suppression_distance) || hasFieldValue(record.right_eye_suppression_direction) ||
+    hasFieldValue(record.left_eye_suppression_type) || hasFieldValue(record.left_eye_suppression_distance) || hasFieldValue(record.left_eye_suppression_direction) ||
+    hasFieldValue(record.alternate_suppression_distance) || hasFieldValue(record.alternate_suppression_direction) ||
+    // 四孔灯检查字段
+    hasFieldValue(record.four_hole_lamp_2m) || hasFieldValue(record.four_hole_lamp_2m_dominant) ||
+    hasFieldValue(record.four_hole_lamp_2m_horizontal) || hasFieldValue(record.four_hole_lamp_2m_vertical) ||
+    hasFieldValue(record.four_hole_lamp_40cm) || hasFieldValue(record.four_hole_lamp_40cm_dominant) ||
+    hasFieldValue(record.four_hole_lamp_40cm_horizontal) || hasFieldValue(record.four_hole_lamp_40cm_vertical) ||
+    hasFieldValue(record.four_hole_lamp_suppression) || hasFieldValue(record.four_hole_lamp_suppression_2_type) ||
+    hasFieldValue(record.four_hole_lamp_suppression_2_distance) || hasFieldValue(record.four_hole_lamp_suppression_2_direction) ||
+    hasFieldValue(record.four_hole_lamp_suppression_3_type) || hasFieldValue(record.four_hole_lamp_suppression_3_distance) ||
+    hasFieldValue(record.four_hole_lamp_suppression_3_direction) || hasFieldValue(record.four_hole_lamp_suppression_alternate_within_distance) ||
+    hasFieldValue(record.four_hole_lamp_suppression_alternate_within_eye) ||
+    hasSynoptophoreData.value ||
+    !!(props.examinationRecords?.length && props.record?.id)
+  );
+});
+
 // 判断是否有视功能数据
 const hasFunctionalData = computed(() => {
   const record = props.record;
   if (!record) return false;
   return (
     hasEyePositionData.value || hasACACAData.value || hasAccommodationData.value || 
-    hasOtherRelatedData.value || hasSynoptophoreData.value
+    hasOtherRelatedData.value
   );
 });
 
@@ -2285,24 +3269,46 @@ const formatValue = (value, isFusional = false) => {
   return isFusional ? num.toFixed(1) : Math.round(num);
 };
 
-// 格式化调节反应值：显示两位小数，包含符号
-// 兼容旧字段（合并的符号和值）和新字段（分离的符号和值）
+/** 调节灵敏度检查结果：数值后附 cpm */
+function formatAccommodationSensitivityCpmDisplay(value) {
+  const s = formatValue(value);
+  if (s === '-') return '-';
+  return `${s} cpm`;
+}
+
+// 格式化调节反应值：「+/-」+ 数值，不自动补全小数位
 const formatReactionValue = (value, sign = null) => {
   if (value === null || value === undefined || value === '') return '-';
-  const num = typeof value === 'number' ? Math.abs(value) : Math.abs(parseFloat(value));
-  if (isNaN(num)) return '-';
-  const formatted = num.toFixed(2);
-  // 优先使用传入的符号，如果没有则从值中判断（兼容旧字段）
-  if (sign) {
-    return `${sign}${formatted}`;
+  const absNum = typeof value === 'number' ? Math.abs(value) : Math.abs(parseFloat(value));
+  if (isNaN(absNum)) return '-';
+  let n;
+  if (sign === '+') n = absNum;
+  else if (sign === '-') n = -absNum;
+  else {
+    const originalValue = typeof value === 'number' ? value : parseFloat(value);
+    if (isNaN(originalValue)) return '-';
+    n = originalValue;
   }
-  // 兼容旧字段：从值中判断符号
-  const originalValue = typeof value === 'number' ? value : parseFloat(value);
-  if (originalValue >= 0) {
-    return `+${formatted}`;
-  }
-  return formatted;
+  return formatReactionSignedDisplay(n) ?? '-';
 };
+
+/** 查看态：优先显示用户保存的原始字符串（与输入一致） */
+function displayReaction(record, side) {
+  if (!record) return '-';
+  const key =
+    side === 'right' ? 'accommodation_mem_right_text' : side === 'left' ? 'accommodation_mem_left_text' : 'accommodation_mem_bcc_text';
+  const text = record[key];
+  if (text !== null && text !== undefined && String(text).trim() !== '') {
+    return String(text).trim();
+  }
+  if (side === 'right') {
+    return formatReactionValue(record.accommodation_mem_right_value || record.fused_cross_cylinder_right, record.accommodation_mem_right_sign);
+  }
+  if (side === 'left') {
+    return formatReactionValue(record.accommodation_mem_left_value || record.fused_cross_cylinder_left, record.accommodation_mem_left_sign);
+  }
+  return formatReactionValue(record.accommodation_amplitude_bcc_style || record.fused_cross_cylinder_both, record.accommodation_bcc_sign);
+}
 
 // 格式化AC/A和CA/C比值：显示一位小数
 const formatACACARatio = (value) => {
@@ -2328,63 +3334,96 @@ const parseEyePositionValue = (exoValue, esoValue) => {
   return 0;
 };
 
-// 计算计算性AC/A：PD/10 + (近眼位 - 远眼位) / 2.5
+/** 计算性 AC/A 所用数据源：编辑态用 editForm，否则用 record */
+function getRecordOrEditFormForACA() {
+  return props.viewMode === 'edit' && editForm.value ? editForm.value : props.record;
+}
+
+/**
+ * 仅主觉验光瞳距（mm）。与 objective_pupil_distance（电脑验光）、vaec_both_pupil_distance（旧镜等）独立，不做回退。
+ */
+function getSubjectivePupilDistanceMmForACA() {
+  const src = getRecordOrEditFormForACA();
+  if (!src) return null;
+  const pd = src.subjective_both_pupil_distance;
+  if (pd === null || pd === undefined || pd === '') return null;
+  return pd;
+}
+
+/** 5m 或 40cm 水平眼位：外/内隐斜至少一侧已填且能解析为数值（含 0）则视为已输入 */
+function hasHorizontalEyePositionInput(exoValue, esoValue) {
+  const hasExo = exoValue !== null && exoValue !== undefined && exoValue !== '';
+  const hasEso = esoValue !== null && esoValue !== undefined && esoValue !== '';
+  if (!hasExo && !hasEso) return false;
+  if (hasExo) {
+    const n = typeof exoValue === 'number' ? exoValue : parseFloat(String(exoValue).replace(/^\+/, ''));
+    if (!isNaN(n)) return true;
+  }
+  if (hasEso) {
+    const n = typeof esoValue === 'number' ? esoValue : parseFloat(String(esoValue).replace(/^\+/, ''));
+    if (!isNaN(n)) return true;
+  }
+  return false;
+}
+
+/**
+ * 计算性 AC/A：仅当 ①5m 水平眼位 ②40cm 水平眼位 ③主觉验光瞳距 三者均已输入时才计算；否则为空。
+ * 公式：主觉瞳距/10 + (近水平眼位 - 远水平眼位) / 2.5，瞳距只用 subjective_both_pupil_distance。
+ */
 const calculatedACARatio = computed(() => {
-  // 获取PD值，优先使用主观验光瞳距，其次客观验光瞳距
-  const pd = props.record?.subjective_both_pupil_distance || 
-             props.record?.objective_pupil_distance || 
-             props.record?.vaec_both_pupil_distance;
-  
-  if (!pd || pd === null || pd === undefined || pd === '') {
-    return '-';
+  const src = getRecordOrEditFormForACA();
+  if (!src) return '';
+
+  if (!hasHorizontalEyePositionInput(src.pli_exo_distance_lateral_phoria, src.plo_eso_distance_lateral_phoria)) {
+    return '';
   }
-  
+  if (!hasHorizontalEyePositionInput(src.pli_exo_near_lateral_phoria, src.plo_eso_near_lateral_phoria)) {
+    return '';
+  }
+
+  const pd = src.subjective_both_pupil_distance;
+  if (pd === null || pd === undefined || pd === '') return '';
+
   const pdNum = typeof pd === 'number' ? pd : parseFloat(pd);
-  if (isNaN(pdNum)) {
-    return '-';
-  }
-  
-  // 获取远眼位值（内隐斜为+，外隐斜为-）
+  if (isNaN(pdNum)) return '';
+
   const farEyeValue = parseEyePositionValue(
-    props.record?.pli_exo_distance_lateral_phoria,
-    props.record?.plo_eso_distance_lateral_phoria
+    src.pli_exo_distance_lateral_phoria,
+    src.plo_eso_distance_lateral_phoria
   );
-  
-  // 获取近眼位值（内隐斜为+，外隐斜为-）
   const nearEyeValue = parseEyePositionValue(
-    props.record?.pli_exo_near_lateral_phoria,
-    props.record?.plo_eso_near_lateral_phoria
+    src.pli_exo_near_lateral_phoria,
+    src.plo_eso_near_lateral_phoria
   );
-  
-  // 计算：PD/10 + (近眼位 - 远眼位) / 2.5
-  // 例如：PD=60, 远眼位=外5(-5), 近眼位=内5(+5)
-  // 结果 = 60/10 + (5 - (-5)) / 2.5 = 6 + 10/2.5 = 6 + 4 = 10
+
   const result = pdNum / 10 + (nearEyeValue - farEyeValue) / 2.5;
-  
-  if (isNaN(result)) {
-    return '-';
-  }
-  
+  if (isNaN(result)) return '';
+
   return result.toFixed(1);
 });
 
-// 计算计算性AC/A的参考值：PD/10
+/** 计算性 AC/A 参考值：有主觉瞳距时为 瞳距/10 的数值；无主觉瞳距时显示公式文案「PD/10」（不用电脑/旧镜瞳距） */
 const calculatedACARatioReference = computed(() => {
-  const pd = props.record?.subjective_both_pupil_distance || 
-             props.record?.objective_pupil_distance || 
-             props.record?.vaec_both_pupil_distance;
-  
+  const pd = getSubjectivePupilDistanceMmForACA();
+
   if (!pd || pd === null || pd === undefined || pd === '') {
     return 'PD/10';
   }
-  
+
   const pdNum = typeof pd === 'number' ? pd : parseFloat(pd);
   if (isNaN(pdNum)) {
     return 'PD/10';
   }
-  
-  const reference = pdNum / 10;
-  return `${reference.toFixed(1)}△/D`;
+
+  return (pdNum / 10).toFixed(1);
+});
+
+/** 参考值是否展示公式占位「PD/10」（无主觉瞳距数值时），用于斜体/浅底样式 */
+const calculatedACARatioReferenceIsFormula = computed(() => {
+  const pd = getSubjectivePupilDistanceMmForACA();
+  if (!pd || pd === null || pd === undefined || pd === '') return true;
+  const pdNum = typeof pd === 'number' ? pd : parseFloat(pd);
+  return isNaN(pdNum);
 });
 
 // 格式化正负相对调节值：补充+号，显示为两位小数
@@ -2446,6 +3485,13 @@ const formatEyePositionWithUnit = (exo, eso) => {
   return '-';
 };
 
+// 垂直眼位方向展示：右高/左高 → 右/左
+const formatVerticalDirLabel = (direction) => {
+  if (direction === '右高' || direction === '右') return '右';
+  if (direction === '左高' || direction === '左') return '左';
+  return direction;
+};
+
 // 格式化垂直眼位值；空值显示 "-" 表示未测
 const formatVerticalEyePosition = (direction, breakValue) => {
   const dirEmpty = direction === null || direction === undefined || direction === '' || (typeof direction === 'string' && direction.trim() === '');
@@ -2456,13 +3502,14 @@ const formatVerticalEyePosition = (direction, breakValue) => {
   if (dirEmpty) return '-';
   // 如果方向是 '正位'，直接返回 '正位'
   if (direction === '正位') return '正位';
+  const dirLabel = formatVerticalDirLabel(direction);
   // 如果有破裂值，显示方向和数值
   if (!breakEmpty) {
     const num = parseFloat(breakValue);
-    if (!isNaN(num) && num !== 0) return `${direction} ${num}△`;
+    if (!isNaN(num) && num !== 0) return `${dirLabel} ${num}△`;
   }
-  // 如果只有方向没有数值，只显示方向（如"右高"或"左高"）
-  return direction;
+  // 如果只有方向没有数值，只显示方向（如「右」或「左」）
+  return dirLabel;
 };
 
 // 格式化调节幅度值：显示两位小数，不显示符号
@@ -2489,21 +3536,29 @@ const formatAmplitudeStyle = (value) => {
   return styleMap[value] || value;
 };
 
-// 计算调节幅度参考值：15-年龄/4
+// 调节幅度参考值（Hoffstetter 最小值）：15-年龄/4，按年龄自动计算，展示为整数（D）
 const getAmplitudeReference = () => {
-  if (!props.patientInfo || !props.patientInfo.birth_date) {
+  const rawBirth =
+    props.patientInfo?.birth_date ?? props.patientInfo?.birthDate ?? props.patientInfo?.birthday;
+  if (!props.patientInfo || !rawBirth) {
     return '15-年龄/4';
   }
   try {
-    const birthDate = new Date(props.patientInfo.birth_date);
+    const birthDate = new Date(rawBirth);
+    if (isNaN(birthDate.getTime())) {
+      return '15-年龄/4';
+    }
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
+    if (age < 0 || age > 150) {
+      return '15-年龄/4';
+    }
     const reference = 15 - age / 4;
-    return `${reference.toFixed(2)}D`;
+    return `${Math.round(reference)}D`;
   } catch (e) {
     return '15-年龄/4';
   }
@@ -2629,7 +3684,7 @@ const formatFourHole2mRawData = (data) => {
       parts.push(horizontal);
     }
     if (vertical) {
-      parts.push(vertical);
+      parts.push(formatVerticalDirLabel(vertical));
     }
   }
   
@@ -2701,7 +3756,7 @@ const formatFourHole40cmRawData = (data) => {
       parts.push(horizontal);
     }
     if (vertical) {
-      parts.push(vertical);
+      parts.push(formatVerticalDirLabel(vertical));
     }
   }
   
@@ -3087,6 +4142,360 @@ const formatSynoptophoreGradeIII = (data) => {
   font-size: 14px;
 }
 
+.exam-table-binocular .binocular-cell-edit {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.binocular-dir-row {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.binocular-dir-btns {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.binocular-dir-btns--horizontal {
+  flex-direction: row;
+  gap: 4px;
+}
+
+.binocular-dir-btns--vertical {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.binocular-dir-tap {
+  min-width: 20px !important;
+  height: 16px !important;
+  padding: 0 2px !important;
+  font-size: 9px !important;
+  line-height: 1.05 !important;
+  white-space: nowrap;
+}
+
+/* 调节灵敏度：检查光度 / 检查视标 — 圆形单选 + 数值，两列；整体在格内居中 */
+.accommodation-param-btns {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.accommodation-param-btns--inline {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+  max-width: 100%;
+}
+
+.accommodation-param-cols {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: 4px 12px;
+  align-items: start;
+  justify-items: center;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.accommodation-param-btns--inline .accommodation-param-cols {
+  min-width: 148px;
+}
+
+.accommodation-param-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.accommodation-param-col-title {
+  font-size: 9px;
+  font-weight: 600;
+  color: #5a6a7e;
+  line-height: 1.2;
+  text-align: center;
+  margin-bottom: 1px;
+  padding: 0 1px;
+  white-space: nowrap;
+}
+
+.accommodation-param-choice {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 9px;
+  color: #2a3542;
+  text-align: center;
+  line-height: 1.2;
+  border-radius: 2px;
+  box-sizing: border-box;
+  transition: background 0.15s;
+}
+
+.accommodation-param-choice:hover {
+  background: rgba(24, 144, 255, 0.06);
+}
+
+.accommodation-param-dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid #b0b4ba;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.accommodation-param-choice.is-active .accommodation-param-dot {
+  border-color: #1890ff;
+  background: #1890ff;
+  box-shadow: inset 0 0 0 1px #fff;
+}
+
+.accommodation-param-choice.is-active .accommodation-param-label {
+  color: #1890ff;
+  font-weight: 600;
+}
+
+.accommodation-param-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* 查看态：检查参数 —「检查光度：」「检查视标：」上下两行（字号/颜色与编辑态 accommodation-param-choice 一致） */
+.accommodation-param-view-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.accommodation-param-view-stack--inline {
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
+  margin-right: 10px;
+  vertical-align: middle;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.accommodation-param-view-line {
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #2a3542;
+}
+
+/* 负相对调节 PRA 参考值「-2.25D」与「↑」之间间距 */
+.accommodation-pra-ref {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  white-space: nowrap;
+}
+.accommodation-pra-ref-up {
+  margin-left: 4px;
+}
+
+/* 调节灵敏度检查结果：数值 + cpm */
+.accommodation-sensitivity-result-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex-wrap: nowrap;
+}
+
+.accommodation-cpm-suffix {
+  font-size: 9px;
+  color: #5a6a7e;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.accommodation-cpm-suffix--inline {
+  font-size: 12px;
+  margin-right: 6px;
+  margin-left: 2px;
+}
+
+/* 调节灵敏度「通过情况」：+ / - / ± */
+.accommodation-pass-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  width: 100%;
+}
+
+.accommodation-pass-btns {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 3px;
+  justify-content: center;
+  align-items: center;
+}
+
+.accommodation-pass-btn {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 4px;
+  margin: 0;
+  border: 1px solid #d9d9d9;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  color: #2a3542;
+  box-sizing: border-box;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.accommodation-pass-btn:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.accommodation-pass-btn.active {
+  background: #1890ff;
+  border-color: #1890ff;
+  color: #fff;
+}
+
+/* 调节幅度「检查方式」：推近法 / 负镜片法，与通过情况按钮同交互（再点取消） */
+.accommodation-amplitude-style-btns {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.accommodation-amplitude-style-btns--inline {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 4px;
+  vertical-align: middle;
+  margin-left: 2px;
+  width: auto;
+  max-width: none;
+}
+
+/* 推近法 / 负镜片法：统一宽度（略窄于原 76px，仍容纳四字不换行） */
+.accommodation-amplitude-style-btn {
+  box-sizing: border-box;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+  height: 17px;
+  padding: 0 1px;
+  font-size: 9px;
+  line-height: 1;
+  text-align: center;
+}
+
+/* 报告表内：格高勿锁 28px，避免两枚竖排按钮与下行重叠 */
+.exam-table-accommodation .cell-field.cell-field--amplitude-style {
+  height: auto !important;
+  min-height: 40px !important;
+  padding: 4px 2px !important;
+  line-height: 1.2 !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.accommodation-pass-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.accommodation-pass-line {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-start;
+}
+
+.accommodation-pass-line-label {
+  flex: 0 0 14px;
+  font-size: 11px;
+  color: #5a6a7e;
+  text-align: center;
+}
+
+.accommodation-pass-view {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2a3542;
+}
+
+/* 棱镜眼位：占位略小，数值与提示均格内居中 */
+.prism-phoria-placeholder {
+  :deep(.ant-input-number-input) {
+    text-align: center;
+  }
+  :deep(.ant-input-number-input::placeholder) {
+    font-size: 62%;
+    line-height: 1.2;
+    text-align: center;
+  }
+}
+
+.eye-position-dir-flex {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
 .eye-position-table {
   width: 100%;
   border-collapse: collapse;
@@ -3170,17 +4579,92 @@ const formatSynoptophoreGradeIII = (data) => {
 }
 
 .eye-position-table thead {
-  background: linear-gradient(180deg, rgba(34, 75, 150, 0.12) 0%, rgba(34, 75, 150, 0.08) 100%);
+  background: #f0f9fd;
 }
 
 .eye-position-table th {
   padding: 10px 12px;
   text-align: center;
   font-weight: 600;
-  color: #224b96;
-  border: 1px solid rgba(34, 75, 150, 0.15);
-  border-bottom: 2px solid rgba(34, 75, 150, 0.15);
+  color: #2a3542;
+  border: 1px solid #b0d4e8;
+  border-bottom: 2px solid #b0d4e8;
   line-height: 1.3;
+}
+
+.eye-position-table thead th.report-section-side-title {
+  background: #cceaf5 !important;
+  color: #2a3542 !important;
+  font-size: 11px;
+  padding: 4px 3px;
+  width: 26px;
+  min-width: 26px;
+  max-width: 30px;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 0.14em;
+  vertical-align: middle;
+  border-color: #b0d4e8 !important;
+}
+
+.aca-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  line-height: 1.1;
+
+  th,
+  td {
+    border: 1px solid #b0d4e8;
+    vertical-align: middle;
+  }
+
+  thead th {
+    background: #f0f9fd;
+    font-weight: 600;
+    font-size: 9px;
+    padding: 2px 2px;
+  }
+
+  tbody td {
+    font-size: 10px;
+    padding: 2px 3px;
+  }
+
+  tbody td:first-child {
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .aca-report-result {
+    text-align: left;
+  }
+}
+
+/* AC/A 明细表中「计算性AC/A」单元格强制居中 */
+.exam-sheet .binocular-bottom-table th.aca-calculated-head {
+  text-align: center !important;
+  vertical-align: middle !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1.2;
+}
+
+.exam-sheet .binocular-bottom-table th.aca-calculated-head .aca-calculated-num {
+  display: inline-block;
+  margin-top: 2px;
+}
+
+/* 计算性 AC/A 参考值：无主觉瞳距时显示公式「PD/10」— 斜体、略灰（浅底由 .accommodation-ref-value / .func-table-row .func-table-col.reference 统一） */
+.aca-ref-pd10-hint {
+  font-style: italic !important;
+  color: #5a6a7e !important;
+}
+
+/* 非报告式明细：参考值列与 PD/10 同底 #eef2f6 */
+.func-table-row .func-table-col.reference {
+  background: #eef2f6;
+  border-radius: 2px;
 }
 
 .eye-position-table tbody tr {
@@ -3306,6 +4790,23 @@ const formatSynoptophoreGradeIII = (data) => {
   }
 }
 
+.func-table-col.pass-col {
+  flex: 0 0 104px;
+  min-width: 88px;
+  max-width: 140px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 6px;
+  font-size: 12px;
+  color: #333;
+}
+
+.cell-pass-empty-col {
+  color: #bfbfbf;
+  font-size: 12px;
+}
+
 .func-table-col.reference {
   flex: 0 0 auto; // 改为固定宽度，不伸缩
   min-width: 110px; // 设置最小宽度，确保最宽的参考值能完整显示（从90px增加到110px）
@@ -3315,17 +4816,44 @@ const formatSynoptophoreGradeIII = (data) => {
   text-align: center;
   white-space: normal; // 允许换行
   word-break: break-word; // 允许单词内换行
+  /* 与 exam-sheet 参考值列一致，略小于正文可填数值 */
+  font-size: max(8px, calc(var(--exr-font-body, 11px) - 2px));
 }
 
 // 四孔灯检查表格特定样式
 .four-hole-lamp-table {
+  /* 表头三列与「检查结果」一致：深灰、加粗，不用蓝色链接感 */
+  .func-table-header {
+    color: #333;
+  }
+
+  .func-table-header .func-table-col.item {
+    color: #333;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .func-table-header .func-table-col.result {
+    color: #333;
+    font-weight: 600;
+  }
+
+  .func-table-header .func-table-col.reference {
+    font-size: 13px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: #333;
+  }
+
   .func-table-col.result {
     flex: 1.5; // 压缩检查结果列宽度（从2.62压缩到1.5）
-    white-space: nowrap; // 检查结果列不换行，保持在同一行
-    overflow: hidden;
-    text-overflow: ellipsis; // 如果内容过长，显示省略号
-    align-items: center; // 垂直居中
-    justify-content: center; // 水平居中
+    white-space: normal; // 选 5 时第二行水平/垂直需换行展示，不能用 nowrap
+    overflow: visible; // 避免第二行被裁切导致「垂直」等控件不显示
+    text-overflow: clip;
+    align-items: center;
+    justify-content: center;
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
   
   .func-table-col.reference {
@@ -3335,6 +4863,95 @@ const formatSynoptophoreGradeIII = (data) => {
     white-space: nowrap; // 结果列不换行，保持在同一行
     overflow: hidden;
     text-overflow: ellipsis; // 如果内容过长，显示省略号
+    /* 覆盖全局 reference 的过小字号（max(..., 9px)），与「检查结果」列可读性一致 */
+    font-size: 16px;
+    line-height: 1.45;
+    font-weight: 600;
+  }
+
+  .dominant-eye-select .input-label,
+  .five-option-item .input-label {
+    font-size: 14px;
+  }
+
+  :deep(
+    .four-hole-lamp-select.ant-select:not(.four-hole-lamp-select--compact):not(
+        .four-hole-lamp-select--narrow
+      )
+  ) {
+    min-width: 188px;
+    width: 188px;
+  }
+
+  :deep(.four-hole-lamp-select--compact.ant-select) {
+    min-width: 120px;
+    width: 120px;
+    max-width: 120px;
+  }
+
+  :deep(.four-hole-lamp-select--narrow.ant-select) {
+    min-width: 132px;
+    width: 132px;
+    max-width: 132px;
+  }
+
+  /* 选 5 第二行：水平+垂直同一行，缩窄宽度避免换行成上下两行 */
+  :deep(.five-options-container--second-row .four-hole-lamp-select--narrow.ant-select) {
+    min-width: 108px;
+    width: 108px;
+    max-width: 108px;
+  }
+
+  :deep(.four-hole-lamp-select .ant-select-selector) {
+    font-size: 16px;
+    min-height: 40px;
+    padding: 6px 12px;
+  }
+
+  :deep(.four-hole-lamp-select .ant-select-selection-item),
+  :deep(.four-hole-lamp-select .ant-select-selection-placeholder) {
+    font-size: 16px;
+    line-height: 28px;
+  }
+
+  :deep(.four-hole-lamp-select--compact .ant-select-selection-item),
+  :deep(.four-hole-lamp-select--narrow .ant-select-selection-item) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+}
+
+// 综合验光仪 / 同视机：参考值数据列 + 表头三列（与四孔灯、与「检查结果」一致）
+.optometer-related-table,
+.synoptophore-table {
+  .func-table-col.reference {
+    font-size: 16px;
+    line-height: 1.45;
+    font-weight: 500;
+    color: #333;
+  }
+
+  /* 表头三列：深灰、13px（与四孔灯 func-table-header）；首列不再用全局蓝色 item */
+  .func-table-header {
+    color: #333;
+  }
+
+  .func-table-header .func-table-col.item,
+  .func-table-header .func-table-col.result {
+    color: #333;
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.3;
+    text-decoration: none;
+  }
+
+  .func-table-header .func-table-col.reference {
+    font-size: 13px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: #333;
   }
 }
 
@@ -3388,8 +5005,9 @@ const formatSynoptophoreGradeIII = (data) => {
 
 // 计算得出的值样式
 .calculated-value {
-  color: #1890ff; // 使用蓝色表示计算得出的值
-  font-weight: 600; // 稍微加粗以区分
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 // 正相对调节和负相对调节使用较小的宽度
@@ -3442,83 +5060,23 @@ const formatSynoptophoreGradeIII = (data) => {
   }
 }
 
-// 调节反应输入框包装器，包含+/-按钮
-.accommodation-reaction-wrapper {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-// +/-按钮容器（垂直布局）
-.accommodation-sign-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex-shrink: 0;
-  height: 32px;
-  align-self: stretch;
-}
-
-// +/-按钮样式
-.accommodation-sign-btn {
-  width: 28px;
-  flex: 1;
-  min-height: 0;
-  padding: 0;
-  margin: 0;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: 300;
-  transition: all 0.3s;
-  outline: none;
-  line-height: 1;
-  text-align: center;
-  box-sizing: border-box;
-  
-  &:hover {
-    border-color: #40a9ff;
-  }
-  
-  &:active {
-    transform: scale(0.95);
-  }
-}
-
-.accommodation-plus-btn {
-  color: #666;
-  background: #fff;
-  
-  &.active {
-    background: #1890ff;
-    color: #fff;
-    border-color: #1890ff;
-  }
-}
-
-.accommodation-minus-btn {
-  color: #666;
-  background: #fff;
-  
-  &.active {
-    background: #1890ff;
-    color: #fff;
-    border-color: #1890ff;
-  }
-}
-
-// 四孔灯检查容器
+// 四孔灯检查容器：首行「4/5 + 优势眼」同一行不换行；选 5 时水平/垂直另起块
 .four-hole-container {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.four-hole-primary-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 24px;
-  justify-content: flex-start;
-  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
 }
 
 // 四孔灯检查按钮组
@@ -3576,12 +5134,27 @@ const formatSynoptophoreGradeIII = (data) => {
   }
 }
 
-// 选择5时的选项容器样式
+// 选择5时的选项容器样式（第二行：水平 + 垂直并排）
 .five-options-container {
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-items: flex-start;
+}
+
+.five-options-container--second-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.five-options-container--second-row .five-option-item {
+  flex: 0 0 auto;
+  flex-shrink: 0;
 }
 
 .five-option-item {
@@ -3675,5 +5248,150 @@ const formatSynoptophoreGradeIII = (data) => {
   }
 }
 
+/* 报告式调节表：使用全局 exam-sheet */
+.exam-table-accommodation {
+  :deep(.accommodation-input-wrapper) {
+    gap: 2px;
+  }
+
+  /* 调节幅度双眼行：无单项检查结果，合并三列为灰底占位（无输入） */
+  td.accommodation-amplitude-both-merged {
+    background: #eef2f6 !important;
+    padding: 0 !important;
+    vertical-align: middle;
+  }
+
+  .accommodation-amplitude-both-merged-inner {
+    min-height: var(--exr-input-h, 28px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef2f6;
+    color: #8c8c8c;
+    font-weight: 500;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .accommodation-amplitude-both-placeholder {
+    user-select: none;
+    pointer-events: none;
+  }
+}
+
+.accommodation-both-amplitude-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.25;
+  width: 100%;
+}
+
+.accommodation-both-amplitude-ref {
+  font-size: 10px;
+  color: #595959;
+}
+
+/* 其他相关检查：与影像检查 img-main-tabs 一致的子标签样式 */
+.other-related-tabs-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.other-related-main-tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(34, 75, 150, 0.25);
+    border-radius: 2px;
+  }
+}
+
+.other-related-tab-item {
+  flex: 0 1 auto;
+  padding: 5px 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #224b96;
+  background: linear-gradient(135deg, rgba(34, 75, 150, 0.08) 0%, rgba(234, 240, 255, 0.6) 100%);
+  border: 1px solid #e0e6f5;
+  border-radius: 6px;
+  border-left: 3px solid #b8c9e8;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: #224b96;
+    background: linear-gradient(135deg, rgba(34, 75, 150, 0.12) 0%, rgba(234, 240, 255, 0.85) 100%);
+  }
+
+  &.active {
+    color: #fff;
+    background: #224b96;
+    border-color: #224b96;
+    border-left-color: #224b96;
+  }
+}
+
+.other-related-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+.other-related-panel--synoptophore {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.other-related-panel--analysis {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.other-related-panel--analysis :deep(.analysis-exam-container) {
+  padding-top: 0;
+}
+
+</style>
+
+<!-- 下拉挂载在 body，需非 scoped 才能命中选项列表 -->
+<style lang="scss">
+.four-hole-select-dropdown.ant-select-dropdown {
+  min-width: 168px !important;
+
+  .ant-select-item {
+    padding: 10px 14px !important;
+    min-height: 40px;
+  }
+
+  .ant-select-item-option-content {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+}
 </style>
 

@@ -1,79 +1,134 @@
 <template>
   <div class="img-exam-style-two">
     <div v-if="!record" class="no-data">暂无检查数据</div>
-    <div v-else>
+    <div v-else class="img-exam-inner">
+      <!-- 子标签页 + 添加图片：同一行 -->
+      <div
+        v-if="(viewMode === 'view' || !isReportMode) && viewMode !== 'print' && imgTabList.length"
+        class="img-main-tabs-row"
+      >
+        <div class="img-main-tabs" role="tablist">
+        <button
+          v-for="tab in imgTabList"
+          :key="tab.key"
+          type="button"
+          role="tab"
+          class="img-main-tab-item"
+          :class="{ active: imgSubTab === tab.key }"
+          :aria-selected="imgSubTab === tab.key"
+          @click="imgSubTab = tab.key"
+        >
+          {{ tab.label }}
+        </button>
+        </div>
+      <div
+        v-if="viewMode === 'edit' && !isReportMode && viewMode !== 'print' && imgTabList.length"
+        class="img-main-tab-toolbar"
+      >
+        <a-button
+          v-if="imgSubTab === 'img-topography'"
+          type="primary"
+          size="small"
+          @click="showTopographyUploadModal"
+          class="title-upload-btn"
+        >
+          <UploadOutlined />
+          添加图片
+        </a-button>
+        <a-button
+          v-if="imgSubTab === 'img-fundus'"
+          type="primary"
+          size="small"
+          @click="showFundusUploadModal"
+          class="title-upload-btn"
+        >
+          <UploadOutlined />
+          添加图片
+        </a-button>
+        <a-button
+          v-if="imgSubTab === 'img-oct'"
+          type="primary"
+          size="small"
+          @click="showOctUploadModal"
+          class="title-upload-btn"
+        >
+          <UploadOutlined />
+          添加图片
+        </a-button>
+        <template v-if="imgSubTab === 'img-other'">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            :ref="el => { if (el) otherFileInput = el }"
+            @change="handleOtherFileChange"
+            class="img-other-file-input-hidden"
+            tabindex="-1"
+            aria-hidden="true"
+          />
+          <a-button type="primary" size="small" @click="otherFileInput?.click()" class="title-upload-btn">
+            <UploadOutlined />
+            添加图片
+          </a-button>
+        </template>
+      </div>
+      </div>
+
       <!-- 角膜地形图检查 -->
       <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasTopographyData" 
-           v-show="!showOnlySection || showOnlySection === 'img-topography'"
-           class="section-block"
-           :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['img-topography'] }">
-        <h3 
-          v-if="viewMode === 'view' || !isReportMode"
-          class="section-title"
-          :class="{ 'clickable': enableCollapse }"
-          @click="enableCollapse && handleToggleSection('img-topography')"
-        >
-          <span class="section-title-text">角膜地形图检查</span>
-          <!-- 编辑模式下的上传按钮 -->
-          <span v-if="viewMode === 'edit'" class="section-title-actions" @click.stop>
-            <a-button 
-              type="primary" 
-              size="small" 
-              @click="showTopographyUploadModal"
-              class="title-upload-btn"
-            >
-              <UploadOutlined />
-              添加图片
-            </a-button>
-          </span>
-          <span v-if="enableCollapse" class="section-toggle-icon">
-            <UpOutlined v-if="sectionExpanded?.['img-topography']" />
-            <DownOutlined v-else />
-          </span>
-        </h3>
-        <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.['img-topography'] : true)">
+           v-show="(!showOnlySection || showOnlySection === 'img-topography' || showOnlySection === 'img-radiology' || showOnlySection === 'img-imaging-tab') && showImgSubPanel('img-topography')"
+           class="section-block img-sub-panel">
+        <div class="img-sub-panel-body">
         <div class="img-batch-tabs">
           <div 
             :class="['batch-tab-item', { active: batchTab === 1 }]" 
-            @click="batchTab = 1"
+            @click="setBatchTab(1)"
           >
             轴向图
           </div>
           <div 
             :class="['batch-tab-item', { active: batchTab === 2 }]" 
-            @click="batchTab = 2"
+            @click="setBatchTab(2)"
           >
             切线图
           </div>
           <div 
             :class="['batch-tab-item', { active: batchTab === 3 }]" 
-            @click="batchTab = 3"
+            @click="setBatchTab(3)"
           >
             差异图
           </div>
         </div>
+        <div ref="topoFlipWrapperRef" class="topo-flip-reveal">
+          <div
+            v-for="b in topoBatchTabs"
+            :key="b"
+            :data-flip="String(b)"
+            class="flip-topo-panel"
+            :class="batchTab === b ? 'flip-topo-show' : 'flip-topo-hide'"
+          >
         <div class="img-group">
           <div class="img-block">
             <div class="img-label">右眼</div>
             <div class="img-container">
               <!-- 只显示第一张图片，点击后可以左右滑动浏览所有图片 -->
               <div class="img-item">
-                <template v-if="getTopoImg('right')">
-                  <template v-if="hasImageError(getImageKey('topo', 'right', batchTab))">
+                <template v-if="getTopoImg('right', b)">
+                  <template v-if="hasImageError(getImageKey('topo', 'right', b))">
                     <div class="img-broken">
                       <div class="img-broken-icon">🖼️</div>
                       <div class="img-broken-text">图片加载失败</div>
                     </div>
-                    <div class="img-label-text">{{ batchLabel }}</div>
+                    <div class="img-label-text">{{ topoTabLabel(b) }}</div>
                   </template>
                   <template v-else>
                     <div class="img-wrapper" @mouseenter="console.log('[删除按钮] 鼠标悬停 - 右眼:', { viewMode: viewMode, shouldShow: viewMode === 'edit' })">
                       <img 
-                        :src="fullUrl(getTopoImg('right'))" 
+                        :src="fullUrl(getTopoImg('right', b))" 
                         alt="右眼" 
                         class="img-display" 
                         @click="showTopoPreview('right', 0)"
-                        @error="handleImageError(getImageKey('topo', 'right', batchTab))"
+                        @error="handleImageError(getImageKey('topo', 'right', b))"
                       />
                       <a-button 
                         v-if="viewMode === 'edit'" 
@@ -88,7 +143,7 @@
                         ×
                       </a-button>
                     </div>
-                    <div class="img-label-text">{{ batchLabel }}</div>
+                    <div class="img-label-text">{{ topoTabLabel(b) }}</div>
                   </template>
                 </template>
                 <template v-else>
@@ -102,22 +157,22 @@
             <div class="img-container">
               <!-- 只显示第一张图片，点击后可以左右滑动浏览所有图片 -->
               <div class="img-item">
-                <template v-if="getTopoImg('left')">
-                  <template v-if="hasImageError(getImageKey('topo', 'left', batchTab))">
+                <template v-if="getTopoImg('left', b)">
+                  <template v-if="hasImageError(getImageKey('topo', 'left', b))">
                     <div class="img-broken">
                       <div class="img-broken-icon">🖼️</div>
                       <div class="img-broken-text">图片加载失败</div>
                     </div>
-                    <div class="img-label-text">{{ batchLabel }}</div>
+                    <div class="img-label-text">{{ topoTabLabel(b) }}</div>
                   </template>
                   <template v-else>
                     <div class="img-wrapper">
                       <img 
-                        :src="fullUrl(getTopoImg('left'))" 
+                        :src="fullUrl(getTopoImg('left', b))" 
                         alt="左眼" 
                         class="img-display" 
                         @click="showTopoPreview('left', 0)"
-                        @error="handleImageError(getImageKey('topo', 'left', batchTab))"
+                        @error="handleImageError(getImageKey('topo', 'left', b))"
                       />
                       <a-button 
                         v-if="viewMode === 'edit'" 
@@ -132,7 +187,7 @@
                         ×
                       </a-button>
                     </div>
-                    <div class="img-label-text">{{ batchLabel }}</div>
+                    <div class="img-label-text">{{ topoTabLabel(b) }}</div>
                   </template>
                 </template>
                 <template v-else>
@@ -146,22 +201,22 @@
             <div class="img-container">
               <!-- 只显示第一张图片，点击后可以左右滑动浏览所有图片 -->
               <div class="img-item">
-                <template v-if="getTopoImg('doble')">
-                  <template v-if="hasImageError(getImageKey('topo', 'doble', batchTab))">
+                <template v-if="getTopoImg('doble', b)">
+                  <template v-if="hasImageError(getImageKey('topo', 'doble', b))">
                     <div class="img-broken">
                       <div class="img-broken-icon">🖼️</div>
                       <div class="img-broken-text">图片加载失败</div>
                     </div>
-                    <div class="img-label-text">{{ batchLabel }}</div>
+                    <div class="img-label-text">{{ topoTabLabel(b) }}</div>
                   </template>
                   <template v-else>
                     <div class="img-wrapper">
                       <img 
-                        :src="fullUrl(getTopoImg('doble'))" 
+                        :src="fullUrl(getTopoImg('doble', b))" 
                         alt="双眼" 
                         class="img-display" 
                         @click="showTopoPreview('doble', 0)"
-                        @error="handleImageError(getImageKey('topo', 'doble', batchTab))"
+                        @error="handleImageError(getImageKey('topo', 'doble', b))"
                       />
                       <a-button 
                         v-if="viewMode === 'edit'" 
@@ -176,7 +231,7 @@
                         ×
                       </a-button>
                     </div>
-                    <div class="img-label-text">{{ batchLabel }}</div>
+                    <div class="img-label-text">{{ topoTabLabel(b) }}</div>
                   </template>
                 </template>
                 <template v-else>
@@ -186,39 +241,16 @@
             </div>
           </div>
         </div>
+          </div>
+        </div>
         </div>
       </div>
 
       <!-- 眼底照相检查 -->
       <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasFundusData" 
-           v-show="!showOnlySection || showOnlySection === 'img-fundus'"
-           class="section-block"
-           :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['img-fundus'] }">
-        <h3 
-          v-if="viewMode === 'view' || !isReportMode"
-          class="section-title"
-          :class="{ 'clickable': enableCollapse }"
-          @click="enableCollapse && handleToggleSection('img-fundus')"
-        >
-          <span class="section-title-text">眼底照相检查</span>
-          <!-- 编辑模式下的上传按钮 -->
-          <span v-if="viewMode === 'edit'" class="section-title-actions" @click.stop>
-            <a-button 
-              type="primary" 
-              size="small" 
-              @click="showFundusUploadModal"
-              class="title-upload-btn"
-            >
-              <UploadOutlined />
-              添加图片
-            </a-button>
-          </span>
-          <span v-if="enableCollapse" class="section-toggle-icon">
-            <UpOutlined v-if="sectionExpanded?.['img-fundus']" />
-            <DownOutlined v-else />
-          </span>
-        </h3>
-        <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.['img-fundus'] : true)">
+           v-show="(!showOnlySection || showOnlySection === 'img-fundus' || showOnlySection === 'img-radiology' || showOnlySection === 'img-imaging-tab') && showImgSubPanel('img-fundus')"
+           class="section-block img-sub-panel">
+        <div class="img-sub-panel-body">
         <div class="img-group">
           <div class="img-block">
             <div class="img-label">右眼</div>
@@ -309,36 +341,11 @@
       </div>
 
       <!-- 眼底OCT检查 -->
-      <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasOCTData || sectionExpanded?.['img-oct']" 
-           v-show="!showOnlySection || showOnlySection === 'img-oct'"
-           class="section-block img-oct-section"
-           :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['img-oct'] }"
+      <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasOCTData || viewMode === 'edit'" 
+           v-show="(!showOnlySection || showOnlySection === 'img-oct' || showOnlySection === 'img-radiology' || showOnlySection === 'img-imaging-tab') && showImgSubPanel('img-oct')"
+           class="section-block img-oct-section img-sub-panel"
            data-section-key="img-oct">
-        <h3 
-          v-if="viewMode === 'view' || !isReportMode"
-          class="section-title"
-          :class="{ 'clickable': enableCollapse }"
-          @click="enableCollapse && handleToggleSection('img-oct')"
-        >
-          <span class="section-title-text">眼底OCT检查</span>
-          <!-- 编辑模式下的上传按钮 -->
-          <span v-if="viewMode === 'edit'" class="section-title-actions" @click.stop>
-            <a-button 
-              type="primary" 
-              size="small" 
-              @click="showOctUploadModal"
-              class="title-upload-btn"
-            >
-              <UploadOutlined />
-              添加图片
-            </a-button>
-          </span>
-          <span v-if="enableCollapse" class="section-toggle-icon">
-            <UpOutlined v-if="sectionExpanded?.['img-oct']" />
-            <DownOutlined v-else />
-          </span>
-        </h3>
-        <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.['img-oct'] : true)">
+        <div class="img-sub-panel-body">
         <div class="img-group">
           <div class="img-block">
             <div class="img-label">右眼</div>
@@ -483,43 +490,10 @@
 
       <!-- 其他检查 -->
       <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasOtherData" 
-           v-show="!showOnlySection || showOnlySection === 'img-other'"
-           class="section-block img-other-section"
-           :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['img-other'] }"
+           v-show="showOnlySection !== 'img-radiology' && (!showOnlySection || showOnlySection === 'img-other' || showOnlySection === 'img-imaging-tab') && showImgSubPanel('img-other')"
+           class="section-block img-other-section img-sub-panel"
            data-section-key="img-other">
-        <h3 
-          v-if="viewMode === 'view' || !isReportMode"
-          class="section-title"
-          :class="{ 'clickable': enableCollapse }"
-          @click="enableCollapse && handleToggleSection('img-other')"
-        >
-          <span class="section-title-text">其他检查</span>
-          <!-- 编辑模式下的上传按钮 -->
-          <span v-if="viewMode === 'edit'" class="section-title-actions" @click.stop>
-            <input 
-              type="file" 
-              accept="image/*" 
-              multiple
-              :ref="el => { if (el) otherFileInput = el }"
-              @change="handleOtherFileChange"
-              style="display: none"
-            />
-            <a-button 
-              type="primary" 
-              size="small" 
-              @click="otherFileInput?.click()"
-              class="title-upload-btn"
-            >
-              <UploadOutlined />
-              添加图片
-            </a-button>
-          </span>
-          <span v-if="enableCollapse" class="section-toggle-icon">
-            <UpOutlined v-if="sectionExpanded?.['img-other']" />
-            <DownOutlined v-else />
-          </span>
-        </h3>
-        <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.['img-other'] : true)">
+        <div class="img-sub-panel-body">
           <div class="other-images-grid">
             <template v-if="getOtherImages().length > 0">
               <div 
@@ -914,7 +888,11 @@
 
 <script setup>
 import { ref, computed, reactive, watch, onMounted, nextTick } from 'vue';
-import { UpOutlined, DownOutlined, UploadOutlined, LeftOutlined, RightOutlined, CloseOutlined } from '@ant-design/icons-vue';
+import gsap from 'gsap';
+import Flip from 'gsap/Flip';
+
+gsap.registerPlugin(Flip);
+import { UploadOutlined, LeftOutlined, RightOutlined, CloseOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
@@ -949,17 +927,63 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['toggle-section', 'update-image', 'pending-delete-images', 'pending-delete-old-images']);
+const emit = defineEmits(['update-image', 'pending-delete-images', 'pending-delete-old-images']);
 
 // 预删除的图片ID列表（临时记录，点击保存后才真正删除）
 const pendingDeleteImageIds = ref([]);
 // 预删除的旧字段图片列表（没有ID的旧数据图片，使用URL标识）
 const pendingDeleteOldImages = ref([]);
 
-// 切换section展开/收起状态
-const handleToggleSection = (sectionKey) => {
-  emit('toggle-section', sectionKey);
-};
+/** 影像检查子标签：角膜地形图 / 眼底照相 / OCT / 其他 */
+const imgSubTab = ref('img-topography');
+
+const imgTabList = computed(() => {
+  const vm = props.viewMode;
+  const tabs = [];
+  if ((vm !== 'view' && vm !== 'print') || hasTopographyData.value) {
+    tabs.push({ key: 'img-topography', label: '角膜地形图检查' });
+  }
+  if ((vm !== 'view' && vm !== 'print') || hasFundusData.value) {
+    tabs.push({ key: 'img-fundus', label: '眼底照相检查' });
+  }
+  if ((vm !== 'view' && vm !== 'print') || hasOCTData.value || vm === 'edit') {
+    tabs.push({ key: 'img-oct', label: '眼底OCT检查' });
+  }
+  if ((vm !== 'view' && vm !== 'print') || hasOtherData.value) {
+    tabs.push({ key: 'img-other', label: '其他检查' });
+  }
+  return tabs;
+});
+
+watch(
+  () => props.showOnlySection,
+  (s) => {
+    if (s && ['img-topography', 'img-fundus', 'img-oct', 'img-other'].includes(s)) {
+      imgSubTab.value = s;
+    }
+  },
+  { immediate: true },
+);
+
+function showImgSubPanel(key) {
+  if (props.viewMode === 'print') return true;
+  if (props.isReportMode && props.viewMode !== 'view') return true;
+  // 顶部子标签条展示时，由用户点击的 imgSubTab 决定板块，避免被父级 showOnlySection（如 img-other）锁死导致切换无内容
+  const subTabsBarVisible =
+    (props.viewMode === 'view' || !props.isReportMode) &&
+    props.viewMode !== 'print' &&
+    imgTabList.value.length > 0;
+  if (subTabsBarVisible) {
+    return imgSubTab.value === key;
+  }
+  if (
+    props.showOnlySection &&
+    ['img-topography', 'img-fundus', 'img-oct', 'img-other'].includes(props.showOnlySection)
+  ) {
+    return props.showOnlySection === key;
+  }
+  return imgSubTab.value === key;
+}
 
 // 图片上传处理函数
 const handleImageUpload = async (event, type, eye, batch = null, imageIndex = 1) => {
@@ -1215,6 +1239,19 @@ const hasOtherData = computed(() => {
   return false;
 });
 
+// 依赖 hasTopographyData/hasFundusData/hasOCTData/hasOtherData，
+// 需放在这些 computed 初始化之后，避免 setup 阶段 TDZ 报错
+watch(
+  imgTabList,
+  (tabs) => {
+    if (!tabs.length) return;
+    if (!tabs.some((t) => t.key === imgSubTab.value)) {
+      imgSubTab.value = tabs[0].key;
+    }
+  },
+  { immediate: true },
+);
+
 // 计算其他检查区域的显示状态
 const otherDisplayStatus = computed(() => {
   const viewMode = props.viewMode;
@@ -1224,7 +1261,7 @@ const otherDisplayStatus = computed(() => {
   const vIfCondition = (viewMode !== 'view' && viewMode !== 'print') || hasData;
   
   // v-show 条件
-  const vShowCondition = !props.showOnlySection || props.showOnlySection === 'img-other';
+  const vShowCondition = props.showOnlySection !== 'img-radiology' && (!props.showOnlySection || props.showOnlySection === 'img-other' || props.showOnlySection === 'img-imaging-tab');
   
   const finalVisible = vIfCondition && vShowCondition;
   
@@ -1257,20 +1294,20 @@ watch(() => props.viewMode, (newMode, oldMode) => {
 const octDisplayStatus = computed(() => {
   const viewMode = props.viewMode;
   const hasData = hasOCTData.value;
-  const sectionExpanded = props.sectionExpanded?.['img-oct'];
+  const allowEmptyInEdit = viewMode === 'edit';
   
-  // v-if 条件
-  const vIfCondition = (viewMode !== 'view' && viewMode !== 'print') || hasData || sectionExpanded;
+  // v-if 条件（编辑模式下可无数据仍显示 OCT 板块）
+  const vIfCondition = (viewMode !== 'view' && viewMode !== 'print') || hasData || allowEmptyInEdit;
   
   // v-show 条件
-  const vShowCondition = viewMode === 'print' || viewMode !== 'view' || hasData || sectionExpanded;
+  const vShowCondition = viewMode === 'print' || viewMode !== 'view' || hasData || allowEmptyInEdit;
   
   const finalVisible = vIfCondition && vShowCondition;
   
   return {
     viewMode,
     hasOCTData: hasData,
-    sectionExpanded,
+    allowEmptyInEdit,
     vIfCondition,
     vShowCondition,
     finalVisible
@@ -1292,8 +1329,50 @@ watch(() => props.viewMode, (newMode, oldMode) => {
   });
 });
 
-const batchTab = ref(1); // 第几次检查
-const batchLabel = computed(() => ['第一次','第二次','第三次'][batchTab.value-1]);
+const batchTab = ref(1); // 1=轴向图 2=切线图 3=差异图
+const topoBatchTabs = [1, 2, 3];
+const topoFlipWrapperRef = ref(null);
+let topoFlipReady = false;
+
+function topoTabLabel(b) {
+  return ['轴向图', '切线图', '差异图'][b - 1];
+}
+
+function setBatchTab(tab) {
+  if (tab === batchTab.value) return;
+  const wrap = topoFlipWrapperRef.value;
+  if (!wrap || !topoFlipReady) {
+    batchTab.value = tab;
+    return;
+  }
+  const items = gsap.utils.toArray(wrap.querySelectorAll('[data-flip]'));
+  if (!items.length) {
+    batchTab.value = tab;
+    return;
+  }
+  const state = Flip.getState(items);
+  batchTab.value = tab;
+  nextTick(() => {
+    Flip.from(state, {
+      duration: 0.6,
+      scale: true,
+      ease: 'power1.inOut',
+      stagger: 0.05,
+      absolute: true,
+      onEnter: (elements) =>
+        gsap.fromTo(
+          elements,
+          { opacity: 0, scale: 0 },
+          {
+            opacity: 1,
+            scale: 1,
+            duration: 0.8,
+          },
+        ),
+      onLeave: (elements) => gsap.to(elements, { opacity: 0, scale: 0, duration: 0.8 }),
+    });
+  });
+}
 
 // 角膜地形图上传相关
 const topographyUploadVisible = ref(false);
@@ -1407,6 +1486,9 @@ onMounted(() => {
       });
     }
   });
+  nextTick(() => {
+    topoFlipReady = true;
+  });
 });
 
 // 监听 viewMode 变化
@@ -1418,8 +1500,8 @@ watch(() => props.viewMode, (newMode, oldMode) => {
   });
 }, { immediate: true });
 
-function getTopoImg(eye) {
-  const key = `${eye}_${batchTab.value}`;
+function getTopoImg(eye, batch = batchTab.value) {
+  const key = `${eye}_${batch}`;
   // 清除缓存，确保能获取最新数据（包括预删除状态）
   delete imgCache[key];
   let img = '';
@@ -1433,11 +1515,11 @@ function getTopoImg(eye) {
     else if (eye === 'left') eyeCode = 'L';
     else if (eye === 'doble') eyeCode = 'B';
     
-    // 根据 batchTab 确定类型关键词：1=轴向图(axial), 2=切线图(tangential), 3=差异图(difference)
+    // 根据 batch 确定类型关键词：1=轴向图(axial), 2=切线图(tangential), 3=差异图(difference)
     let typeKeyword = '';
-    if (batchTab.value === 1) typeKeyword = 'axial';
-    else if (batchTab.value === 2) typeKeyword = 'tangential';
-    else if (batchTab.value === 3) typeKeyword = 'difference';
+    if (batch === 1) typeKeyword = 'axial';
+    else if (batch === 2) typeKeyword = 'tangential';
+    else if (batch === 3) typeKeyword = 'difference';
     
     // 过滤出对应眼睛和类型的图片，排除预删除的图片，返回第一张图片的URL
     const filteredImages = ctImages.filter(item => {
@@ -1468,25 +1550,25 @@ function getTopoImg(eye) {
   // 如果没有新字段数据，回退到旧字段
   let oldImg = '';
   if (eye==='right') {
-    if (batchTab.value===1) oldImg = props.record.right_corneal_topography_first;
-    if (batchTab.value===2) oldImg = props.record.right_corneal_topography_second;
-    if (batchTab.value===3) oldImg = props.record.right_corneal_topography_third;
+    if (batch===1) oldImg = props.record.right_corneal_topography_first;
+    if (batch===2) oldImg = props.record.right_corneal_topography_second;
+    if (batch===3) oldImg = props.record.right_corneal_topography_third;
   }
   if (eye==='left') {
-    if (batchTab.value===1) oldImg = props.record.left_corneal_topography_first;
-    if (batchTab.value===2) oldImg = props.record.left_corneal_topography_second;
-    if (batchTab.value===3) oldImg = props.record.left_corneal_topography_third;
+    if (batch===1) oldImg = props.record.left_corneal_topography_first;
+    if (batch===2) oldImg = props.record.left_corneal_topography_second;
+    if (batch===3) oldImg = props.record.left_corneal_topography_third;
   }
   if (eye==='doble') {
-    if (batchTab.value===1) oldImg = props.record.doble_corneal_topography_first;
-    if (batchTab.value===2) oldImg = props.record.doble_corneal_topography_second;
-    if (batchTab.value===3) oldImg = props.record.doble_corneal_topography_third;
+    if (batch===1) oldImg = props.record.doble_corneal_topography_first;
+    if (batch===2) oldImg = props.record.doble_corneal_topography_second;
+    if (batch===3) oldImg = props.record.doble_corneal_topography_third;
   }
   
   // 检查旧图片是否被标记为预删除
   if (oldImg) {
     const isDeleted = pendingDeleteOldImages.value.some(item => 
-      item.type === 'topo' && item.eye === eye && item.batch === batchTab.value && item.url === oldImg
+      item.type === 'topo' && item.eye === eye && item.batch === batch && item.url === oldImg
     );
     if (!isDeleted) {
       img = oldImg;
@@ -1498,20 +1580,20 @@ function getTopoImg(eye) {
 }
 
 // 获取角膜地形图第二张图片（用于显示两张图片）
-function getTopoImg2(eye) {
-  const key = `${eye}_${batchTab.value}_2`;
+function getTopoImg2(eye, batch = batchTab.value) {
+  const key = `${eye}_${batch}_2`;
   if (imgCache[key]) return imgCache[key];
   let img = '';
   // 如果有第二张图片字段，使用第二张；否则使用第一张作为第二张显示
   if (eye==='right') {
-    if (batchTab.value===1) img = props.record.right_corneal_topography_second || props.record.right_corneal_topography_first;
-    if (batchTab.value===2) img = props.record.right_corneal_topography_third || props.record.right_corneal_topography_second;
-    if (batchTab.value===3) img = props.record.right_corneal_topography_first || props.record.right_corneal_topography_third;
+    if (batch===1) img = props.record.right_corneal_topography_second || props.record.right_corneal_topography_first;
+    if (batch===2) img = props.record.right_corneal_topography_third || props.record.right_corneal_topography_second;
+    if (batch===3) img = props.record.right_corneal_topography_first || props.record.right_corneal_topography_third;
   }
   if (eye==='left') {
-    if (batchTab.value===1) img = props.record.left_corneal_topography_second || props.record.left_corneal_topography_first;
-    if (batchTab.value===2) img = props.record.left_corneal_topography_third || props.record.left_corneal_topography_second;
-    if (batchTab.value===3) img = props.record.left_corneal_topography_first || props.record.left_corneal_topography_third;
+    if (batch===1) img = props.record.left_corneal_topography_second || props.record.left_corneal_topography_first;
+    if (batch===2) img = props.record.left_corneal_topography_third || props.record.left_corneal_topography_second;
+    if (batch===3) img = props.record.left_corneal_topography_first || props.record.left_corneal_topography_third;
   }
   imgCache[key] = img;
   return img;
@@ -3069,6 +3151,114 @@ const handleOtherFileChange = async (event) => {
   width: 100%;
 }
 
+.img-exam-inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.img-main-tabs-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.img-main-tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(34, 75, 150, 0.25);
+    border-radius: 2px;
+  }
+}
+
+.img-main-tab-item {
+  flex: 0 1 auto;
+  padding: 5px 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #224b96;
+  background: linear-gradient(135deg, rgba(34, 75, 150, 0.08) 0%, rgba(234, 240, 255, 0.6) 100%);
+  border: 1px solid #e0e6f5;
+  border-radius: 6px;
+  border-left: 3px solid #b8c9e8;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: #224b96;
+    background: linear-gradient(135deg, rgba(34, 75, 150, 0.12) 0%, rgba(234, 240, 255, 0.85) 100%);
+  }
+
+  &.active {
+    color: #fff;
+    background: #224b96;
+    border-color: #224b96;
+    border-left-color: #224b96;
+  }
+}
+
+.img-main-tab-toolbar {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+
+  :deep(.title-upload-btn) {
+    height: 22px;
+    padding: 0 7px;
+    font-size: 11px;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  :deep(.title-upload-btn .anticon) {
+    font-size: 11px;
+  }
+}
+
+.img-other-file-input-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.img-sub-panel.section-block {
+  margin-bottom: 0;
+  padding-bottom: 8px;
+  border-bottom: none;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
 .section-block {
   display: flex;
   flex-direction: column;
@@ -3205,6 +3395,28 @@ const handleOtherFileChange = async (event) => {
   }
 }
 
+// 角膜地形图：轴向图 / 切线图 / 差异图 切换（GSAP Flip，与 React FlipReveal 一致）
+.topo-flip-reveal {
+  position: relative;
+  width: 100%;
+}
+
+.flip-topo-panel.flip-topo-show {
+  position: relative;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.flip-topo-panel.flip-topo-hide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
 
 // 图片组
 .img-group {
@@ -3482,15 +3694,19 @@ const handleOtherFileChange = async (event) => {
 .title-upload-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  height: 28px;
-  padding: 0 10px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  
+  gap: 3px;
+  font-size: 11px;
+  height: 22px;
+  padding: 0 7px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  :deep(.anticon) {
+    font-size: 11px;
+  }
+
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
   }
 }
 

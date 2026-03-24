@@ -1,0 +1,64 @@
+/* 全局 Ant Design Vue Select：默认高度与字号统一（小号 / 大尺寸 / 报告表 .exam-sheet 等由更高优先级规则覆盖） */
+
+:root {
+  --app-select-h: 32px;
+  --app-select-font: 13px;
+  --app-select-line: calc(var(--app-select-h) - 2px);
+}
+
+/* 单选：触发器尺寸与常见表单输入一致；flex 垂直居中，避免仅靠 line-height≈高度时中文偏上/偏下 */
+:where(.ant-select-single:not(.ant-select-sm):not(.ant-select-large)) .ant-select-selector {
+  box-sizing: border-box !important;
+  min-height: var(--app-select-h) !important;
+  height: var(--app-select-h) !important;
+  font-size: var(--app-select-font) !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+:where(.ant-select-single:not(.ant-select-sm):not(.ant-select-large)) .ant-select-selection-item,
+:where(.ant-select-single:not(.ant-select-sm):not(.ant-select-large)) .ant-select-selection-placeholder {
+  line-height: 1.5 !important;
+  font-size: var(--app-select-font) !important;
+  align-self: center !important;
+}
+
+/* 大尺寸（如登录页）：同样用 flex 居中，勿用「高度-2px」行高硬顶 */
+:where(.ant-select-single.ant-select-large) .ant-select-selector {
+  display: flex !important;
+  align-items: center !important;
+}
+
+:where(.ant-select-single.ant-select-large) .ant-select-selection-item,
+:where(.ant-select-single.ant-select-large) .ant-select-selection-placeholder {
+  line-height: 1.5 !important;
+  align-self: center !important;
+}
+
+/* 小尺寸单选：触发器内垂直居中 */
+:where(.ant-select-single.ant-select-sm) .ant-select-selector {
+  display: flex !important;
+  align-items: center !important;
+}
+
+:where(.ant-select-single.ant-select-sm) .ant-select-selection-item,
+:where(.ant-select-single.ant-select-sm) .ant-select-selection-placeholder {
+  line-height: 1.5 !important;
+  align-self: center !important;
+}
+
+/* 多选：至少与单行同高，不强制固定高度以便多标签换行 */
+:where(.ant-select-multiple:not(.ant-select-sm):not(.ant-select-large)) .ant-select-selector {
+  box-sizing: border-box !important;
+  min-height: var(--app-select-h) !important;
+  font-size: var(--app-select-font) !important;
+}
+
+/* 下拉面板挂载在 body：选项文字垂直居中 */
+:where(.ant-select-dropdown) .ant-select-item {
+  font-size: var(--app-select-font) !important;
+  line-height: 1.5 !important;
+  min-height: var(--app-select-h) !important;
+  display: flex !important;
+  align-items: center !important;
+}

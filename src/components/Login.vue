@@ -1,162 +1,120 @@
 <template>
-  <div class="login-wrapper">
-    <a-layout style="height: 100vh;">
-      <a-layout-content style="display: flex; align-items: center; justify-content: center;">
-        <div class="login-form">
-          <a-form @submit.prevent="handleLogin" @keyup.enter="handleLogin" style="width: 300px;">
-            <!-- 登录状态提示 -->
-            <div v-if="savedAccounts.length > 0" style="margin-bottom: 16px; padding: 8px 12px; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 6px;">
-              <div style="font-size: 14px; color: #52c41a; font-weight: 500;">
-                📋 发现 {{ savedAccounts.length }} 个已保存的账号
-              </div>
-              <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                您可以从下拉框中选择快速登录，或输入新账号信息
-              </div>
-              <div style="font-size: 11px; color: #52c41a; margin-top: 4px; font-style: italic;">
-                💡 快速登录：无需网络请求，直接使用缓存数据，秒级切换
-              </div>
-            </div>
-            
-            <!-- 账号保存提示 -->
-            <div v-if="savedAccounts.length === 0" style="margin-bottom: 16px; padding: 8px 12px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 6px;">
-              <div style="font-size: 14px; color: #1890ff; font-weight: 500;">
-                💡 首次使用多账号管理
-              </div>
-              <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                勾选"保存账号"后，您的账号信息将保存到本地，支持快速切换登录
-              </div>
-            </div>
-            
-            <!-- 账号选择下拉框 -->
-            <a-form-item v-if="savedAccounts.length > 0">
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <a-select 
-                  v-model:value="selectedAccountIndex" 
-                  placeholder="选择已保存的账号"
-                  @change="handleAccountSelect"
-                  style="flex: 1;"
-                >
-                  <a-select-option 
-                    v-for="(account, index) in savedAccounts" 
-                    :key="index" 
-                    :value="index"
-                  >
-                    {{ account.username }} ({{ account.organization_name || '未知机构' }}{{ account.isSubaccount ? ' - 子账号' : '' }})
-                  </a-select-option>
-                  <a-select-option value="new">+ 使用新账号登录</a-select-option>
-                </a-select>
-                <a-button 
-                  v-if="selectedAccountIndex !== null && selectedAccountIndex !== 'new'"
-                  type="text" 
-                  danger 
-                  size="small"
-                  @click="deleteAccount"
-                  title="删除此账号"
-                >
-                  <template #icon>
-                    <DeleteOutlined />
-                  </template>
-                </a-button>
-              </div>
-              <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                已保存 {{ savedAccounts.length }} 个账号，支持快速切换
-              </div>
-            </a-form-item>
-            
-            <!-- 应用模式选择（必选） -->
-            <a-form-item :required="true">
-              <a-select 
-                v-model:value="selectedAppMode" 
-                placeholder="请选择应用模式（必选）"
-                @change="handleAppModeChange"
-                :disabled="appModeLoading || checkingVersions"
-              >
-                <a-select-option 
-                  v-for="mode in availableModes" 
-                  :key="mode.value"
-                  :value="mode.value"
-                >
-                  {{ mode.label }}
-                </a-select-option>
-              </a-select>
-              <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                <span v-if="checkingVersions" style="color: #1890ff;">
-                  正在检测可用版本...
-                </span>
-                <span v-else-if="currentAppMode">{{ getAppModeLabel(currentAppMode) }}</span>
-                <span v-else style="color: #ff4d4f;">请先选择应用模式才能登录</span>
-                <span v-if="availableModes.length === 0 && !checkingVersions" style="color: #ff4d4f; margin-left: 8px;">
-                  未检测到可用版本
-                </span>
-              </div>
-            </a-form-item>
-            
-            <a-form-item>
-              <a-input v-model:value="username" placeholder="账号" />
-            </a-form-item>
-            <a-form-item>
-              <a-input-password v-model:value="password" placeholder="密码" />
-            </a-form-item>
-            <a-form-item>
-              <a-checkbox v-model:checked="rememberMe">保存账号</a-checkbox>
-            </a-form-item>
-            <a-form-item>
-              <a-checkbox v-model:checked="autoLogin" @change="handleAutoLoginChange">自动登录</a-checkbox>
-            </a-form-item>
-            <a-form-item>
-              <a-button 
-                type="primary" 
-                block 
-                :loading="loadingVisible"
-                @click="handleLogin"
-                @mousedown.prevent
-              >
-                登录
-              </a-button>
-            </a-form-item>
-            
-            <!-- 账号管理按钮 -->
-            <a-form-item v-if="savedAccounts.length > 0" style="margin-bottom: 8px;">
-              <a-button 
-                type="link" 
-                size="small" 
-                @click="showAccountManager"
-                style="padding: 0; height: auto;"
-              >
-                管理已保存的账号 ({{ savedAccounts.length }})
-              </a-button>
-            </a-form-item>
-            
-            <!-- 调试按钮（开发环境使用） -->
-            <a-form-item v-if="isDevelopment" style="margin-bottom: 8px;">
-              <a-button 
-                type="link" 
-                size="small" 
-                danger
-                @click="rebuildDatabase"
-                style="padding: 0; height: auto;"
-              >
-                🔧 重建数据库（慎点！！！）
-              </a-button>
-            </a-form-item>
-            
-            <!-- 手动刷新按钮 -->
-            <a-form-item style="margin-bottom: 8px;">
-              <a-button 
-                type="link" 
-                size="small" 
-                @click="refreshPage"
-                style="padding: 0; height: auto; color: #1890ff;"
-              >
-                🔄 更新应用
-              </a-button>
-            </a-form-item>
-            
-            <input type="hidden" name="csrfmiddlewaretoken" ref="csrfTokenInput" value="{{ csrf_token }}" />
-          </a-form>
+  <div class="login-page">
+    <aside class="login-page__hero" aria-hidden="true">
+      <LoginIllustration
+        :password="password"
+        :show-password="showPassword"
+        :is-typing="isTyping"
+      />
+    </aside>
+
+    <div class="login-page__panel">
+      <div class="login-page__panel-inner">
+        <div class="login-page__mobile-brand">
+          <img
+            :src="summitLogo"
+            alt="SUMMIT SOFTWARE"
+            class="login-page__mobile-logo"
+            width="144"
+            height="144"
+          />
         </div>
-      </a-layout-content>
-    </a-layout>
+
+        <div class="login-page__header">
+          <h1 class="login-page__title">欢迎回来</h1>
+          <p class="login-page__subtitle">请输入账号信息</p>
+        </div>
+
+        <a-form
+          class="login-page__form"
+          layout="vertical"
+          @submit.prevent="handleLogin"
+          @keyup.enter="handleLogin"
+        >
+          <a-form-item label="选择已保存的账号" class="login-page__form-item">
+            <a-select
+              v-model:value="selectedAccountIndex"
+              placeholder="选择已保存的账号"
+              allow-clear
+              size="large"
+              class="login-page__control"
+              @change="handleAccountSelect"
+            >
+              <a-select-option
+                v-for="(account, index) in savedAccounts"
+                :key="index"
+                :value="index"
+              >
+                {{ account.username }} ({{ account.organization_name || '未知机构' }}{{ account.isSubaccount ? ' - 子账号' : '' }})
+              </a-select-option>
+              <a-select-option v-if="savedAccounts.length > 0" value="new">+ 使用新账号登录</a-select-option>
+            </a-select>
+          </a-form-item>
+
+          <a-form-item label="账号" class="login-page__form-item">
+            <a-input
+              v-model:value="username"
+              placeholder="请输入账号"
+              size="large"
+              autocomplete="off"
+              class="login-page__control"
+              @focus="isTyping = true"
+              @blur="isTyping = false"
+            />
+          </a-form-item>
+
+          <a-form-item label="密码" class="login-page__form-item">
+            <a-input
+              v-model:value="password"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="请输入密码"
+              size="large"
+              class="login-page__control login-page__password-input"
+            >
+              <template #suffix>
+                <button
+                  type="button"
+                  class="login-page__eye-btn"
+                  tabindex="-1"
+                  aria-label="显示或隐藏密码"
+                  @click="showPassword = !showPassword"
+                >
+                  <EyeInvisibleOutlined v-if="!showPassword" />
+                  <EyeOutlined v-else />
+                </button>
+              </template>
+            </a-input>
+          </a-form-item>
+
+          <a-form-item class="login-page__form-item login-page__remember">
+            <a-checkbox v-model:checked="rememberMe">保存账号</a-checkbox>
+          </a-form-item>
+
+          <a-form-item class="login-page__form-item login-page__submit-wrap">
+            <a-button
+              type="primary"
+              block
+              size="large"
+              html-type="submit"
+              class="login-page__submit"
+              :loading="loadingVisible"
+              @mousedown.prevent
+            >
+              登录
+            </a-button>
+          </a-form-item>
+
+          <a-form-item class="login-page__form-item login-page__update-wrap">
+            <a-button block size="large" class="login-page__update-btn" @click="refreshPage">
+              更新应用
+            </a-button>
+          </a-form-item>
+
+          <input type="hidden" name="csrfmiddlewaretoken" ref="csrfTokenInput" value="{{ csrf_token }}" />
+        </a-form>
+      </div>
+    </div>
+  </div>
 
     <!-- 全屏加载动画 -->
     <a-modal
@@ -181,76 +139,6 @@
       </div>
     </a-modal>
 
-    <!-- 账号管理弹窗 -->
-    <a-modal
-      v-model:open="accountManagerVisible"
-      title="账号管理"
-      :footer="null"
-      :width="500"
-    >
-      <div style="max-height: 400px; overflow-y: auto;">
-        <div v-for="(account, index) in savedAccounts" :key="index" class="account-item">
-          <div class="account-info">
-            <div class="account-main">
-              <strong>{{ account.username }}</strong>
-              <span class="account-org">{{ account.organization_name || '未知机构' }}</span>
-              <span v-if="selectedAccountIndex === index" class="current-account-badge">当前选中</span>
-            </div>
-            <div class="account-meta">
-              <div class="account-status">
-                <span class="account-time">最后登录: {{ formatTime(account.lastLoginTime) }}</span>
-                <div class="cache-status">
-                  <span v-if="account.patientIndexedDBKey && account.checkIndexedDBKey" class="cache-badge cache-available">
-                    有缓存数据
-                  </span>
-                  <span v-else class="cache-badge cache-unavailable">
-                    无缓存数据
-                  </span>
-                </div>
-              </div>
-              <div class="account-actions">
-                <a-button 
-                  v-if="selectedAccountIndex !== index"
-                  type="primary" 
-                  size="small" 
-                  @click="switchToAccount(index)"
-                >
-                  切换到此账号
-                </a-button>
-                <a-button 
-                  v-else
-                  type="default" 
-                  size="small" 
-                  disabled
-                >
-                  当前账号
-                </a-button>
-                <a-button 
-                  type="link" 
-                  size="small" 
-                  danger 
-                  @click="deleteAccountFromManager(index)"
-                >
-                  删除
-                </a-button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
-          <a-button 
-            type="default" 
-            danger 
-            block 
-            @click="clearAllAccounts"
-          >
-            清除所有已保存的账号
-          </a-button>
-        </div>
-      </div>
-    </a-modal>
-
     <!-- 确认对话框 -->
     <a-modal
       v-model:open="confirmModalVisible"
@@ -263,21 +151,18 @@
     >
       <p>{{ confirmModalContent }}</p>
     </a-modal>
-  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, defineEmits } from 'vue';
-import { message, Layout, Form, Input, Checkbox, Button, Modal, Spin, Select } from 'ant-design-vue';
-const { Password } = Input;
-import { DeleteOutlined } from '@ant-design/icons-vue';
+import { message, Form, Input, Checkbox, Button, Modal, Spin, Select } from 'ant-design-vue';
+import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons-vue';
+import summitLogo from '@/assets/summit-logo.png';
+import LoginIllustration from '@/components/login/LoginIllustration.vue';
 import { saveCache } from '@/utils/cacheManager';
 
 // 向父组件派发登录成功事件
 const emit = defineEmits(['login-success']);
-
-// 开发环境检测
-const isDevelopment = ref(import.meta.env?.MODE === 'development' || import.meta.env?.DEV === true);
 
 // 快捷键状态追踪
 const keyPressed = ref({
@@ -291,6 +176,8 @@ let debounceTimer = null;
 
 const username = ref('');
 const password = ref('');
+const showPassword = ref(false);
+const isTyping = ref(false);
 const rememberMe = ref(false);
 const autoLogin = ref(false);
 const csrfTokenInput = ref(null);
@@ -307,7 +194,6 @@ const APP_MODES = {
 
 const currentAppMode = ref('');
 const selectedAppMode = ref(null);
-const appModeLoading = ref(false);
 const checkingVersions = ref(false); // 是否正在检测版本
 const availableModes = ref([]); // 可用的版本列表 [{value: 'stable', label: '稳定版', url: '...'}]
 
@@ -315,17 +201,6 @@ const availableModes = ref([]); // 可用的版本列表 [{value: 'stable', labe
 // 多账号管理相关
 const savedAccounts = ref([]);
 const selectedAccountIndex = ref(null);
-const accountManagerVisible = ref(false); // 新增：控制账号管理弹窗的显示
-
-// 获取应用模式标签
-const getAppModeLabel = (mode) => {
-  const labels = {
-    'stable': '稳定版',
-    'test': '测试版',
-    'development': '开发版'
-  }
-  return labels[mode] || mode
-}
 
 // 从主进程获取当前应用模式
 const loadAppMode = async () => {
@@ -585,62 +460,6 @@ const checkAllVersions = async () => {
     console.log('[Frontend] checkingVersions set to false')
   }
 }
-
-// 处理应用模式切换
-const handleAppModeChange = async (mode) => {
-  if (!mode) {
-    selectedAppMode.value = null
-    return
-  }
-  
-  // 检查选择的模式是否在可用列表中（理论上不应该发生，因为UI已经过滤）
-  const availableMode = availableModes.value.find(m => m.value === mode)
-  if (!availableMode) {
-    message.error('选择的版本不可用，请选择其他版本')
-    selectedAppMode.value = currentAppMode.value
-    return
-  }
-  
-  // 如果模式发生变化，切换模式并重启应用
-  if (mode !== currentAppMode.value) {
-    try {
-      appModeLoading.value = true
-      
-      // 检查是否在Electron环境中
-      if (typeof window !== 'undefined' && window.require) {
-        const { ipcRenderer } = window.require('electron')
-        const result = await ipcRenderer.invoke('switch-app-mode', mode, null)
-        
-        if (result.success) {
-          if (result.restart) {
-            message.success('模式已切换，应用即将重启...')
-            // 保存选择的模式到localStorage
-            localStorage.setItem('app-mode', mode)
-          } else {
-            message.info(result.message || '模式切换成功')
-          }
-        } else {
-          message.error(result.error || '模式切换失败')
-          // 恢复选择
-          selectedAppMode.value = currentAppMode.value
-        }
-      } else {
-        // 非Electron环境，仅保存到localStorage
-        localStorage.setItem('app-mode', mode)
-        currentAppMode.value = mode
-        message.success('模式已保存（非Electron环境，无需重启）')
-      }
-    } catch (error) {
-      console.error('切换模式失败:', error)
-      message.error('切换模式失败，请重试')
-      // 恢复选择
-      selectedAppMode.value = currentAppMode.value
-    } finally {
-      appModeLoading.value = false
-    }
-  }
-}
-
 
 // 确认对话框状态
 const confirmModalVisible = ref(false);
@@ -1020,6 +839,10 @@ const getDataWithFallback = async (key, dataType, organizationId = null) => {
 
 // 处理账号选择
 const handleAccountSelect = (index) => {
+  if (index === null || index === undefined) {
+    selectedAccountIndex.value = null;
+    return;
+  }
   if (index === 'new') {
     // 选择新账号登录
     username.value = '';
@@ -2151,12 +1974,6 @@ async function handleLogin(e) {
   }
 }
 
-function handleAutoLoginChange(checked) {
-  if (checked) {
-    rememberMe.value = true;
-  }
-}
-
 // 显示确认对话框的辅助函数
 const showConfirm = (options) => {
   confirmModalTitle.value = options.title || '确认';
@@ -2183,147 +2000,6 @@ const handleConfirmCancel = () => {
     confirmModalOnCancel.value();
   }
   confirmModalVisible.value = false;
-};
-
-const deleteAccount = () => {
-  if (selectedAccountIndex.value === null || selectedAccountIndex.value === 'new') {
-    message.warning('请选择一个已保存的账号进行删除');
-    return;
-  }
-
-  const accountToDelete = savedAccounts.value[selectedAccountIndex.value];
-  showConfirm({
-    title: '确认删除账号',
-    content: `确定要删除账号 "${accountToDelete.username}" 吗？此操作不可逆。`,
-    okText: '删除',
-    cancelText: '取消',
-    onOk: async () => {
-      const newAccounts = savedAccounts.value.filter((_, index) => index !== selectedAccountIndex.value);
-      savedAccounts.value = newAccounts;
-      
-      // 检查是否需要更新IndexedDB
-      const storageType = localStorage.getItem('multiAccounts_storage');
-      if (storageType === 'indexedDB') {
-        await saveLargeDataToIndexedDB(ACCOUNT_STORE, 'accounts', newAccounts);
-      }
-      localStorage.setItem('multiAccounts', JSON.stringify(newAccounts));
-      
-      message.success('账号删除成功');
-      selectedAccountIndex.value = null; // 清除选中
-      username.value = '';
-      password.value = '';
-      rememberMe.value = false;
-      autoLogin.value = false;
-    },
-    onCancel: () => {
-      console.log('取消删除');
-    },
-  });
-};
-
-// 新增：显示账号管理弹窗
-const showAccountManager = () => {
-  accountManagerVisible.value = true;
-  
-  // 调试：检查当前账号数据
-  console.log('账号管理弹窗打开，当前账号数据:', savedAccounts.value);
-  savedAccounts.value.forEach((account, index) => {
-          console.log(`账号${index + 1}缓存状态检查:`, {
-        username: account.username,
-        patientStorage: account.patientStorage,
-        checkStorage: account.checkStorage,
-        patientIndexedDBKey: account.patientIndexedDBKey,
-        checkIndexedDBKey: account.checkIndexedDBKey,
-        hasPatientData: !!account.patientIndexedDBKey,
-        hasCheckData: !!account.checkIndexedDBKey,
-        // 检查判断条件
-        patientCondition: !!account.patientIndexedDBKey,
-        checkCondition: !!account.checkIndexedDBKey,
-        finalCondition: !!account.patientIndexedDBKey && !!account.checkIndexedDBKey
-      });
-  });
-};
-
-// 新增：切换到指定账号
-const switchToAccount = (index) => {
-  handleAccountSelect(index);
-  accountManagerVisible.value = false;
-};
-
-// 新增：从账号管理弹窗中删除账号
-const deleteAccountFromManager = (index) => {
-  const accountToDelete = savedAccounts.value[index];
-  showConfirm({
-    title: '确认删除账号',
-    content: `确定要删除账号 "${accountToDelete.username}" 吗？此操作不可逆。`,
-    okText: '删除',
-    cancelText: '取消',
-    onOk: async () => {
-      const newAccounts = savedAccounts.value.filter((_, accIndex) => accIndex !== index);
-      savedAccounts.value = newAccounts;
-      
-      // 检查是否需要更新IndexedDB
-      const storageType = localStorage.getItem('multiAccounts_storage');
-      if (storageType === 'indexedDB') {
-        await saveLargeDataToIndexedDB(ACCOUNT_STORE, 'accounts', newAccounts);
-      }
-      localStorage.setItem('multiAccounts', JSON.stringify(newAccounts));
-      
-      message.success('账号删除成功');
-      if (selectedAccountIndex.value === index) {
-        selectedAccountIndex.value = null;
-        username.value = '';
-        password.value = '';
-        rememberMe.value = false;
-        autoLogin.value = false;
-      }
-    },
-    onCancel: () => {
-      console.log('取消删除');
-    },
-  });
-};
-
-// 新增：清除所有已保存的账号
-const clearAllAccounts = () => {
-  showConfirm({
-    title: '确认清除所有账号',
-    content: '确定要清除所有已保存的账号吗？此操作不可逆。',
-    okText: '清除',
-    cancelText: '取消',
-    onOk: async () => {
-      localStorage.removeItem('multiAccounts');
-      localStorage.removeItem('multiAccounts_storage');
-      savedAccounts.value = [];
-      selectedAccountIndex.value = null;
-      username.value = '';
-      password.value = '';
-      rememberMe.value = false;
-      autoLogin.value = false;
-      message.success('所有账号已清除');
-    },
-    onCancel: () => {
-      console.log('取消清除');
-    },
-  });
-};
-
-// 新增：格式化时间
-const formatTime = (timestamp) => {
-  if (!timestamp) return '从未登录';
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffInSeconds = (now.getTime() - date.getTime()) / 1000;
-
-  if (diffInSeconds < 60) {
-    return `${Math.round(diffInSeconds)}秒前`;
-  } else if (diffInSeconds < 3600) {
-    return `${Math.round(diffInSeconds / 60)}分钟前`;
-  } else if (diffInSeconds < 86400) {
-    return `${Math.round(diffInSeconds / 3600)}小时前`;
-  } else {
-    return `${Math.round(diffInSeconds / 86400)}天前`;
-  }
 };
 
 // 实际执行重建数据库的函数
@@ -2554,18 +2230,196 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.login-wrapper {
-  background: url("../assets/bg1.jpg") no-repeat center center;
-  background-size: cover;
-  height: 100vh;
+.login-page {
+  --login-primary: #5dade2;
+  --login-primary-hover: #42a5d9;
+  --login-muted: rgba(0, 0, 0, 0.45);
+  --login-page-bg: #fff;
+  min-height: 100vh;
   width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  background: var(--login-page-bg);
 }
 
-.login-form {
-  background-color: rgba(255, 255, 255, 0.8);
-  padding: 20px;
+.login-page__hero {
+  display: none;
+  position: relative;
+  min-height: 320px;
+  flex-direction: column;
+}
+
+.login-page__hero :deep(.login-illustration) {
+  flex: 1;
+  min-height: 0;
+}
+
+.login-page__panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background: var(--login-page-bg);
+}
+
+.login-page__panel-inner {
+  width: 100%;
+  max-width: 420px;
+}
+
+.login-page__mobile-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 48px;
+}
+
+.login-page__mobile-logo {
+  display: block;
+  width: 144px;
+  height: 144px;
+  object-fit: contain;
+}
+
+@media (min-width: 1024px) {
+  .login-page {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .login-page__hero {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    align-items: stretch;
+    background: var(--login-page-bg);
+  }
+
+  .login-page__mobile-brand {
+    display: none;
+  }
+
+  .login-page__panel {
+    min-height: 100vh;
+  }
+}
+
+.login-page__header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.login-page__title {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.login-page__subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--login-muted);
+}
+
+.login-page__form :deep(.ant-form-item) {
+  margin-bottom: 20px;
+}
+
+.login-page__form :deep(.ant-form-item-label > label) {
+  font-weight: 500;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.login-page__remember {
+  margin-bottom: 8px !important;
+}
+
+.login-page__remember :deep(.ant-form-item-control-input) {
+  min-height: auto;
+}
+
+.login-page__submit-wrap {
+  margin-bottom: 12px !important;
+}
+
+.login-page__update-wrap {
+  margin-bottom: 0 !important;
+}
+
+.login-page__control {
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.login-page__form :deep(.ant-select-large .ant-select-selector) {
+  min-height: 48px !important;
+  height: 48px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* 与输入框同高时用 flex 居中，勿用固定行高（中文在 48px 框内易视觉偏下） */
+.login-page__form :deep(.ant-select-large .ant-select-selection-item),
+.login-page__form :deep(.ant-select-large .ant-select-selection-placeholder) {
+  line-height: 1.5 !important;
+  align-self: center !important;
+}
+
+.login-page__control :deep(.ant-input),
+.login-page__control.ant-input {
+  height: 48px;
+  line-height: 48px;
+  border-radius: 8px;
+}
+
+.login-page__password-input :deep(.ant-input) {
+  padding-right: 40px;
+}
+
+.login-page__eye-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--login-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  font-size: 18px;
+}
+
+.login-page__eye-btn:hover {
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.login-page__submit.ant-btn-primary {
+  height: 48px;
+  font-size: 16px;
+  font-weight: 500;
+  background: var(--login-primary);
+  border-color: var(--login-primary);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.login-page__submit.ant-btn-primary:not(:disabled):hover {
+  background: var(--login-primary-hover);
+  border-color: var(--login-primary-hover);
+}
+
+.login-page__update-btn {
+  height: 48px;
+  border-radius: 8px;
+  font-size: 15px;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.login-page__update-btn:hover {
+  border-color: var(--login-primary);
+  color: var(--login-primary);
 }
 
 .loading-modal :deep(.ant-modal-content) {
@@ -2601,113 +2455,4 @@ onUnmounted(() => {
   font-size: 14px;
 }
 
-/* 新增账号管理弹窗样式 */
-.account-item {
-  padding: 16px;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  background: #fafafa;
-  transition: all 0.3s ease;
-}
-
-.account-item:hover {
-  background: #f5f5f5;
-  border-color: #d9d9d9;
-}
-
-.account-item:last-child {
-  margin-bottom: 0;
-}
-
-.account-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.account-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.account-main strong {
-  font-size: 16px;
-  color: #1890ff;
-  font-weight: 600;
-}
-
-.account-org {
-  font-size: 14px;
-  color: #666;
-  background: #e6f7ff;
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid #91d5ff;
-}
-
-.account-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: #999;
-}
-
-.account-status {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.account-time {
-  font-style: italic;
-  font-size: 12px;
-  color: #999;
-}
-
-.cache-status {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.cache-badge {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: bold;
-}
-
-.cache-available {
-  background-color: #52c41a;
-  color: white;
-}
-
-.cache-unavailable {
-  background-color: #f5222d;
-  color: white;
-}
-
-.account-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.account-actions .ant-btn {
-  padding: 2px 8px;
-  height: 24px;
-  font-size: 12px;
-}
-
-.current-account-badge {
-  background-color: #1890ff;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-  margin-left: 10px;
-}
 </style>

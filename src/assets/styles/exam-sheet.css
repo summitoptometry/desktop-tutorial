@@ -1,0 +1,1066 @@
+/* 检查单表格（基础检查 / 视力检查 / 生物测量报告表等）— 紧凑版 */
+
+.exam-sheet {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #ffffff;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #2a3542;
+  border: 1px solid #b0d4e8;
+  /* 表格外间距由外层 section-block 等统一控制，避免与区块 margin 叠加 */
+  margin-bottom: 0;
+  /* 与 ExamResultsUnified --exr-select-h 一致，表内下拉略矮于输入框 */
+  --exr-select-h: 22px;
+  /* 并排表之间的水平间距（与垂直 --exr-table-gap 可统一在父级覆盖） */
+  --exr-table-gap: 8px;
+  /* 参考值/临界值等说明性数值，略小于可填数值（--exr-font-body） */
+  --exr-font-reference: max(8px, calc(var(--exr-font-body, 11px) - 2px));
+}
+
+.exam-sheet th,
+.exam-sheet td {
+  border: 1px solid #b0d4e8;
+  text-align: center;
+  vertical-align: middle;
+  padding: var(--exr-pad-td, 0);
+  height: auto;
+  min-height: var(--exr-row-min-h, 26px);
+  /* 与基础检查「身高」等数值格一致（有父级 --exr-font-body 时继承；无则 11px） */
+  font-size: var(--exr-font-body, 11px);
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+/* 表体数据行：与输入框高度 --exr-input-h 对齐，避免仅查看时行高偏矮、编辑时偏高 */
+.exam-sheet tbody td {
+  min-height: var(--exr-input-h, 28px);
+}
+
+.exam-sheet .side-title {
+  width: 46px;
+  min-width: 46px;
+  max-width: 46px;
+  background: #cceaf5;
+  color: #2a3542;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* 仅标题文字竖排 */
+.exam-sheet .side-title .report-section-side-title-text {
+  display: inline-block;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  line-height: 1.15;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+/* thead 侧栏（生物测量等） */
+.exam-sheet thead th.report-section-side-title {
+  background: #cceaf5;
+  color: #2a3542;
+  font-weight: 700;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.5px;
+  border: 1px solid #b0d4e8;
+  width: 46px;
+  min-width: 46px;
+  max-width: 46px;
+  padding: 4px 3px;
+  vertical-align: middle;
+  font-size: 11px;
+  height: auto;
+}
+
+.exam-sheet thead th.report-section-side-title .report-section-side-title-text {
+  display: inline-block;
+  line-height: 1.15;
+}
+
+/* 生物测量报告表：tbody 首行指标列（双行标题） */
+.exam-sheet.exam-table-biometry tbody tr:first-child th.col-head {
+  font-size: 9px;
+  line-height: 1.2;
+  white-space: normal;
+  height: auto;
+  min-height: 32px;
+  padding: 3px 2px;
+  vertical-align: middle;
+}
+
+/* 生物测量：参考临界值列略宽于均分列 */
+.exam-sheet.exam-table-biometry th.col-head.col-critical,
+.exam-sheet.exam-table-biometry td.col-critical {
+  width: 9%;
+  min-width: 74px;
+}
+.exam-sheet.exam-table-biometry tbody tr:first-child th.col-head.col-critical {
+  white-space: nowrap;
+}
+
+/* 参考临界值列数值与轴率比等列同字号 */
+.exam-sheet.exam-table-biometry td.col-critical .cell-field {
+  font-size: var(--exr-font-body, 11px);
+}
+
+/* 生物测量：眼别列与主觉验光检查表（.exam-sheet .eye-cell）一致 — 48px */
+.exam-sheet.exam-table-biometry th.row-head,
+.exam-sheet.exam-table-biometry th.eye-cell {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  box-sizing: border-box;
+}
+
+.exam-sheet.exam-table-biometry tbody tr:first-child th.row-head {
+  font-size: 10px;
+  height: auto;
+  min-height: 32px;
+  vertical-align: middle;
+}
+
+.exam-sheet .row-head,
+.exam-sheet .col-head,
+.exam-sheet .group-head {
+  background: #dff3fb;
+  color: #2a3542;
+  font-weight: 700;
+  font-size: 10px;
+  height: 28px;
+}
+
+.exam-sheet .sub-head {
+  background: #f0f9fd;
+  color: #2a3542;
+  font-weight: 600;
+  font-size: 9px;
+  height: 22px;
+}
+
+.exam-sheet .eye-cell {
+  background: #dbe6f1;
+  color: #2a3542;
+  font-weight: 700;
+  width: 48px;
+  min-width: 48px;
+}
+
+/* 眼别列：右眼 / 左眼 / 双眼，略小于表体字号 */
+.exam-sheet th.eye-cell.eye-name {
+  font-size: max(8px, calc(var(--exr-font-body, 11px) - 2px));
+}
+
+.exam-sheet td {
+  background: #f7f9fc;
+}
+
+.exam-sheet td.cell-computed {
+  background: rgba(82, 196, 26, 0.08);
+}
+
+/* 与 BMI 一致的“计算字段”底色：非 exam-sheet 的明细表 */
+.routine-info-table td.cell-computed,
+.refraction-table td.cell-computed,
+.biometry-table td.cell-computed {
+  background: rgba(82, 196, 26, 0.08);
+}
+
+.exam-sheet td.cell-muted {
+  background: #eef2f6;
+  color: #8c8c8c;
+}
+
+.exam-sheet .cell-field {
+  width: 100%;
+  height: 100%;
+  min-height: var(--exr-input-h, 28px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--exr-pad-td, 0 2px);
+  box-sizing: border-box;
+  font-size: inherit;
+  /* 与 ant-input-number 内行高一致，查看态与编辑态视觉行高对齐 */
+  line-height: calc(var(--exr-input-h, 28px) - 2px);
+}
+
+/* 非合并单元格：格内区域固定为输入框高度，与编辑态控件一致 */
+.exam-sheet tbody td:not([rowspan]) .cell-field {
+  height: var(--exr-input-h, 28px);
+  min-height: var(--exr-input-h, 28px);
+}
+
+/* 调节幅度「检查方式」竖排两按钮：不锁单行格高，避免与下行重叠 */
+.exam-sheet.exam-table-accommodation tbody td:not([rowspan]) .cell-field.cell-field--amplitude-style {
+  height: auto !important;
+  min-height: 40px !important;
+  padding: 4px 2px !important;
+  line-height: 1.2 !important;
+}
+
+.exam-sheet tbody td[rowspan] .cell-field {
+  height: auto;
+  min-height: var(--exr-input-h, 28px);
+}
+
+/* 视力表：含上标/组合输入，不固定格高以免裁切 */
+.exam-sheet.exam-table-vision tbody td .cell-field {
+  height: auto;
+  min-height: var(--exr-input-h, 28px);
+}
+
+.exam-sheet .cell-input,
+.exam-sheet .cell-select,
+.exam-sheet .cell-number {
+  width: 100%;
+}
+
+/* 表内控件：与 ExamResultsUnifiedStyleTwo 中 table:not(.exam-sheet) 一致（无线框、透明底、统一字号行高） */
+.exam-sheet .ant-input,
+.exam-sheet .ant-input-number,
+.exam-sheet .ant-picker {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  min-height: var(--exr-input-h, 28px) !important;
+}
+
+.exam-sheet .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-sizing: border-box !important;
+  min-height: var(--exr-select-h, 22px) !important;
+  height: var(--exr-select-h, 22px) !important;
+  max-height: var(--exr-select-h, 22px) !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-inline-start: 2px !important;
+  padding-inline-end: 10px !important;
+  /* 用 flex 垂直居中，勿在容器上写死 line-height（易与中文基线冲突） */
+  display: flex !important;
+  align-items: center !important;
+  line-height: normal !important;
+}
+
+.exam-sheet .ant-input:not(textarea) {
+  text-align: center;
+  padding: var(--exr-pad-td, 0 2px) !important;
+  font-size: var(--exr-font-body, 11px) !important;
+  font-weight: 400 !important;
+  line-height: calc(var(--exr-input-h, 28px) - 2px) !important;
+}
+
+.exam-sheet .ant-input-number {
+  width: 100% !important;
+  max-width: 100%;
+  display: flex !important;
+  align-items: center !important;
+  line-height: normal !important;
+  font-weight: 400 !important;
+  height: var(--exr-input-h, 28px) !important;
+  min-height: var(--exr-input-h, 28px) !important;
+  max-height: var(--exr-input-h, 28px) !important;
+  box-sizing: border-box !important;
+}
+
+.exam-sheet .ant-input-number-handler-wrap {
+  display: none !important;
+}
+
+.exam-sheet .ant-input-number-input-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex !important;
+  align-items: center !important;
+  height: var(--exr-input-h, 28px) !important;
+}
+
+.exam-sheet .ant-input-number-input {
+  text-align: center !important;
+  height: var(--exr-input-h, 28px) !important;
+  font-size: var(--exr-font-body, 11px) !important;
+  font-weight: 400 !important;
+  /* 与高度一致，保证数字在格内垂直居中（不受外层 line-height:1 影响） */
+  line-height: var(--exr-input-h, 28px) !important;
+  padding: var(--exr-pad-td, 0 2px) !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.exam-sheet .ant-input-number-focused,
+.exam-sheet .ant-input-number:hover {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.exam-sheet .ant-select {
+  width: 100%;
+}
+
+.exam-sheet .ant-select-focused:not(.ant-select-disabled) .ant-select-selector,
+.exam-sheet .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.exam-sheet .ant-select-selection-item,
+.exam-sheet .ant-select-selection-placeholder {
+  text-align: center;
+  line-height: calc(var(--exr-select-h, 22px) - 2px) !important;
+  font-size: calc(var(--exr-font-body, 11px) - 1px) !important;
+}
+
+.exam-sheet .ant-input:focus,
+.exam-sheet .ant-input-focused,
+.exam-sheet .ant-input-affix-wrapper-focused,
+.exam-sheet .ant-input-number-focused,
+.exam-sheet .ant-select-focused .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.exam-sheet .ant-input-affix-wrapper {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: var(--exr-pad-td, 0 2px) !important;
+  min-height: var(--exr-input-h, 28px) !important;
+  background: transparent !important;
+}
+
+.exam-sheet .ant-input-affix-wrapper .ant-input:not(textarea) {
+  min-height: auto !important;
+  text-align: center;
+  font-size: var(--exr-font-body, 11px) !important;
+  line-height: calc(var(--exr-input-h, 28px) - 2px) !important;
+}
+
+/* 报告式：基础检查 + 检影验光同一行 */
+.exam-report-basic-retinoscopy-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: var(--exr-table-gap, 8px);
+  width: 100%;
+  margin-bottom: 0;
+  box-sizing: border-box;
+}
+
+.exam-report-basic-retinoscopy-row > .exam-sheet {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  margin-bottom: 0;
+}
+
+.exam-report-basic-retinoscopy-row .exam-table-basic {
+  flex: 1.45 1 0;
+}
+
+.exam-report-basic-retinoscopy-row .exam-table-objective-retinoscopy {
+  flex: 0.95 1 0;
+}
+
+.exam-sheet th.report-section-top-title {
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  height: auto;
+  min-height: 28px;
+  padding: 6px 4px;
+}
+
+.exam-sheet th.report-section-top-title.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.exam-table-basic .row-head {
+  width: 48px;
+}
+
+/* 报告式基础检查：眼压/修正眼压略窄且等宽；身高/体重略宽且等宽；表头与数值单行不换行 */
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye col.basic-col-eye {
+  width: 8%;
+}
+
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye col.basic-col-iop,
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye col.basic-col-corrected-iop {
+  width: 19%;
+}
+
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye col.basic-col-height,
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye col.basic-col-weight {
+  width: 13%;
+}
+
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye col.basic-col-bmi {
+  width: 28%;
+}
+
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye th.basic-th-iop,
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye th.basic-th-corrected-iop,
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye th.basic-th-height,
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye th.basic-th-weight,
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye th.basic-th-bmi {
+  white-space: nowrap;
+  font-size: 9px;
+  line-height: 1.2;
+  padding: 3px 2px;
+}
+
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye td.basic-td-iop .cell-field,
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye td.basic-td-corrected-iop .cell-field,
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye td.basic-td-height .cell-field,
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye td.basic-td-weight .cell-field,
+.exam-report-basic-retinoscopy-row .exam-table-basic.routine-report-by-eye td.basic-td-bmi .cell-field {
+  white-space: nowrap;
+  font-size: var(--exr-font-body, 11px);
+}
+
+/* 基础检查 / 检影验光数据行与其它 exam-sheet 表体一致，继承父级 --exr-input-h / --exr-row-min-h，不再单独压矮 */
+
+.exam-table-vision .row-head {
+  width: 48px;
+}
+
+/* 视力检查报告：裸眼/戴镜等原生 input、占位展示与眼压格一致（无边框、透明底、格线围合） */
+.exam-sheet.exam-table-vision .vision-combined-input {
+  width: 100% !important;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: none !important;
+  outline: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  text-align: center;
+  min-height: var(--exr-input-h, 28px) !important;
+  height: var(--exr-input-h, 28px) !important;
+  padding: var(--exr-pad-td, 0 2px) !important;
+  font-size: var(--exr-font-body, 11px) !important;
+  line-height: calc(var(--exr-input-h, 28px) - 2px) !important;
+  font-weight: 500;
+  color: inherit;
+}
+
+.exam-sheet.exam-table-vision .vision-combined-input::placeholder {
+  color: #bfbfbf;
+  font-size: inherit;
+}
+
+.exam-sheet.exam-table-vision .vision-edit-display {
+  min-height: var(--exr-input-h, 28px) !important;
+  padding: var(--exr-pad-td, 0 2px) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: text;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: var(--exr-font-body, 11px) !important;
+  line-height: calc(var(--exr-input-h, 28px) - 2px) !important;
+  font-weight: 500;
+}
+
+.exam-sheet.exam-table-vision .pd-cell-report .cell-field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+}
+
+/* 瞳距数字约 4～6 位，勿 flex:1 拉满，避免「瞳距」与 mm 间距过大 */
+.exam-sheet.exam-table-vision .pd-cell-report .cell-field .ant-input-number {
+  flex: 0 0 auto;
+  width: 5.5ch !important;
+  min-width: 4.5ch !important;
+  max-width: 8ch !important;
+}
+
+/* 电脑验光检查 / 检影 / 主觉验光报告：格内文案与 a-input、a-input-number 统一为 --exr-font-body（与身高等数值格一致），球镜等不加粗 */
+.exam-sheet.exam-table-objective-refraction .cell-field,
+.exam-sheet.exam-table-objective-retinoscopy .cell-field,
+.exam-sheet.exam-table-subjective-refraction .cell-field {
+  font-size: var(--exr-font-body, 11px);
+  font-weight: 400;
+}
+
+/* 主觉验光报告表：双眼行「主导眼/瞳距」与眼别列 th.eye-cell.eye-name 同字号（行高收紧，避免与格内 28px 行高叠在一起显得字更大） */
+.exam-sheet.exam-table-subjective-refraction .cell-field.dominant-eye-pd-report {
+  font-size: max(8px, calc(var(--exr-font-body, 11px) - 2px)) !important;
+  line-height: 1.25 !important;
+}
+
+.exam-sheet.exam-table-subjective-refraction .dominant-eye-pd-report .dominant-eye-pd-label,
+.exam-sheet.exam-table-subjective-refraction .dominant-eye-pd-report .pupil-distance-unit {
+  font-size: inherit;
+}
+
+/* 覆盖格内控件默认字号，与眼别列一致 */
+.exam-sheet.exam-table-subjective-refraction .dominant-eye-pd-report .ant-input:not(textarea),
+.exam-sheet.exam-table-subjective-refraction .dominant-eye-pd-report .ant-input-number-input {
+  font-size: inherit !important;
+}
+
+.exam-sheet.exam-table-subjective-refraction .dominant-eye-pd-report .dominant-eye-toggle-btn {
+  font-size: inherit !important;
+}
+
+/* 电脑验光检查 / 检影：只读数值（柱镜、轴位、PS、等效球镜）在格内水平居中 */
+.exam-sheet.exam-table-objective-refraction .cell-field .cell-readonly-value,
+.exam-sheet.exam-table-objective-retinoscopy .cell-field .cell-readonly-value {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+/* 柱镜列：tooltip 触发器拉满格宽，避免输入框偏一侧 */
+.exam-sheet.exam-table-objective-refraction .objective-cyl-tooltip-wrap,
+.exam-sheet.exam-table-objective-retinoscopy .objective-cyl-tooltip-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
+.exam-sheet.exam-table-objective-refraction .objective-cyl-tooltip-wrap .cell-sphere-wrap,
+.exam-sheet.exam-table-objective-retinoscopy .objective-cyl-tooltip-wrap .cell-sphere-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* 电脑验光检查表：列多，子表头略缩小并可换行 */
+.exam-table-objective-refraction .sub-head {
+  font-size: 9px;
+  line-height: 1.15;
+  padding: 2px 1px;
+  white-space: normal;
+  font-weight: 600;
+}
+
+/* 电脑验光 / 主觉验光：「（散瞳）」子表头列，单行显示 */
+.exam-table-objective-refraction th.objective-pupillary-col-head,
+.exam-table-subjective-refraction th.subjective-pupillary-col-head {
+  white-space: nowrap;
+  min-width: 4.5em;
+  padding-left: 3px;
+  padding-right: 6px;
+}
+
+.exam-table-objective-retinoscopy .side-title {
+  width: 44px;
+  min-width: 44px;
+  max-width: 48px;
+}
+
+.exam-table-objective-retinoscopy .side-title .report-section-side-title-text {
+  font-size: 10px;
+  padding: 3px 0;
+}
+
+/* 主觉验光检查：列多，子表头缩小（与电脑验光检查表 .exam-table-objective-refraction .sub-head 一致） */
+.exam-table-subjective-refraction .sub-head {
+  font-size: 9px;
+  line-height: 1.15;
+  padding: 2px 1px;
+  white-space: normal;
+  font-weight: 600;
+}
+
+/* 主觉验光报告表：首行「眼别」与电脑验光检查侧栏同列视觉权重 */
+.exam-table-subjective-refraction tbody tr:first-child th.row-head {
+  vertical-align: middle;
+}
+
+.exam-sheet .dominant-eye-pd-report .dominant-eye-pd-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: left;
+  width: 100%;
+  min-height: auto;
+  font-size: inherit;
+  font-weight: 400;
+}
+
+/* 同一行：主导眼+按钮 | 瞳距+数值+单位（两组并排） */
+.exam-sheet .dominant-eye-pd-report .dominant-eye-pd-item {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.exam-sheet .dominant-eye-pd-report .dominant-eye-toggle-group {
+  flex: 0 1 auto;
+  width: auto !important;
+  min-width: 0;
+  max-width: none;
+}
+
+/* 主导眼按钮：紧凑尺寸，文字略小、水平垂直居中 */
+.exam-sheet.exam-table-subjective-refraction .dominant-eye-pd-report .dominant-eye-toggle-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 400 !important;
+  height: calc(var(--exr-select-h, 22px) - 4px) !important;
+  min-height: calc(var(--exr-select-h, 22px) - 4px) !important;
+  min-width: 26px !important;
+  padding: 0 2px !important;
+  line-height: normal !important;
+  text-align: center !important;
+  font-size: max(8px, calc(var(--exr-font-body, 11px) - 3px)) !important;
+}
+
+.exam-sheet .dominant-eye-pd-report .pupil-distance-input {
+  flex: 0 0 auto !important;
+  width: 4.8ch !important;
+  min-width: 4ch !important;
+  max-width: 5.5ch !important;
+}
+
+.exam-sheet .dominant-eye-pd-report .pupil-distance-input .ant-input {
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+}
+
+.exam-sheet .dominant-eye-pd-report .pupil-distance-unit {
+  flex-shrink: 0;
+  margin-left: 0 !important;
+}
+
+.exam-sheet-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* 眼位与聚散（报告）：仅主表直接子行 th，不含 td 内嵌表 */
+.exam-sheet.exam-table-binocular > tbody > tr > th.group-head {
+  font-size: 9px;
+  line-height: 1.1;
+  padding: 2px 1px;
+  white-space: normal;
+  height: auto;
+  min-height: 26px;
+  vertical-align: middle;
+}
+
+/* 检测距离 / 水平眼位/△（内/外） / 垂直眼位/△（高位）：单行不换行 */
+.exam-sheet.exam-table-binocular th.group-head-nowrap {
+  white-space: nowrap;
+}
+
+.exam-sheet.exam-table-binocular .sub-head {
+  font-size: 8px;
+  line-height: 1.1;
+  padding: 1px 1px;
+  white-space: normal;
+  font-weight: 600;
+  height: auto;
+  min-height: 22px;
+}
+
+.exam-sheet.exam-table-binocular .row-head {
+  font-size: 10px;
+}
+
+.exam-sheet.exam-table-binocular .eye-cell {
+  width: 8%;
+  min-width: 52px;
+}
+
+/* 眼位和聚散报告表：侧栏宽度与主觉验光检查 .report-section-side-title 一致（46px） */
+.exam-sheet.exam-table-binocular col.binocol-side {
+  width: 46px;
+  min-width: 46px;
+  max-width: 46px;
+}
+
+/* tbody 内侧栏 th：与 .exam-sheet thead th.report-section-side-title 同宽同内边距 */
+.exam-sheet.exam-table-binocular th.side-title {
+  width: 46px !important;
+  min-width: 46px !important;
+  max-width: 46px !important;
+  padding: 4px 3px !important;
+  box-sizing: border-box;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.exam-sheet.exam-table-binocular th.side-title .report-section-side-title-text {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px 0;
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+.exam-sheet.exam-table-binocular col.binocol-distance {
+  width: 8%;
+  min-width: 52px;
+}
+
+.exam-sheet.exam-table-binocular col.binocol-phoria-h,
+.exam-sheet.exam-table-binocular col.binocol-phoria-v {
+  width: 12%;
+  min-width: 108px;
+}
+
+.exam-sheet.exam-table-binocular col.binocol-tight {
+  width: 6.5%;
+  min-width: 48px;
+}
+
+/* 视功能报告：集合/散开表头、模糊·破裂点表头与数据行、AC/A 内表、NRA·PRA、调节灵敏度表头与眼别行 — 行高与表头内边距（内嵌表需单独加 padding，避免仅 min-height 仍显挤） */
+.exam-sheet tr.func-report-row-tall > td,
+.exam-sheet tr.func-report-row-tall > th {
+  min-height: 40px;
+}
+
+/* 主表：集合/散开 等分组表头 */
+.exam-sheet.exam-table-binocular tr.func-report-row-tall th.group-head,
+.exam-sheet.exam-table-accommodation tr.func-report-row-tall th.group-head {
+  height: auto;
+  min-height: 40px;
+  padding: 8px 6px;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
+
+/* 内嵌表（AC/A+CA/C、NRA+PRA）第一行分组：提高优先级（含 tbody），避免被 .inner-exam-table .group-head 等规则盖住 */
+.exam-sheet .inner-exam-table tbody tr.func-report-row-tall th.group-head {
+  height: auto !important;
+  min-height: 48px !important;
+  padding: 10px 8px !important;
+  line-height: 1.3 !important;
+  box-sizing: border-box !important;
+}
+
+.exam-sheet.exam-table-binocular tr.func-report-row-tall th.sub-head {
+  height: auto;
+  min-height: 32px;
+  padding: 6px 4px;
+  line-height: 1.2;
+  box-sizing: border-box;
+}
+
+.exam-sheet.exam-table-accommodation tr.func-report-row-tall th.sub-head {
+  height: auto;
+  min-height: 32px;
+  padding: 6px 4px;
+  line-height: 1.2;
+  box-sizing: border-box;
+}
+
+.exam-sheet.exam-table-accommodation tr.func-report-row-tall th.row-head {
+  min-height: 40px;
+  padding: 6px 4px;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+
+.exam-sheet tbody tr.func-report-row-tall td:not([rowspan]) .cell-field {
+  min-height: 36px;
+  height: 36px;
+}
+
+.exam-sheet .inner-exam-table tr.func-report-row-tall > td,
+.exam-sheet .inner-exam-table tr.func-report-row-tall > th {
+  height: auto;
+  min-height: 36px;
+}
+
+.exam-sheet .inner-exam-table tr.func-report-row-tall .cell-field {
+  min-height: 36px;
+  height: auto;
+}
+
+.exam-sheet td.inner-table-cell {
+  padding: 0;
+  vertical-align: top;
+  background: #eef2f6;
+}
+
+.exam-sheet .inner-exam-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--exr-font-body, 11px);
+  background: #f7f9fc;
+}
+
+.exam-sheet .inner-exam-table th,
+.exam-sheet .inner-exam-table td {
+  border: 1px solid #b0d4e8;
+}
+
+/* 内嵌表 group-head 仅保留字号；行高由内嵌 tbody tr.func-report-row-tall th.group-head 单独控制 */
+.exam-sheet .inner-exam-table .group-head {
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+/* 内嵌子表头仅保留字号；行高由 tbody tr.func-report-row-tall th.sub-head 控制 */
+.exam-sheet .inner-exam-table .sub-head {
+  font-size: 8px;
+  line-height: 1.1;
+}
+
+/* 内嵌表第二行子表头（±1.00… / 模糊值·恢复值）：与主表「模糊点」等 th.sub-head 行高一致 */
+.exam-sheet .inner-exam-table tbody tr.func-report-row-tall th.sub-head {
+  height: auto !important;
+  min-height: 32px !important;
+  padding: 6px 4px !important;
+  line-height: 1.2 !important;
+  box-sizing: border-box !important;
+}
+
+.exam-sheet .inner-exam-table .cell-field {
+  min-height: var(--exr-input-h, 28px);
+  font-size: var(--exr-font-body, 11px);
+  box-sizing: border-box;
+}
+
+/* 调节检查主表：下方「参考值」列数值略小于可填格 */
+.exam-sheet.exam-table-accommodation tbody tr.func-report-row-tall td > .cell-field.accommodation-ref-value {
+  font-size: var(--exr-font-reference);
+  line-height: 1.2;
+}
+
+/* 调节检查报告：参考值单元格底色与计算性 AC/A「PD/10」公式格一致 */
+.exam-sheet.exam-table-accommodation tbody tr.func-report-row-tall td > .cell-field.accommodation-ref-value,
+.exam-sheet.exam-table-accommodation tbody tr.func-report-row-tall td > .cell-field.accommodation-pra-ref,
+.exam-sheet .inner-exam-table td > .cell-field.accommodation-ref-value {
+  background: #eef2f6;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+/* 调节检查报告表：仅主表直接子行 th，不含 td 内嵌 NRA/PRA */
+.exam-sheet.exam-table-accommodation > tbody > tr > th.group-head {
+  font-size: 9px;
+  line-height: 1.1;
+  padding: 2px 1px;
+  white-space: normal;
+  height: auto;
+  min-height: 24px;
+}
+
+.exam-sheet.exam-table-accommodation .sub-head {
+  font-size: 8px;
+  line-height: 1.1;
+  padding: 1px 1px;
+  white-space: normal;
+  font-weight: 600;
+  height: auto;
+  min-height: 22px;
+}
+
+/* 调节检查主表：侧栏 + 眼别 + 灵敏度(含参考值/检查参数) + 反应 + 幅度 */
+.exam-sheet.exam-table-accommodation col.acc-col-side {
+  width: 46px;
+}
+
+.exam-sheet.exam-table-accommodation col.acc-col-eye {
+  width: 48px;
+}
+
+/* 调节灵敏度 · 检查结果（数值+cpm）：略窄 */
+.exam-sheet.exam-table-accommodation col.acc-col-sens-result {
+  width: 6%;
+  max-width: 62px;
+}
+
+.exam-sheet.exam-table-accommodation col.acc-col-sens-ref {
+  width: 6.5%;
+  max-width: 68px;
+}
+
+/* 检查参数（检查光度 / 检查视标）：略宽 */
+.exam-sheet.exam-table-accommodation col.acc-col-sens-param {
+  width: 17%;
+  min-width: 132px;
+}
+
+.exam-sheet td.accommodation-top-block {
+  padding: 0;
+  vertical-align: top;
+  background: #eef2f6;
+}
+
+.exam-sheet .accommodation-nra-pra-inner {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+}
+
+.exam-sheet .cell-field-column {
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  text-align: center;
+  font-size: var(--exr-font-body, 11px);
+  line-height: 1.2;
+}
+
+.exam-sheet .italic-text {
+  font-style: italic;
+  color: #5a6a7e;
+  font-size: var(--exr-font-reference);
+}
+
+.exam-sheet .cell-field-stack-tight {
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.15;
+}
+
+.exam-sheet .binocular-bottom-table .cell-field {
+  min-height: var(--exr-input-h, 28px);
+  box-sizing: border-box;
+}
+
+.exam-sheet .binocular-bottom-table tr.func-report-row-tall .cell-field {
+  min-height: 36px;
+  height: auto;
+}
+
+/* 眼位内嵌 AC/A+CA/C：列宽均衡分配（约 11 等分） */
+.exam-sheet .binocular-bottom-table col.aca-col-gradient {
+  width: 9.09%;
+  min-width: 48px;
+}
+
+.exam-sheet .binocular-bottom-table col.aca-col-lens {
+  width: 9.09%;
+  min-width: 44px;
+}
+
+.exam-sheet .binocular-bottom-table col.aca-col-ref1 {
+  width: 9.09%;
+  min-width: 44px;
+}
+
+.exam-sheet .binocular-bottom-table col.aca-col-calc {
+  width: 9.09%;
+  min-width: 48px;
+}
+
+.exam-sheet .binocular-bottom-table col.aca-col-exam {
+  width: 9.09%;
+  min-width: 44px;
+}
+
+.exam-sheet .binocular-bottom-table col.aca-col-ref2 {
+  width: 9.09%;
+  min-width: 44px;
+}
+
+.exam-sheet .binocular-bottom-table col.cac-col-label {
+  width: 9.09%;
+  min-width: 44px;
+}
+
+.exam-sheet .binocular-bottom-table col.cac-col-result {
+  width: 9.09%;
+  min-width: 44px;
+}
+
+.exam-sheet .binocular-bottom-table col.cac-col-ref {
+  width: 9.09%;
+  min-width: 44px;
+}
+
+.exam-sheet .binocular-bottom-table th.sub-head-nowrap {
+  white-space: nowrap;
+}
+
+/* 计算性AC/A：与「梯度性AC/A」侧栏同款（rowspan=2、.sub-head 背景与字色），表格单元格居中，不用 flex */
+.exam-sheet .binocular-bottom-table th.aca-calculated-head {
+  text-align: center;
+  vertical-align: middle;
+  white-space: normal;
+}
+
+.exam-sheet .binocular-bottom-table th.aca-calculated-head .aca-calculated-num {
+  display: inline-block;
+  margin-top: 2px;
+  font-weight: 600;
+  font-size: inherit;
+  line-height: 1.2;
+  color: inherit;
+}
+
+/* —— 响应式：检查结果页宽表格在窄屏下可横向滚动或换行，避免裁切 —— */
+@media (max-width: 1199px) {
+  .exam-report-basic-retinoscopy-row {
+    flex-wrap: wrap;
+  }
+
+  .exam-report-basic-retinoscopy-row > .exam-sheet {
+    flex: 1 1 calc(50% - 4px);
+    min-width: min(100%, 280px);
+  }
+}
+
+@media (max-width: 767px) {
+  .exam-report-basic-retinoscopy-row {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .exam-report-basic-retinoscopy-row > .exam-sheet {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .exam-sheet .dominant-eye-pd-report .dominant-eye-pd-container {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px 14px;
+    row-gap: 8px;
+  }
+
+  .exam-sheet.exam-table-binocular .eye-cell {
+    min-width: 44px;
+  }
+
+  .exam-sheet.exam-table-binocular col.binocol-phoria-h,
+  .exam-sheet.exam-table-binocular col.binocol-phoria-v {
+    min-width: 80px;
+  }
+}

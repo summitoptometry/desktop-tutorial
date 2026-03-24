@@ -138,8 +138,8 @@
               </a-tab-pane>
             </a-tabs>
           </div>
-          <!-- 子标签页（如果当前激活的主标签页有子标签页） -->
-          <div v-if="activeTab && activeTab.subTabs && activeTab.subTabs.length > 0" class="sub-tabs-container">
+          <!-- 子标签页（患者主页多开时改在患者信息栏展示，此处隐藏） -->
+          <div v-if="activeTab && activeTab.subTabs && activeTab.subTabs.length > 0 && !isPatientHomeSubTabsOnly" class="sub-tabs-container">
             <a-tabs 
               v-model:activeKey="activeTab.activeSubTabId" 
               type="editable-card" 
@@ -1094,7 +1094,7 @@
 </template>
 
 <script setup>
-import {ref, onMounted, computed, watch, markRaw, inject, onErrorCaptured, nextTick} from 'vue';
+import {ref, onMounted, computed, watch, markRaw, inject, onErrorCaptured, nextTick, provide} from 'vue';
 import {message, Modal} from 'ant-design-vue';
 import axios from 'axios';
 import {
@@ -1411,8 +1411,8 @@ function addTab(pageKey, extraProps = {}, parentTabId = null) {
         newSubTab.title = extraProps.record.patient.name;
       }
       
-      // 子标签页最多容纳8个，超过时移除最旧的（按时间推移）
-      const MAX_SUB_TABS = 8;
+      // 子标签页最多容纳5个，超过时移除最旧的（按打开时间先后，队首最旧）
+      const MAX_SUB_TABS = 5;
       if (parentTab.subTabs.length >= MAX_SUB_TABS) {
         // 移除最旧的子标签页（数组第一个元素）
         const removedSubTab = parentTab.subTabs.shift();
@@ -1728,6 +1728,13 @@ const activeSubTab = computed(() => {
   return activeTab.value.subTabs.find(subTab => subTab.id === activeTab.value.activeSubTabId);
 });
 
+/** 当前主标签下的子标签是否全部为「患者主页」（多患者切换场景，子标签改在患者信息行展示） */
+const isPatientHomeSubTabsOnly = computed(() => {
+  const tab = activeTab.value;
+  if (!tab?.subTabs?.length) return false;
+  return tab.subTabs.every((s) => s.key === 'patient');
+});
+
 // 计算当前应该显示的组件（优先显示子标签页，否则显示主标签页）
 const currentComponent = computed(() => {
   if (activeSubTab.value && activeSubTab.value.component) {
@@ -1771,6 +1778,34 @@ function removeSubTab(targetKey) {
   activeTab.value.subTabs = subTabs.filter(subTab => subTab.id !== targetKey);
   activeTab.value.activeSubTabId = newActiveSubTabId;
 }
+
+/** 供患者主页内联标签条：切换/关闭与 Main 子标签状态同步 */
+const patientHomeSubTabsBridge = computed(() => {
+  const tab = activeTab.value;
+  if (!tab?.subTabs?.length || !tab.subTabs.every((s) => s.key === 'patient')) {
+    return {
+      visible: false,
+      subTabs: [],
+      activeSubTabId: '',
+      switchTo() {},
+      close() {}
+    };
+  }
+  return {
+    visible: true,
+    subTabs: tab.subTabs,
+    activeSubTabId: tab.activeSubTabId,
+    switchTo(id) {
+      const t = openedTabs.value.find((x) => x.id === activeTabId.value);
+      if (t) t.activeSubTabId = id;
+    },
+    close(id) {
+      removeSubTab(id);
+    }
+  };
+});
+
+provide('patientHomeSubTabsBridge', patientHomeSubTabsBridge);
 
 // 页面加载时默认打开工作台标签页
 onMounted(async () => {

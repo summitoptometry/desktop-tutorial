@@ -539,6 +539,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { message } from 'ant-design-vue';
+import { PRODUCT_AUX_STORAGE_EVENT } from '../../utils/productStorageSync.js';
 
 const PRODUCT_STORAGE_KEY = 'ProductModaldata';
 const ATTR_STORAGE_KEY = 'ProductAttributeData';
@@ -2000,6 +2001,16 @@ function confirmManufacturer() {
 const onWindowResize = () => {
   windowWidth.value = window.innerWidth;
 };
+
+function onProductAuxStorageSync(e) {
+  const t = e.detail?.type;
+  if (!t) return;
+  if (t === 'supplier') loadSupplierList();
+  if (t === 'manufacturer') loadManufacturerList();
+  if (t === 'attr') loadPurchaseParamList();
+  if (t === 'powerTemplate') loadPowerRangeTemplates();
+}
+
 onMounted(() => {
   loadCategoryList();
   loadProductList();
@@ -2008,9 +2019,11 @@ onMounted(() => {
   loadPowerRangeTemplates();
   loadPurchasePlanEntries();
   window.addEventListener('resize', onWindowResize);
+  window.addEventListener(PRODUCT_AUX_STORAGE_EVENT, onProductAuxStorageSync);
 });
 onUnmounted(() => {
   window.removeEventListener('resize', onWindowResize);
+  window.removeEventListener(PRODUCT_AUX_STORAGE_EVENT, onProductAuxStorageSync);
 });
 </script>
 

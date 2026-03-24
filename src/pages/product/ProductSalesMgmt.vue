@@ -46,7 +46,7 @@
                           class="patient-search-import"
                           @mousedown.prevent="onImportRefractionForPatient(item)"
                           @click.stop
-                        >导入主观验光</span>
+                        >导入主觉验光</span>
                       </div>
                     </template>
                   </div>
@@ -62,7 +62,7 @@
                 <span class="patient-info-item"><span class="patient-info-label">年龄：</span>{{ formatAge(selectedPatient.birthDate ?? selectedPatient.birth_date) }}</span>
                 <span class="patient-info-item"><span class="patient-info-label">联系电话：</span>{{ selectedPatient.phone || '—' }}</span>
                 <span class="patient-info-item patient-info-import-wrap">
-                  <a-button type="primary" size="small" @click="openImportRefractionModal">导入主观验光</a-button>
+                  <a-button type="primary" size="small" @click="openImportRefractionModal">导入主觉验光</a-button>
                 </span>
               </div>
             </div>
@@ -496,7 +496,7 @@
           </template>
         </a-table>
       </a-spin>
-      <div v-if="!importRefractionLoading && importRefractionList.length === 0" class="import-refraction-empty">暂无历史主观验光数据</div>
+      <div v-if="!importRefractionLoading && importRefractionList.length === 0" class="import-refraction-empty">暂无历史主觉验光数据</div>
     </a-modal>
 
     <!-- 镜片商品选择眼别弹窗 -->
@@ -787,12 +787,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, h, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, h, nextTick } from 'vue';
 import { pinyin } from 'pinyin-pro';
 import { SearchOutlined } from '@ant-design/icons-vue';
 import { Input, InputNumber, Tooltip, Select, Button, message } from 'ant-design-vue';
 import { DeleteOutlined } from '@ant-design/icons-vue';
 import datePickerLocale from 'ant-design-vue/es/date-picker/locale/zh_CN';
+import { PRODUCT_AUX_STORAGE_EVENT } from '../../utils/productStorageSync.js';
 
 const activeTabKey = ref('new-sale');
 const patientSearchText = ref('');
@@ -2233,11 +2234,11 @@ const salesProductColumns = [
   },
 ];
 
-// 导入主观验光弹窗：选择历史验光数据（按患者本地缓存，不重复请求）
+// 导入主觉验光弹窗：选择历史验光数据（按患者本地缓存，不重复请求）
 const importRefractionModalVisible = ref(false);
 const importRefractionLoading = ref(false);
 const importRefractionList = ref([]);
-/** 患者主观验光历史缓存：key = 患者 id/编号，value = 带主观验光的记录列表 */
+/** 患者主觉验光历史缓存：key = 患者 id/编号，value = 带主觉验光的记录列表 */
 const patientRefractionCache = new Map();
 const importRefractionColumns = [
   { title: '序号', key: 'index', width: 56, align: 'center' },
@@ -2841,7 +2842,7 @@ function buildVisionCol5(value, sign, level) {
   return v;
 }
 
-/** 与主观验光一致：解析「1.0+2」「0.8」等输入为 { value, sign, number } */
+/** 与主觉验光一致：解析「1.0+2」「0.8」等输入为 { value, sign, number } */
 function parseVisionCombinedInput(str) {
   if (str === null || str === undefined) str = '';
   const s = String(str).trim();
@@ -2865,7 +2866,7 @@ function parseVisionCombinedInput(str) {
   const number = match[3] || '';
   return { value, sign, number };
 }
-/** 与主观验光一致：由 { value, sign, number } 得到展示/存储字符串 */
+/** 与主觉验光一致：由 { value, sign, number } 得到展示/存储字符串 */
 function getVisionCombinedDisplayString(eyeData) {
   if (!eyeData) return '';
   const value = (eyeData.value != null && eyeData.value !== '') ? String(eyeData.value).trim() : '';
@@ -2908,7 +2909,7 @@ function applyRefractionToPrescription(record) {
   prescriptionData.value = prescriptionData.value.slice();
   prescriptionExamTime.value = record.examination_date ? formatExamDate(record.examination_date) : '';
   importRefractionModalVisible.value = false;
-  message.success('已导入主观验光数据');
+  message.success('已导入主觉验光数据');
 }
 
 function onImportRefractionSelect(record) {
@@ -2939,7 +2940,7 @@ function getImportRefractionModalContainer() {
   return document.body;
 }
 
-/** 从已选患者信息栏打开导入主观验光弹窗（不依赖下拉，保证弹窗能出现） */
+/** 从已选患者信息栏打开导入主觉验光弹窗（不依赖下拉，保证弹窗能出现） */
 function openImportRefractionModal() {
   const patient = selectedPatient.value;
   if (!patient) return;
@@ -2947,6 +2948,10 @@ function openImportRefractionModal() {
   nextTick(() => {
     importRefractionModalVisible.value = true;
   });
+}
+
+function onProductAuxStorageSync(e) {
+  if (e.detail?.type === 'attr') loadAttrList();
 }
 
 onMounted(() => {
@@ -2957,6 +2962,15 @@ onMounted(() => {
   loadSalesOrders();
   loadReturnOrders();
   if (typeof window !== 'undefined') window.checkLensStockByPower = checkLensStockByPower;
+  if (typeof window !== 'undefined') {
+    window.addEventListener(PRODUCT_AUX_STORAGE_EVENT, onProductAuxStorageSync);
+  }
+});
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener(PRODUCT_AUX_STORAGE_EVENT, onProductAuxStorageSync);
+  }
 });
 </script>
 
@@ -3106,7 +3120,7 @@ onMounted(() => {
   color: rgba(0, 0, 0, 0.88);
 }
 
-/* 矫正视力：与主观验光一致，值+上标显示，点击出现原生输入框 */
+/* 矫正视力：与主觉验光一致，值+上标显示，点击出现原生输入框 */
 .prescription-table .vision-cell-superscript.vision-edit-display.prescription-col5-display {
   cursor: pointer;
   text-align: center;

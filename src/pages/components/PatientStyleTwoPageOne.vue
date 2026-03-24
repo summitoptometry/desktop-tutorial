@@ -1,361 +1,323 @@
 <template>
   <div class="page-one-container">
-    <!-- 3. 医生建议（打印模式下勾选则显示） -->
-    <div v-if="viewMode !== 'print' || (printSelectedSections && printSelectedSections.includes('doctor-instructions'))" 
-         v-show="(showOnlySection === null || showOnlySection === 'doctor-instructions') && (viewMode !== 'print' || (printSelectedSections && printSelectedSections.includes('doctor-instructions')))"
-         class="doctor-instructions-section"
-         :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['doctor-instructions'] }">
-      <h3 
-        v-if="viewMode === 'view' || !isReportMode"
-        class="section-title"
-        :class="{ 'clickable': enableCollapse }"
-        @click="enableCollapse && handleToggleSection('doctor-instructions')"
-      >
-        医生建议
-        <span v-if="enableCollapse" class="section-toggle-icon">
-          <UpOutlined v-if="sectionExpanded?.['doctor-instructions']" />
-          <DownOutlined v-else />
-        </span>
-      </h3>
-      <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.['doctor-instructions'] : true)" class="instructions-content-wrapper">
-        <!-- 第一行：检查日期和间隔时间 -->
-        <div class="instructions-items-row">
-          <!-- 上次检查日期 -->
-          <div class="instruction-item">
-            <div class="instruction-label">上次检查日期：</div>
-            <div class="instruction-value">
-              {{ formatDate(previousRecord?.examination_date) || '暂无' }}
+    <!-- 编辑态：检查间隔 → 诊断插槽 → 备注（草图顺序） -->
+    <template v-if="viewMode === 'edit'">
+      <div class="clinical-edit-mockup">
+        <div class="clinical-edit-mockup__header">
+        <div class="clinical-edit-mockup__interval-row">
+          <div class="clinical-edit-mockup__interval-group clinical-edit-mockup__interval-group--with-sync">
+            <span
+              class="clinical-edit-mockup__interval-label"
+              title="根据与当前检查相对应的上一条检查记录与本次检查的日期，计算相隔天数"
+            >距上一条检查间隔时间：</span>
+            <span class="clinical-edit-mockup__interval-value">{{ computedExamIntervalDisplay }}</span>
+            <div
+              class="clinical-edit-mockup__sync-from-prev"
+              role="group"
+              aria-label="从与当前检查相对应的上一条检查记录同步"
+            >
+              <button
+                type="button"
+                class="clinical-edit-mockup__sync-btn"
+                :class="{ 'clinical-edit-mockup__sync-btn--active': diagnosisSyncActive }"
+                :title="syncPrevRecordTooltip"
+                @click="emit('sync-previous-diagnosis')"
+              >
+                同步诊断
+              </button>
+              <button
+                type="button"
+                class="clinical-edit-mockup__sync-btn"
+                :class="{ 'clinical-edit-mockup__sync-btn--active': syncSchemeFromPrevActive }"
+                :title="syncPrevRecordTooltip"
+                @click="toggleSyncSchemeFromPrevious"
+              >
+                同步方案
+              </button>
+              <button
+                type="button"
+                class="clinical-edit-mockup__sync-btn"
+                :class="{ 'clinical-edit-mockup__sync-btn--active': syncRemarksFromPrevActive }"
+                :title="syncPrevRecordTooltip"
+                @click="toggleSyncRemarksFromPrevious"
+              >
+                同步建议
+              </button>
             </div>
           </div>
-          <!-- 本次检查日期 -->
-          <div class="instruction-item">
-            <div class="instruction-label">本次检查日期：</div>
-            <div class="instruction-value">
-              <template v-if="viewMode === 'edit'">
-                <a-date-picker 
-                  v-model:value="editForm.examination_date" 
-                  style="width: 150px" 
-                  format="YYYY-MM-DD"
-                  @change="handleExaminationDateChange"
-                  :locale="locale"
-                />
-              </template>
-              <template v-else>
-                {{ formatDate(currentRecord?.examination_date) || '暂无' }}
-              </template>
+          <div class="clinical-edit-mockup__review-stack">
+            <div class="clinical-edit-mockup__review-date-group">
+              <span class="clinical-edit-mockup__interval-label">下次复查日期：</span>
+              <a-date-picker
+                v-model:value="editForm.review_date"
+                class="clinical-edit-mockup__review-date-picker"
+                size="small"
+                format="YYYY-MM-DD"
+                @change="updatePeriodBasedOnReviewDate"
+                :locale="locale"
+                placeholder="选择日期"
+              />
             </div>
-          </div>
-          <!-- 间隔时间 -->
-          <div class="instruction-item interval-item">
-            <div class="instruction-label">间隔时间：</div>
-            <div class="instruction-value">
-              <template v-if="viewMode === 'edit'">
-                <a-select 
-                  v-model:value="editForm.review_interval_days" 
-                  style="width: 120px" 
-                  @change="handleIntervalChange"
-                  placeholder="选择间隔"
-                >
-                  <a-select-option :value="1">一个月</a-select-option>
-                  <a-select-option :value="2">两个月</a-select-option>
-                  <a-select-option :value="3">三个月</a-select-option>
-                  <a-select-option :value="0">自定义预约</a-select-option>
-                </a-select>
-              </template>
-              <template v-else>
-                {{ calculateInterval() }}
-              </template>
-            </div>
-          </div>
-          <!-- 自定义预约时显示预约医生 -->
-          <div v-if="(viewMode === 'edit' && editForm.review_interval_days === 0) || (viewMode !== 'edit' && currentRecord?.review_interval_days === 0)" class="instruction-item">
-            <div class="instruction-label">预约医生：</div>
-            <div class="instruction-value">
-              <template v-if="viewMode === 'edit'">
-                <a-select 
-                  v-model:value="editForm.appointment_doctor" 
+            <div
+              v-if="editForm.review_interval_days === 0"
+              class="clinical-edit-mockup__dates clinical-edit-mockup__dates--appointment-only clinical-edit-mockup__dates--under-review"
+            >
+              <div class="clinical-edit-mockup__date-item clinical-edit-mockup__date-item--appointment-doctor">
+                <span class="clinical-edit-mockup__interval-label">预约医生：</span>
+                <a-select
+                  v-model:value="editForm.appointment_doctor"
+                  class="clinical-edit-mockup__appointment-doctor-select"
                   placeholder="选择预约医生"
-                  style="width: 150px"
                   :loading="doctorListLoading"
                   :options="doctorList"
                   :field-names="{ label: 'name', value: 'id' }"
                 />
-              </template>
-              <template v-else>
-                {{ displayedAppointmentDoctorName }}
-              </template>
-            </div>
-          </div>
-          <!-- 下次复查日期：所有间隔类型均显示 -->
-          <div class="instruction-item">
-            <div class="instruction-label">下次复查日期：</div>
-            <div class="instruction-value">
-              <template v-if="viewMode === 'edit'">
-                <a-date-picker 
-                  v-model:value="editForm.review_date" 
-                  style="width: 150px" 
-                  format="YYYY-MM-DD"
-                  @change="updatePeriodBasedOnReviewDate"
-                  :locale="locale"
-                  placeholder="选择下次复查日期"
-                />
-              </template>
-              <template v-else>
-                {{ displayNextReviewDate }}
-              </template>
+              </div>
             </div>
           </div>
         </div>
-        <!-- 分隔线 -->
-        <div class="instruction-divider"></div>
-        <!-- 第二行：上次和本次医生建议 -->
-        <div class="instructions-advice-row">
-          <!-- 上次医生建议 -->
-          <div class="instruction-advice-item">
-            <div class="instruction-label">上次医生建议：</div>
-            <div class="instruction-value">
-              {{ previousRecord?.remarks || '暂无' }}
+        </div>
+        <slot name="diagnosis" />
+      <!-- 4. 诊疗方案 -->
+      <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasTreatmentPlanData" 
+           v-show="(showOnlySection === null || showOnlySection === 'treatment-plan') && (viewMode !== 'print' || (printSelectedSections && printSelectedSections.includes('treatment-plan')))"
+           class="treatment-plan-section"
+           :class="{ 'collapsed': collapseEnabled && !sectionExpanded?.['treatment-plan'] }">
+        <div v-show="viewMode === 'print' || (collapseEnabled ? sectionExpanded?.['treatment-plan'] : true)">
+        <div class="treatment-plan-rx treatment-plan-rx--edit">
+          <div class="treatment-plan-rx__title-row">
+            <div class="treatment-plan-rx__title">诊疗方案 <span class="treatment-plan-rx__rx">Rx</span>：</div>
+            <button type="button" class="treatment-plan-rx__scheme-btn" @click="openSchemeModal">
+              <span class="treatment-plan-rx__scheme-btn-text">方案选择</span>
+              <span class="treatment-plan-rx__scheme-btn-hover-content">
+                <span>方案选择</span>
+                <span class="treatment-plan-rx__scheme-btn-arrow">→</span>
+              </span>
+            </button>
+          </div>
+          <div class="treatment-plan-rx__selected-list">
+            <div
+              v-for="(item, idx) in selectedSchemeDisplayList"
+              :key="`${item.key}-${idx}`"
+              class="treatment-plan-rx__selected-item"
+            >
+              <span class="treatment-plan-rx__selected-idx">{{ idx + 1 }}、</span>
+              <button
+                type="button"
+                class="treatment-plan-rx__selected-chip"
+                @click="openSchemeModalByKey(item.key)"
+                title="点击修改该方案"
+              >
+                {{ item.text }}
+              </button>
+              <button
+                type="button"
+                class="treatment-plan-rx__selected-remove"
+                title="删除该方案"
+                @click="removeSelectedScheme(item.key)"
+              >
+                ×
+              </button>
+            </div>
+            <div v-if="selectedSchemeDisplayList.length === 0" class="treatment-plan-rx__selected-empty">
+              暂未选择方案，点击右侧“方案选择”添加。
             </div>
           </div>
-          <!-- 本次医生建议 -->
-          <div class="instruction-advice-item">
-            <div class="instruction-label">本次医生建议/备注：</div>
-            <div class="instruction-value">
-              <template v-if="viewMode === 'edit'">
-                <a-textarea 
-                  v-model:value="editForm.remarks" 
-                  :rows="3" 
+        </div>
+        </div>
+      </div>
+        <div class="clinical-edit-mockup__remarks">
+          <div class="clinical-edit-mockup__curr-remarks">
+            <span class="clinical-edit-mockup__remarks-label">本次医生建议/备注：</span>
+            <div class="clinical-edit-mockup__remarks-input-wrap">
+              <div class="clinical-edit-mockup__remarks-box">
+                <div class="clinical-edit-mockup__remarks-quick" aria-label="医生建议快捷填充">
+                  <button
+                    v-for="item in remarksQuickPhrases"
+                    :key="item.text"
+                    type="button"
+                    class="clinical-edit-mockup__remarks-quick-btn"
+                    @click="appendRemarksQuick(item.text)"
+                  >
+                    {{ item.label }}
+                  </button>
+                </div>
+                <a-textarea
+                  v-model:value="editForm.remarks"
+                  :rows="3"
                   placeholder="请输入本次医生建议"
-                  style="width: 100%;"
+                  class="clinical-edit-mockup__remarks-input"
                 />
-              </template>
-              <template v-else>
-                {{ currentRecord?.remarks || '暂无' }}
-              </template>
+              </div>
             </div>
+          </div>
+          <div class="clinical-edit-mockup__prev-remarks">
+            <span class="clinical-edit-mockup__remarks-label">上一条检查医生建议：</span>
+            <span class="clinical-edit-mockup__remarks-text">{{ previousRecord?.remarks || '暂无' }}</span>
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- 4. 诊疗方案 -->
-    <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasTreatmentPlanData" 
-         v-show="(showOnlySection === null || showOnlySection === 'treatment-plan') && (viewMode !== 'print' || (printSelectedSections && printSelectedSections.includes('treatment-plan')))"
-         class="treatment-plan-section"
-         :class="{ 'collapsed': enableCollapse && !sectionExpanded?.['treatment-plan'] }">
-      <h3 
-        v-if="viewMode === 'view' || !isReportMode"
-        class="section-title"
-        :class="{ 'clickable': enableCollapse }"
-        @click="enableCollapse && handleToggleSection('treatment-plan')"
-      >
-        <span class="section-title-text">
-        诊疗方案
-        </span>
-        <template v-if="viewMode === 'edit'">
-          <div class="section-edit-controls-wrapper" @click.stop @mousedown.stop @mouseup.stop>
-            <a-checkbox v-model:checked="editForm.sync_eyes">双眼同步</a-checkbox>
-            <a-button type="primary" size="small" @click="handleSyncPreviousTreatment">
-            同步上次
-          </a-button>
+    </template>
+    <template v-else>
+      <!-- 查看/打印：与编辑态同序 — 检查间隔 → 下次复查日期（其下为预约医生）→ 诊断 → … -->
+      <div class="clinical-edit-mockup clinical-view-mockup">
+        <template
+          v-if="viewMode !== 'print' || (printSelectedSections && printSelectedSections.includes('doctor-instructions'))"
+        >
+          <div class="clinical-edit-mockup__header">
+          <div class="clinical-edit-mockup__interval-row">
+            <div class="clinical-edit-mockup__interval-group">
+              <span
+                class="clinical-edit-mockup__interval-label"
+                title="根据与当前检查相对应的上一条检查记录与本次检查的日期，计算相隔天数"
+              >距上一条检查间隔时间：</span>
+              <span class="clinical-edit-mockup__interval-value">{{ viewExamIntervalDisplay }}</span>
+            </div>
+            <div class="clinical-edit-mockup__review-stack">
+              <div class="clinical-edit-mockup__review-date-group">
+                <span class="clinical-edit-mockup__interval-label">下次复查日期：</span>
+                <span class="clinical-edit-mockup__interval-value">{{ displayNextReviewDate }}</span>
+              </div>
+              <div
+                v-if="currentRecord?.review_interval_days === 0"
+                class="clinical-edit-mockup__dates clinical-edit-mockup__dates--appointment-only clinical-edit-mockup__dates--under-review"
+              >
+                <div class="clinical-edit-mockup__date-item clinical-edit-mockup__date-item--appointment-doctor">
+                  <span class="clinical-edit-mockup__interval-label">预约医生：</span>
+                  <span class="clinical-edit-mockup__interval-value">{{ displayedAppointmentDoctorName }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
           </div>
         </template>
-        <span v-if="enableCollapse" class="section-toggle-icon">
-          <UpOutlined v-if="sectionExpanded?.['treatment-plan']" />
-          <DownOutlined v-else />
-        </span>
-      </h3>
-      <div v-show="viewMode === 'print' || (enableCollapse ? sectionExpanded?.['treatment-plan'] : true)">
-      <table class="treatment-plan-table">
-        <thead>
-          <tr>
-            <th>检查项目</th>
-            <th>右眼</th>
-            <th>左眼</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="item-label">阿托品</td>
-            <td>
-              <template v-if="viewMode === 'edit'">
-                <a-select v-model:value="editForm.right_atropine" style="width: 100%" placeholder="选择">
-                  <a-select-option value="否">否</a-select-option>
-                  <a-select-option value="0.01%">0.01%</a-select-option>
-                  <a-select-option value="0.02%">0.02%</a-select-option>
-                  <a-select-option value="0.05%">0.05%</a-select-option>
-                </a-select>
-              </template>
-              <template v-else>{{ formatAtropine(currentRecord?.right_atropine) }}</template>
-            </td>
-            <td>
-              <template v-if="viewMode === 'edit'">
-                <a-select v-model:value="editForm.left_atropine" style="width: 100%" placeholder="选择" :disabled="editForm.sync_eyes">
-                  <a-select-option value="否">否</a-select-option>
-                  <a-select-option value="0.01%">0.01%</a-select-option>
-                  <a-select-option value="0.02%">0.02%</a-select-option>
-                  <a-select-option value="0.05%">0.05%</a-select-option>
-                </a-select>
-              </template>
-              <template v-else>{{ formatAtropine(currentRecord?.left_atropine) }}</template>
-            </td>
-          </tr>
-          <tr>
-            <td class="item-label">配镜</td>
-            <td>
-              <template v-if="viewMode === 'edit'">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <a-select v-model:value="editForm.right_glasses" style="flex: 1" @change="updateRightGlassesPP" placeholder="选择">
-                  <a-select-option value="否">否</a-select-option>
-                  <a-select-option v-for="option in treatmentSettings.glassesMethods" :key="option" :value="option">
-                    {{ option }}
-                  </a-select-option>
-                </a-select>
-                <a-select 
-                  v-if="editForm.right_glasses && editForm.right_glasses !== '否'"
-                  v-model:value="editForm.right_glasses_pp"
-                    style="width: 100px"
-                  placeholder="品牌"
-                >
-                  <a-select-option v-for="option in glassesPPOptions[editForm.right_glasses] || []" :key="option" :value="option">
-                    {{ option }}
-                  </a-select-option>
-                </a-select>
-              </div>
-              </template>
-              <template v-else>{{ formatGlasses(currentRecord?.right_glasses, currentRecord?.right_glasses_pp) }}</template>
-            </td>
-            <td>
-              <template v-if="viewMode === 'edit'">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <a-select v-model:value="editForm.left_glasses" style="flex: 1" @change="updateLeftGlassesPP" placeholder="选择" :disabled="editForm.sync_eyes">
-                  <a-select-option value="否">否</a-select-option>
-                    <a-select-option v-for="option in treatmentSettings.glassesMethods" :key="option" :value="option">
-                      {{ option }}
-                  </a-select-option>
-                </a-select>
-                <a-select 
-                    v-if="editForm.left_glasses && editForm.left_glasses !== '否'"
-                    v-model:value="editForm.left_glasses_pp"
-                    style="width: 100px"
-                    placeholder="品牌"
-                    :disabled="editForm.sync_eyes"
-                >
-                    <a-select-option v-for="option in glassesPPOptions[editForm.left_glasses] || []" :key="option" :value="option">
-                    {{ option }}
-                  </a-select-option>
-                </a-select>
-              </div>
-              </template>
-              <template v-else>{{ formatGlasses(currentRecord?.left_glasses, currentRecord?.left_glasses_pp) }}</template>
-            </td>
-          </tr>
-          <tr>
-            <td class="item-label">低强度红光</td>
-            <td>
-              <template v-if="viewMode === 'edit'">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <a-select v-model:value="editForm.right_hg" style="flex: 1" @change="updateRightHGDW" placeholder="选择">
-                  <a-select-option value="否">否</a-select-option>
-                    <a-select-option v-for="device in treatmentSettings.hgDevices" :key="device" :value="device">
-                      {{ device }}
-                  </a-select-option>
-                </a-select>
-                <a-select 
-                    v-if="editForm.right_hg && editForm.right_hg !== '否'"
-                    v-model:value="editForm.right_hg_dw"
-                    style="width: 80px"
-                    placeholder="档位"
-                >
-                    <a-select-option v-for="option in hgDWOptions[editForm.right_hg] || []" :key="option" :value="option">
-                    {{ option }}
-                  </a-select-option>
-                </a-select>
-              </div>
-              </template>
-              <template v-else>{{ formatHG(currentRecord?.right_hg, currentRecord?.right_hg_dw) }}</template>
-            </td>
-            <td>
-              <template v-if="viewMode === 'edit'">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <a-select v-model:value="editForm.left_hg" style="flex: 1" @change="updateLeftHGDW" placeholder="选择" :disabled="editForm.sync_eyes">
-                  <a-select-option value="否">否</a-select-option>
-                  <a-select-option v-for="device in treatmentSettings.hgDevices" :key="device" :value="device">
-                    {{ device }}
-                  </a-select-option>
-                </a-select>
-                <a-select 
-                  v-if="editForm.left_hg && editForm.left_hg !== '否'"
-                  v-model:value="editForm.left_hg_dw"
-                    style="width: 80px"
-                  placeholder="档位"
-                  :disabled="editForm.sync_eyes"
-                >
-                  <a-select-option v-for="option in hgDWOptions[editForm.left_hg] || []" :key="option" :value="option">
-                    {{ option }}
-                  </a-select-option>
-                </a-select>
-              </div>
-              </template>
-              <template v-else>{{ formatHG(currentRecord?.left_hg, currentRecord?.left_hg_dw) }}</template>
-            </td>
-          </tr>
-          <tr>
-            <td class="item-label">理疗</td>
-            <td>
-              <template v-if="viewMode === 'edit'">
-                <a-select v-model:value="editForm.right_physiotherapy" style="width: 100%" placeholder="选择">
-                  <a-select-option value="否">否</a-select-option>
-                  <a-select-option value="是">是</a-select-option>
-                </a-select>
-              </template>
-              <template v-else>{{ formatYesNo(currentRecord?.right_physiotherapy) }}</template>
-            </td>
-            <td>
-              <template v-if="viewMode === 'edit'">
-                <a-select v-model:value="editForm.left_physiotherapy" style="width: 100%" placeholder="选择" :disabled="editForm.sync_eyes">
-                  <a-select-option value="否">否</a-select-option>
-                  <a-select-option value="是">是</a-select-option>
-                </a-select>
-              </template>
-              <template v-else>{{ formatYesNo(currentRecord?.left_physiotherapy) }}</template>
-            </td>
-          </tr>
-          <tr>
-            <td class="item-label">视觉训练</td>
-            <td>
-              <template v-if="viewMode === 'edit'">
-                <a-select v-model:value="editForm.right_visual_training" style="width: 100%" placeholder="选择">
-                  <a-select-option value="否">否</a-select-option>
-                  <a-select-option value="0">斜视训练</a-select-option>
-                  <a-select-option value="1">弱视训练</a-select-option>
-                  <a-select-option value="2">近视训练</a-select-option>
-                </a-select>
-              </template>
-              <template v-else>{{ formatVisualTraining(currentRecord?.right_visual_training) }}</template>
-            </td>
-            <td>
-              <template v-if="viewMode === 'edit'">
-                <a-select v-model:value="editForm.left_visual_training" style="width: 100%" placeholder="选择" :disabled="editForm.sync_eyes">
-                  <a-select-option value="否">否</a-select-option>
-                  <a-select-option value="0">斜视训练</a-select-option>
-                  <a-select-option value="1">弱视训练</a-select-option>
-                  <a-select-option value="2">近视训练</a-select-option>
-                </a-select>
-              </template>
-              <template v-else>{{ formatVisualTraining(currentRecord?.left_visual_training) }}</template>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <slot name="diagnosis" />
+        <!-- 4. 诊疗方案 -->
+      <div v-if="(viewMode !== 'view' && viewMode !== 'print') || hasTreatmentPlanData" 
+           v-show="(showOnlySection === null || showOnlySection === 'treatment-plan') && (viewMode !== 'print' || (printSelectedSections && printSelectedSections.includes('treatment-plan')))"
+           class="treatment-plan-section"
+           :class="{ 'collapsed': collapseEnabled && !sectionExpanded?.['treatment-plan'] }">
+        <div v-show="viewMode === 'print' || (collapseEnabled ? sectionExpanded?.['treatment-plan'] : true)">
+        <div class="treatment-plan-rx treatment-plan-rx--view">
+          <div class="treatment-plan-rx__title">诊疗方案 <span class="treatment-plan-rx__rx">Rx</span>：</div>
+          <div class="treatment-plan-rx__selected-list treatment-plan-rx__selected-list--view">
+            <div
+              v-for="(item, idx) in selectedSchemeDisplayList"
+              :key="`view-${item.key}-${idx}`"
+              class="treatment-plan-rx__selected-item"
+            >
+              <span class="treatment-plan-rx__selected-idx">{{ idx + 1 }}、</span>
+              <span class="treatment-plan-rx__selected-chip treatment-plan-rx__selected-chip--readonly">{{ item.text }}</span>
+            </div>
+          </div>
+        </div>
+        </div>
       </div>
-    </div>
+        <template
+          v-if="viewMode !== 'print' || (printSelectedSections && printSelectedSections.includes('doctor-instructions'))"
+        >
+          <div class="clinical-edit-mockup__remarks">
+            <div class="clinical-edit-mockup__curr-remarks">
+              <span class="clinical-edit-mockup__remarks-label">本次医生建议/备注：</span>
+              <span class="clinical-edit-mockup__remarks-text">{{ currentRecord?.remarks || '暂无' }}</span>
+            </div>
+            <div class="clinical-edit-mockup__prev-remarks">
+              <span class="clinical-edit-mockup__remarks-label">上一条检查医生建议：</span>
+              <span class="clinical-edit-mockup__remarks-text">{{ previousRecord?.remarks || '暂无' }}</span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <!-- 诊疗方案：方案选择弹窗（先做前两列；第三列逐步完善中） -->
+    <a-modal
+      v-model:open="schemeModalVisible"
+      title="方案选择"
+      :width="640"
+      ok-text="确定"
+      cancel-text="取消"
+      @ok="handleSchemeModalOk"
+    >
+      <div class="scheme-plan-modal">
+        <div
+          v-for="row in visibleSchemePlanRows"
+          :key="row.key"
+          class="scheme-plan-modal__row"
+          :class="{ 'scheme-plan-modal__row--active': row.key === schemeModalFocusKey }"
+        >
+          <span class="scheme-plan-modal__label">{{ row.label }}</span>
+          <div class="scheme-plan-modal__eye" role="group" :aria-label="`${row.label}眼别`">
+            <button
+              v-for="opt in schemeEyeToggleOptions"
+              :key="opt.value"
+              type="button"
+              class="scheme-plan-modal__eye-btn"
+              :class="{ 'scheme-plan-modal__eye-btn--active': schemePlanEyeScope[row.key] === opt.value }"
+              @click="toggleSchemeEyeScope(row.key, opt.value)"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+          <a-select
+            v-model:value="schemePlanDraft[row.key]"
+            allow-clear
+            placeholder="请选择"
+            class="scheme-plan-modal__select"
+            :class="{ 'scheme-plan-modal__select--span2': row.key !== 'frameGlasses' && row.key !== 'contactLens' && row.key !== 'lowIntensityRed' && row.key !== 'drugTherapy' }"
+          >
+            <a-select-option v-for="opt in row.options" :key="opt" :value="opt">{{ opt }}</a-select-option>
+          </a-select>
+          <a-select
+            v-if="row.key === 'frameGlasses'"
+            v-model:value="schemePlanDraft.frameGlassesDetail"
+            allow-clear
+            placeholder="请选择"
+            class="scheme-plan-modal__select"
+            :disabled="!schemePlanDraft.frameGlasses"
+          >
+            <a-select-option v-for="opt in frameGlassesDetailOptions" :key="opt" :value="opt">{{ opt }}</a-select-option>
+          </a-select>
+          <a-select
+            v-else-if="row.key === 'contactLens'"
+            v-model:value="schemePlanDraft.contactLensDetail"
+            allow-clear
+            placeholder="请选择"
+            class="scheme-plan-modal__select"
+            :disabled="!schemePlanDraft.contactLens || contactLensDetailOptions.length === 0"
+          >
+            <a-select-option v-for="opt in contactLensDetailOptions" :key="opt" :value="opt">{{ opt }}</a-select-option>
+          </a-select>
+          <a-select
+            v-else-if="row.key === 'lowIntensityRed'"
+            v-model:value="schemePlanDraft.lowIntensityRedDetail"
+            allow-clear
+            placeholder="请选择"
+            class="scheme-plan-modal__select"
+            :disabled="!schemePlanDraft.lowIntensityRed || lowIntensityRedDetailOptions.length === 0"
+          >
+            <a-select-option v-for="opt in lowIntensityRedDetailOptions" :key="opt" :value="opt">{{ opt }}</a-select-option>
+          </a-select>
+          <a-select
+            v-else-if="row.key === 'drugTherapy'"
+            v-model:value="schemePlanDraft.drugTherapyDetail"
+            allow-clear
+            placeholder="请选择"
+            class="scheme-plan-modal__select"
+            :disabled="!schemePlanDraft.drugTherapy || drugTherapyDetailOptions.length === 0"
+          >
+            <a-select-option v-for="opt in drugTherapyDetailOptions" :key="opt" :value="opt">{{ opt }}</a-select-option>
+          </a-select>
+        </div>
+      </div>
+    </a-modal>
+
   </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch, nextTick, createVNode } from 'vue';
-import { UpOutlined, DownOutlined, ExclamationCircleOutlined } from '@ant-design/icons-vue';
+import { computed, ref, reactive, onMounted, watch, nextTick, createVNode } from 'vue';
+import { ExclamationCircleOutlined } from '@ant-design/icons-vue';
 import { Modal, message } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
@@ -373,6 +335,7 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   },
+  /** 与当前选中检查相对应的上一条检查记录（时间上紧邻的前一条，由 Patient.vue 传入） */
   previousRecord: {
     type: Object,
     default: () => null
@@ -397,17 +360,30 @@ const props = defineProps({
     type: String,
     default: null // 如果设置，只显示指定的 section（如 'treatment-plan'）
   },
-  enableCollapse: {
+  /** 由父级控制：是否已从「相对应的上一条检查」同步诊断（用于按钮高亮） */
+  diagnosisSyncActive: {
     type: Boolean,
     default: false
   }
 });
 
-const emit = defineEmits(['toggle-section', 'update-record']);
+const emit = defineEmits(['toggle-section', 'update-record', 'sync-previous-diagnosis']);
+
+// 医生建议、诊疗方案：编辑时不再折叠，始终展开便于录入
+const collapseEnabled = false;
 
 // 计算 isReportMode：在查看模式下，如果没有选中特定section，则为报告模式
 const isReportMode = computed(() => {
   return props.viewMode === 'view' && !props.showOnlySection;
+});
+
+/** 三个「同步」按钮的说明：数据来源为与当前检查相对应的上一条检查记录（previousRecord） */
+const syncPrevRecordTooltip = computed(() => {
+  const raw = props.previousRecord?.examination_date;
+  if (!raw) return '无与当前检查相对应的上一条检查记录';
+  const d = dayjs(raw);
+  const label = d.isValid() ? d.format('YYYY-MM-DD') : String(raw);
+  return `与当前检查相对应的上一条检查记录（${label}）。写入本次编辑，再次点击恢复。`;
 });
 
 // 切换section展开/收起状态
@@ -417,6 +393,379 @@ const handleToggleSection = (sectionKey) => {
 
 // 编辑表单数据
 const editForm = ref({});
+
+/** 医生建议备注：快捷填充词条（点击追加到文本框） */
+const remarksQuickPhrases = [
+  { label: '早睡', text: '早睡' },
+  { label: '多户外', text: '多户外' },
+  { label: '少吃糖', text: '少吃糖' },
+  { label: '注意写作姿势', text: '注意写作姿势' },
+  { label: '按时训练', text: '按时训练' }
+];
+
+function appendRemarksQuick(phrase) {
+  if (!editForm.value) return;
+  const cur = String(editForm.value.remarks ?? '').trim();
+  editForm.value.remarks = cur ? `${cur}、${phrase}` : phrase;
+}
+
+/** 诊疗方案「方案选择」弹窗：先做前两列，逐步补第三列（现已补框架眼镜第三级） */
+const schemeModalVisible = ref(false);
+const schemeModalFocusKey = ref('');
+const schemePlanDraft = reactive({
+  frameGlasses: undefined,
+  frameGlassesDetail: undefined,
+  contactLens: undefined,
+  contactLensDetail: undefined,
+  lowIntensityRed: undefined,
+  lowIntensityRedDetail: undefined,
+  visualTraining: undefined,
+  physicalTherapy: undefined,
+  drugTherapy: undefined,
+  drugTherapyDetail: undefined
+});
+
+/** 方案选择弹窗：每行眼别（与 schemePlanRows 的 key 对应）；可点选切换，再次点击同一项取消 */
+const schemePlanEyeScope = reactive({
+  frameGlasses: undefined,
+  contactLens: undefined,
+  lowIntensityRed: undefined,
+  visualTraining: undefined,
+  physicalTherapy: undefined,
+  drugTherapy: undefined
+});
+
+const schemeEyeLabelMap = { both: '双眼', right: '右眼', left: '左眼' };
+
+const schemeEyeToggleOptions = [
+  { value: 'both', label: '双眼' },
+  { value: 'right', label: '右眼' },
+  { value: 'left', label: '左眼' }
+];
+
+function toggleSchemeEyeScope(rowKey, value) {
+  if (schemePlanEyeScope[rowKey] === value) {
+    schemePlanEyeScope[rowKey] = undefined;
+  } else {
+    schemePlanEyeScope[rowKey] = value;
+  }
+}
+
+const schemePlanRows = [
+  { key: 'frameGlasses', label: '框架眼镜', options: ['点扩散', '多点离焦', '双效离焦点扩散', '单光', '渐进', '抗疲劳', '周边离焦', '环焦'] },
+  { key: 'contactLens', label: '角膜接触镜', options: ['角膜塑形镜', 'RGP', '离焦软镜', '巩膜镜'] },
+  { key: 'lowIntensityRed', label: '低强度红光', options: ['唯迪科', '小太阳'] },
+  { key: 'visualTraining', label: '视觉训练', options: ['斜视训练', '弱视训练', '近视训练', '调节训练', '行为视觉训练'] },
+  { key: 'physicalTherapy', label: '物理治疗', options: ['热敷', '冷敷', '睑板腺按摩', '遮盖', '压抑'] },
+  { key: 'drugTherapy', label: '药物治疗', options: ['阿托品', '消炎', '抗过敏'] }
+];
+
+const visibleSchemePlanRows = computed(() => {
+  if (!schemeModalFocusKey.value) return schemePlanRows;
+  return schemePlanRows.filter((row) => row.key === schemeModalFocusKey.value);
+});
+
+const schemeRowLabelMap = Object.fromEntries(schemePlanRows.map((r) => [r.key, r.label]));
+
+const frameGlassesDetailOptionsMap = {
+  '点扩散': ['柯学优', '控优点2.0', '控优点3.0', '爱眼星', '其他'],
+  '多点离焦': ['星趣控', '星趣控2.0', '新乐学', '轻松控', '爱眼星', '小乐园H版', '小乐园S版', '奥拉', '学趣控', '成长怡', '艾视晰', '蔚来星空', '欧陆智造', '柯学佳', '欧视佳', '益贝视', '其他'],
+  '单光': ['蔡司', '依视路', '尼康', '爱眼星', '其他'],
+  '双效离焦点扩散': ['格林视通', '爱眼星', '压轴大师', '其他'],
+  '渐进': ['依视路', '爱眼星', '蔡司', '尼康', '其他'],
+  '周边离焦': ['成长乐', '其他'],
+  '环焦': ['爱眼星', '其他'],
+  '抗疲劳': ['依视路', '蔡司', '尼康', '爱眼星', '其他']
+};
+
+const frameGlassesDetailOptions = computed(() => {
+  const type = schemePlanDraft.frameGlasses;
+  return frameGlassesDetailOptionsMap[type] || [];
+});
+
+const contactLensDetailOptionsMap = {
+  '角膜塑形镜': ['普洛瞳', '亨泰', '阿尔法', 'CRT', '菁视', '菁眸', '露晰得', '欧几里德', '梦戴维', '天瞳', '目立康', '视达佳', '爱视欧', '其他'],
+  'RGP': ['目立康', '菲士康', '亨泰', '其他'],
+  '离焦软镜': ['Misight', '蝶适', '其他'],
+  '巩膜镜': ['艾普柯', '艾康菲', 'CS巩膜镜', '美视季']
+};
+
+const contactLensDetailOptions = computed(() => {
+  const type = schemePlanDraft.contactLens;
+  return contactLensDetailOptionsMap[type] || [];
+});
+
+const lowIntensityRedDetailOptionsMap = {
+  '唯迪科': ['0档', '3档', '6档', '9档', '12档', '15档'],
+  '小太阳': ['0档', '3档', '6档', '9档', '12档', '15档']
+};
+
+const lowIntensityRedDetailOptions = computed(() => {
+  const type = schemePlanDraft.lowIntensityRed;
+  return lowIntensityRedDetailOptionsMap[type] || [];
+});
+
+const drugTherapyDetailOptionsMap = {
+  '阿托品': ['0.01%', '0.02%', '0.05%', '0.1%']
+};
+
+const drugTherapyDetailOptions = computed(() => {
+  const type = schemePlanDraft.drugTherapy;
+  return drugTherapyDetailOptionsMap[type] || [];
+});
+
+const selectedSchemeDisplayList = computed(() => {
+  const defs = [
+    { key: 'frameGlasses', detailKey: 'frameGlassesDetail' },
+    { key: 'contactLens', detailKey: 'contactLensDetail' },
+    { key: 'lowIntensityRed', detailKey: 'lowIntensityRedDetail' },
+    { key: 'visualTraining' },
+    { key: 'physicalTherapy' },
+    { key: 'drugTherapy', detailKey: 'drugTherapyDetail' }
+  ];
+  return defs
+    .map(({ key, detailKey }) => {
+      const value = schemePlanDraft[key];
+      if (!value) return null;
+      const detail = detailKey ? schemePlanDraft[detailKey] : '';
+      const label = schemeRowLabelMap[key] || key;
+      const base = detail ? `${label}：${value}（${detail}）` : `${label}：${value}`;
+      const eyeKey = schemePlanEyeScope[key];
+      const eyeSuffix =
+        eyeKey && schemeEyeLabelMap[eyeKey] ? ` · ${schemeEyeLabelMap[eyeKey]}` : '';
+      return {
+        key,
+        text: `${base}${eyeSuffix}`
+      };
+    })
+    .filter(Boolean);
+});
+
+function removeSelectedScheme(key) {
+  const detailKeyMap = {
+    frameGlasses: 'frameGlassesDetail',
+    contactLens: 'contactLensDetail',
+    lowIntensityRed: 'lowIntensityRedDetail',
+    drugTherapy: 'drugTherapyDetail'
+  };
+  schemePlanDraft[key] = undefined;
+  const detailKey = detailKeyMap[key];
+  if (detailKey) {
+    schemePlanDraft[detailKey] = undefined;
+  }
+  if (Object.prototype.hasOwnProperty.call(schemePlanEyeScope, key)) {
+    schemePlanEyeScope[key] = undefined;
+  }
+}
+
+function openSchemeModal() {
+  schemeModalFocusKey.value = '';
+  schemeModalVisible.value = true;
+}
+
+function openSchemeModalByKey(key) {
+  schemeModalFocusKey.value = key;
+  schemeModalVisible.value = true;
+}
+
+function handleSchemeModalOk() {
+  schemeModalVisible.value = false;
+}
+
+/** 诊疗方案「方案选择」持久化字段（随检查记录保存） */
+const TREATMENT_SCHEME_FIELD = 'treatment_scheme_selection';
+
+let isHydratingSchemeFromRecord = false;
+
+function schemeDraftToPlain() {
+  return JSON.parse(JSON.stringify(schemePlanDraft));
+}
+
+function schemeEyeScopeToPlain() {
+  return JSON.parse(JSON.stringify(schemePlanEyeScope));
+}
+
+function clearSchemePlanState() {
+  Object.keys(schemePlanDraft).forEach((k) => {
+    schemePlanDraft[k] = undefined;
+  });
+  Object.keys(schemePlanEyeScope).forEach((k) => {
+    schemePlanEyeScope[k] = undefined;
+  });
+}
+
+/** 从检查记录恢复方案选择（查看/编辑进入时） */
+function hydrateSchemeFromRecord(rec) {
+  if (!rec) {
+    clearSchemePlanState();
+    return;
+  }
+  isHydratingSchemeFromRecord = true;
+  try {
+    const raw = rec[TREATMENT_SCHEME_FIELD];
+    if (!raw) {
+      clearSchemePlanState();
+      return;
+    }
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const draft = data.draft || {};
+    const eye = data.eyeScope || {};
+    Object.keys(schemePlanDraft).forEach((k) => {
+      schemePlanDraft[k] = draft[k] ?? undefined;
+    });
+    Object.keys(schemePlanEyeScope).forEach((k) => {
+      schemePlanEyeScope[k] = eye[k] ?? undefined;
+    });
+  } catch {
+    clearSchemePlanState();
+  } finally {
+    nextTick(() => {
+      isHydratingSchemeFromRecord = false;
+    });
+  }
+}
+
+/** 将当前方案选择序列化写入 editForm，经 update-record 合并进 editingRecord，保存时一并提交 */
+function syncSchemeSelectionToEditForm() {
+  if (props.viewMode !== 'edit' || isUpdatingFromRecord || isHydratingSchemeFromRecord) return;
+  if (!editForm.value) return;
+  const json = JSON.stringify({
+    draft: schemeDraftToPlain(),
+    eyeScope: schemeEyeScopeToPlain()
+  });
+  editForm.value[TREATMENT_SCHEME_FIELD] = json;
+  // 直接通知父级合并，避免仅依赖 editForm 的 deep watch 与保存按钮同一帧竞态
+  emit('update-record', { [TREATMENT_SCHEME_FIELD]: json });
+}
+
+/** 编辑态：方案变更写回 editForm，随保存提交 */
+watch(
+  () => [schemePlanDraft, schemePlanEyeScope],
+  () => {
+    syncSchemeSelectionToEditForm();
+  },
+  { deep: true }
+);
+
+/** 从与当前检查相对应的上一条检查记录同步诊疗方案（开关式，再点恢复） */
+const syncSchemeFromPrevActive = ref(false);
+const schemeSyncBackup = ref(null);
+
+function toggleSyncSchemeFromPrevious() {
+  if (!props.previousRecord) {
+    message.warning('无与当前检查相对应的上一条检查记录');
+    return;
+  }
+  if (!syncSchemeFromPrevActive.value) {
+    schemeSyncBackup.value = {
+      draft: schemeDraftToPlain(),
+      eye: schemeEyeScopeToPlain(),
+      json: editForm.value?.[TREATMENT_SCHEME_FIELD]
+    };
+    hydrateSchemeFromRecord(props.previousRecord);
+    nextTick(() => {
+      syncSchemeSelectionToEditForm();
+    });
+    syncSchemeFromPrevActive.value = true;
+  } else {
+    const b = schemeSyncBackup.value;
+    if (b) {
+      Object.keys(schemePlanDraft).forEach((k) => {
+        schemePlanDraft[k] = b.draft[k] ?? undefined;
+      });
+      Object.keys(schemePlanEyeScope).forEach((k) => {
+        schemePlanEyeScope[k] = b.eye[k] ?? undefined;
+      });
+      if (editForm.value) editForm.value[TREATMENT_SCHEME_FIELD] = b.json;
+      nextTick(() => syncSchemeSelectionToEditForm());
+    }
+    schemeSyncBackup.value = null;
+    syncSchemeFromPrevActive.value = false;
+  }
+}
+
+/** 从与当前检查相对应的上一条检查记录同步医生建议/备注（开关式） */
+const syncRemarksFromPrevActive = ref(false);
+const remarksSyncBackup = ref(null);
+
+function toggleSyncRemarksFromPrevious() {
+  if (!props.previousRecord) {
+    message.warning('无与当前检查相对应的上一条检查记录');
+    return;
+  }
+  if (!editForm.value) return;
+  if (!syncRemarksFromPrevActive.value) {
+    remarksSyncBackup.value = editForm.value.remarks ?? '';
+    editForm.value.remarks = props.previousRecord.remarks ?? '';
+    syncRemarksFromPrevActive.value = true;
+  } else {
+    editForm.value.remarks = remarksSyncBackup.value ?? '';
+    remarksSyncBackup.value = null;
+    syncRemarksFromPrevActive.value = false;
+  }
+}
+
+function resetLocalSyncFromPreviousState() {
+  syncSchemeFromPrevActive.value = false;
+  syncRemarksFromPrevActive.value = false;
+  schemeSyncBackup.value = null;
+  remarksSyncBackup.value = null;
+}
+
+watch(
+  () => [props.currentRecord?.id, props.previousRecord?.id],
+  () => {
+    resetLocalSyncFromPreviousState();
+  }
+);
+
+watch(() => schemePlanDraft.frameGlasses, (newType) => {
+  const options = frameGlassesDetailOptionsMap[newType] || [];
+  if (!options.includes(schemePlanDraft.frameGlassesDetail)) {
+    schemePlanDraft.frameGlassesDetail = undefined;
+  }
+});
+
+watch(() => schemePlanDraft.contactLens, (newType) => {
+  const options = contactLensDetailOptionsMap[newType] || [];
+  if (!options.includes(schemePlanDraft.contactLensDetail)) {
+    schemePlanDraft.contactLensDetail = undefined;
+  }
+});
+
+watch(() => schemePlanDraft.lowIntensityRed, (newType) => {
+  const options = lowIntensityRedDetailOptionsMap[newType] || [];
+  if (!options.includes(schemePlanDraft.lowIntensityRedDetail)) {
+    schemePlanDraft.lowIntensityRedDetail = undefined;
+  }
+});
+
+watch(() => schemePlanDraft.drugTherapy, (newType) => {
+  const options = drugTherapyDetailOptionsMap[newType] || [];
+  if (!options.includes(schemePlanDraft.drugTherapyDetail)) {
+    schemePlanDraft.drugTherapyDetail = undefined;
+  }
+});
+
+watch(() => schemeModalVisible.value, (open) => {
+  if (!open) {
+    schemeModalFocusKey.value = '';
+    // 弹窗关闭（确定/取消/遮罩）时强制同步一次，避免仅依赖 draft 的 watch 时序导致未写入 editForm
+    nextTick(() => syncSchemeSelectionToEditForm());
+  }
+});
+
+/** 查看/打印：记录变更时同步方案列表展示（含首次进入） */
+watch(
+  () => props.currentRecord,
+  (rec) => {
+    if (!rec) return;
+    if (props.viewMode === 'view' || props.viewMode === 'print') {
+      hydrateSchemeFromRecord(rec);
+    }
+  },
+  { deep: true, immediate: true }
+);
 
 // 医生列表相关
 const doctorList = ref([]);
@@ -588,10 +937,13 @@ watch(() => props.currentRecord?.id, (newId, oldId) => {
       if (editForm.value.review_date && typeof editForm.value.review_date === 'string') {
         editForm.value.review_date = dayjs(editForm.value.review_date);
       }
-      // 初始化 sync_eyes，默认勾选
+      // 无「双眼同步」勾选入口时，未存过则默认 false，避免左眼列被禁用且无法解除
       if (editForm.value.sync_eyes === undefined || editForm.value.sync_eyes === null) {
-        editForm.value.sync_eyes = true;
+        editForm.value.sync_eyes = false;
       }
+      ensureRxRemarkFields();
+      nextTick(() => initTreatmentRxScopesFromForm());
+      hydrateSchemeFromRecord(editForm.value);
       // 初始化或计算 review_interval_days
       if (!editForm.value.review_interval_days && props.previousRecord?.examination_date && editForm.value.examination_date) {
         const prevDate = dayjs(props.previousRecord.examination_date);
@@ -638,8 +990,12 @@ watch(() => props.viewMode, (newMode) => {
     if (editForm.value.review_date && typeof editForm.value.review_date === 'string') {
       editForm.value.review_date = dayjs(editForm.value.review_date);
     }
-    // 初始化 sync_eyes，默认勾选
-    editForm.value.sync_eyes = true;
+    if (editForm.value.sync_eyes === undefined || editForm.value.sync_eyes === null) {
+      editForm.value.sync_eyes = false;
+    }
+    ensureRxRemarkFields();
+    nextTick(() => initTreatmentRxScopesFromForm());
+    hydrateSchemeFromRecord(editForm.value);
     // 初始化或计算 review_interval_days
     if (!editForm.value.review_interval_days && props.previousRecord?.examination_date && editForm.value.examination_date) {
       const prevDate = dayjs(props.previousRecord.examination_date);
@@ -821,6 +1177,258 @@ const updateLeftHGDW = () => {
   }
 };
 
+/** 编辑态：根据检查记录（上一条 vs 当前条）的检查日期自动计算间隔天数，只读 */
+const computedExamIntervalDisplay = computed(() => {
+  const prev = props.previousRecord?.examination_date;
+  const ex = editForm.value?.examination_date;
+  if (!prev || !ex) return '—';
+  const prevD = dayjs(prev);
+  const cur = dayjs.isDayjs(ex) ? ex : dayjs(ex);
+  if (!prevD.isValid() || !cur.isValid()) return '—';
+  const days = Math.max(0, cur.diff(prevD, 'day'));
+  return `${days} 天`;
+});
+
+/** 查看态：与编辑态同一套「间隔天数」算法，用当前/上一条检查记录 */
+const viewExamIntervalDisplay = computed(() => {
+  const prev = props.previousRecord?.examination_date;
+  const ex = props.currentRecord?.examination_date;
+  if (!prev || !ex) return '—';
+  const prevD = dayjs(prev);
+  const cur = dayjs(ex);
+  if (!prevD.isValid() || !cur.isValid()) return '—';
+  const days = Math.max(0, cur.diff(prevD, 'day'));
+  return `${days} 天`;
+});
+
+/** 诊疗方案 Rx：单行「选择框 + 眼别 + 备注」布局 */
+const treatmentRxScope = ref({
+  atropine: 'both',
+  glasses: 'both',
+  hg: 'both',
+  physiotherapy: 'both',
+  visual_training: 'both'
+});
+
+function inferRxScopeFromEyes(r, l) {
+  const er = r == null || r === '' || r === 'none' || r === '否';
+  const el = l == null || l === '' || l === 'none' || l === '否';
+  if (!er && !el && String(r) === String(l)) return 'both';
+  if (!er && el) return 'right';
+  if (er && !el) return 'left';
+  if (!er && !el) return 'right';
+  return 'both';
+}
+
+function eyeScopeLabel(scope) {
+  if (scope === 'both') return '双眼';
+  if (scope === 'right') return '右眼';
+  return '左眼';
+}
+
+function initTreatmentRxScopesFromForm() {
+  const f = editForm.value;
+  if (!f) return;
+  treatmentRxScope.value = {
+    atropine: inferRxScopeFromEyes(f.right_atropine, f.left_atropine),
+    glasses: inferRxScopeFromEyes(f.right_glasses, f.left_glasses),
+    hg: inferRxScopeFromEyes(f.right_hg, f.left_hg),
+    physiotherapy: inferRxScopeFromEyes(f.right_physiotherapy, f.left_physiotherapy),
+    visual_training: inferRxScopeFromEyes(f.right_visual_training, f.left_visual_training)
+  };
+}
+
+function ensureRxRemarkFields() {
+  const f = editForm.value;
+  if (!f) return;
+  ['rx_remark_atropine', 'rx_remark_glasses', 'rx_remark_hg', 'rx_remark_physiotherapy', 'rx_remark_visual_training'].forEach((k) => {
+    if (f[k] === undefined || f[k] === null) f[k] = '';
+  });
+}
+
+const rxAtropineSelect = computed({
+  get() {
+    const s = treatmentRxScope.value.atropine;
+    if (s === 'left') return editForm.value?.left_atropine;
+    return editForm.value?.right_atropine;
+  },
+  set(v) {
+    const s = treatmentRxScope.value.atropine;
+    if (s === 'both') {
+      editForm.value.right_atropine = v;
+      editForm.value.left_atropine = v;
+    } else if (s === 'right') {
+      editForm.value.right_atropine = v;
+    } else {
+      editForm.value.left_atropine = v;
+    }
+  }
+});
+
+const rxGlassesMethod = computed({
+  get() {
+    const s = treatmentRxScope.value.glasses;
+    if (s === 'left') return editForm.value?.left_glasses;
+    return editForm.value?.right_glasses;
+  },
+  set(v) {
+    const s = treatmentRxScope.value.glasses;
+    if (s === 'both') {
+      editForm.value.right_glasses = v;
+      editForm.value.left_glasses = v;
+      updateRightGlassesPP();
+      updateLeftGlassesPP();
+      if (!v || v === '否') {
+        editForm.value.right_glasses_pp = null;
+        editForm.value.left_glasses_pp = null;
+      } else {
+        const opts = glassesPPOptions.value[v] || [];
+        const first = opts[0] ?? null;
+        editForm.value.right_glasses_pp = first;
+        editForm.value.left_glasses_pp = first;
+      }
+    } else if (s === 'right') {
+      editForm.value.right_glasses = v;
+      updateRightGlassesPP();
+    } else {
+      editForm.value.left_glasses = v;
+      updateLeftGlassesPP();
+    }
+  }
+});
+
+const rxGlassesPp = computed({
+  get() {
+    return treatmentRxScope.value.glasses === 'left'
+      ? editForm.value?.left_glasses_pp
+      : editForm.value?.right_glasses_pp;
+  },
+  set(v) {
+    const s = treatmentRxScope.value.glasses;
+    if (s === 'both') {
+      editForm.value.right_glasses_pp = v;
+      editForm.value.left_glasses_pp = v;
+    } else if (s === 'right') {
+      editForm.value.right_glasses_pp = v;
+    } else {
+      editForm.value.left_glasses_pp = v;
+    }
+  }
+});
+
+const rxHgDevice = computed({
+  get() {
+    return treatmentRxScope.value.hg === 'left' ? editForm.value?.left_hg : editForm.value?.right_hg;
+  },
+  set(v) {
+    const s = treatmentRxScope.value.hg;
+    if (s === 'both') {
+      editForm.value.right_hg = v;
+      editForm.value.left_hg = v;
+      updateRightHGDW();
+      updateLeftHGDW();
+      if (!v || v === '否') {
+        editForm.value.right_hg_dw = null;
+        editForm.value.left_hg_dw = null;
+      } else {
+        const opts = hgDWOptions.value[v] || [];
+        const first = opts[0] ?? null;
+        editForm.value.right_hg_dw = first;
+        editForm.value.left_hg_dw = first;
+      }
+    } else if (s === 'right') {
+      editForm.value.right_hg = v;
+      updateRightHGDW();
+    } else {
+      editForm.value.left_hg = v;
+      updateLeftHGDW();
+    }
+  }
+});
+
+const rxHgDw = computed({
+  get() {
+    return treatmentRxScope.value.hg === 'left' ? editForm.value?.left_hg_dw : editForm.value?.right_hg_dw;
+  },
+  set(v) {
+    const s = treatmentRxScope.value.hg;
+    if (s === 'both') {
+      editForm.value.right_hg_dw = v;
+      editForm.value.left_hg_dw = v;
+    } else if (s === 'right') {
+      editForm.value.right_hg_dw = v;
+    } else {
+      editForm.value.left_hg_dw = v;
+    }
+  }
+});
+
+const rxPhysioSelect = computed({
+  get() {
+    return treatmentRxScope.value.physiotherapy === 'left'
+      ? editForm.value?.left_physiotherapy
+      : editForm.value?.right_physiotherapy;
+  },
+  set(v) {
+    const s = treatmentRxScope.value.physiotherapy;
+    if (s === 'both') {
+      editForm.value.right_physiotherapy = v;
+      editForm.value.left_physiotherapy = v;
+    } else if (s === 'right') {
+      editForm.value.right_physiotherapy = v;
+    } else {
+      editForm.value.left_physiotherapy = v;
+    }
+  }
+});
+
+const rxVisualSelect = computed({
+  get() {
+    return treatmentRxScope.value.visual_training === 'left'
+      ? editForm.value?.left_visual_training
+      : editForm.value?.right_visual_training;
+  },
+  set(v) {
+    const s = treatmentRxScope.value.visual_training;
+    if (s === 'both') {
+      editForm.value.right_visual_training = v;
+      editForm.value.left_visual_training = v;
+    } else if (s === 'right') {
+      editForm.value.right_visual_training = v;
+    } else {
+      editForm.value.left_visual_training = v;
+    }
+  }
+});
+
+watch(() => treatmentRxScope.value.atropine, (n, o) => {
+  if (n === 'both' && o && o !== 'both' && editForm.value) {
+    editForm.value.left_atropine = editForm.value.right_atropine;
+  }
+});
+watch(() => treatmentRxScope.value.glasses, (n, o) => {
+  if (n === 'both' && o && o !== 'both' && editForm.value) {
+    editForm.value.left_glasses = editForm.value.right_glasses;
+    editForm.value.left_glasses_pp = editForm.value.right_glasses_pp;
+  }
+});
+watch(() => treatmentRxScope.value.hg, (n, o) => {
+  if (n === 'both' && o && o !== 'both' && editForm.value) {
+    editForm.value.left_hg = editForm.value.right_hg;
+    editForm.value.left_hg_dw = editForm.value.right_hg_dw;
+  }
+});
+watch(() => treatmentRxScope.value.physiotherapy, (n, o) => {
+  if (n === 'both' && o && o !== 'both' && editForm.value) {
+    editForm.value.left_physiotherapy = editForm.value.right_physiotherapy;
+  }
+});
+watch(() => treatmentRxScope.value.visual_training, (n, o) => {
+  if (n === 'both' && o && o !== 'both' && editForm.value) {
+    editForm.value.left_visual_training = editForm.value.right_visual_training;
+  }
+});
+
 // 格式化检查间隔文本
 const periodText = (val) => {
   if (val === 0) return '自定义预约';
@@ -922,16 +1530,24 @@ const hasDoctorInstructionsData = computed(() => {
   return hasCurrent || hasPrevious;
 });
 
+/** 仅当检查记录中已保存「方案选择」JSON 且至少选一项时，查看/打印才展示诊疗方案区块 */
+function recordHasSavedSchemeSelection(record) {
+  if (!record?.[TREATMENT_SCHEME_FIELD]) return false;
+  try {
+    const raw = record[TREATMENT_SCHEME_FIELD];
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const draft = data?.draft || {};
+    const keys = ['frameGlasses', 'contactLens', 'lowIntensityRed', 'visualTraining', 'physicalTherapy', 'drugTherapy'];
+    return keys.some((k) => draft[k] != null && String(draft[k]).trim() !== '');
+  } catch {
+    return false;
+  }
+}
+
 const hasTreatmentPlanData = computed(() => {
   const record = props.currentRecord;
   if (!record) return false;
-  return !!(
-    record.right_atropine || record.left_atropine ||
-    record.right_glasses || record.left_glasses ||
-    record.right_hg || record.left_hg ||
-    record.right_physiotherapy || record.left_physiotherapy ||
-    record.right_visual_training || record.left_visual_training
-  );
+  return recordHasSavedSchemeSelection(record);
 });
 
 // 系统设置
@@ -1354,6 +1970,10 @@ const handleSyncPreviousTreatment = async () => {
     message.error('同步诊疗方案失败: ' + error.message);
   }
 };
+
+defineExpose({
+  syncSchemeSelectionToEditForm
+});
 </script>
 
 <style scoped lang="scss">
@@ -1367,6 +1987,408 @@ const handleSyncPreviousTreatment = async () => {
   position: relative;
   z-index: 2;
   box-sizing: border-box;
+  /* 与 RoutineExamStyleTwo / ExamResultsUnified 基础检查表内字号一致 */
+  --exr-font-body: 11px;
+  --exr-font-table: 12px;
+  /* 诊疗方案表：更紧凑 */
+  --exr-font-treatment-plan: 11px;
+  --exr-treatment-select-width: 80px;
+  --exr-font-section-title: 16px;
+}
+
+/* 编辑态：检查间隔 → 诊断 → 备注（草图式纵向布局） */
+.clinical-edit-mockup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: none;
+}
+/* 页眉：检查间隔 + 预约医生等，与下方诊断区分隔 */
+.clinical-edit-mockup__header {
+  padding-bottom: 10px;
+  margin-bottom: 0;
+  border-bottom: 1px solid #e4eaf4;
+}
+/* 检查间隔在左；下次复查两行并靠最右 */
+.clinical-edit-mockup__interval-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: clamp(12px, 2.5vw, 24px);
+  font-size: 12px;
+  color: #333;
+  width: 100%;
+  min-width: 0;
+}
+.clinical-edit-mockup__interval-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+.clinical-edit-mockup__interval-group--with-sync {
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 6px;
+  column-gap: 8px;
+}
+.clinical-edit-mockup__sync-from-prev {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.clinical-edit-mockup__sync-btn {
+  margin: 0;
+  padding: 1px 6px;
+  font-size: 10px;
+  line-height: 1.35;
+  border: 1px solid #d9d9d9;
+  border-radius: 3px;
+  background: #fafafa;
+  color: #555;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.clinical-edit-mockup__sync-btn:hover {
+  background: #f0f0f0;
+  color: #224b96;
+  border-color: #c8c8c8;
+}
+.clinical-edit-mockup__sync-btn--active {
+  background: #e6f0ff;
+  color: #224b96;
+  border-color: #91a8d8;
+  font-weight: 600;
+}
+/* 下次复查日期 + 其下的预约医生，纵向排在同一列（靠右） */
+.clinical-edit-mockup__review-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.clinical-edit-mockup__review-stack .clinical-edit-mockup__review-date-group {
+  margin-left: 0;
+}
+
+.clinical-edit-mockup__review-date-group {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-width: 0;
+  line-height: 1.2;
+}
+.clinical-edit-mockup__review-date-group .clinical-edit-mockup__interval-label {
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+.clinical-edit-mockup__interval-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+.clinical-edit-mockup__interval-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a202c;
+  min-width: 2.75rem;
+}
+.clinical-edit-mockup__dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  font-size: var(--exr-font-body);
+}
+.clinical-edit-mockup__dates--appointment-only {
+  margin-top: 2px;
+}
+
+.clinical-edit-mockup__dates--under-review {
+  margin-top: 0;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.clinical-edit-mockup__dates--under-review .clinical-edit-mockup__date-item {
+  justify-content: flex-end;
+  width: 100%;
+}
+@media (max-width: 640px) {
+  .clinical-edit-mockup__interval-row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .clinical-edit-mockup__review-stack {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .clinical-edit-mockup__review-date-group {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+.clinical-edit-mockup__date-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.clinical-edit-mockup__date-label {
+  font-size: var(--exr-font-body);
+  color: #555;
+  font-weight: 500;
+  white-space: nowrap;
+}
+/* 与查看态 instructions-advice-row 一致：左本次、右上次，窄屏再纵向堆叠 */
+.clinical-edit-mockup__remarks {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: clamp(0.5rem, 1.5vw, 1rem);
+}
+.clinical-edit-mockup__prev-remarks,
+.clinical-edit-mockup__curr-remarks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+/* 两列并排时：本次与上一条之间的竖分割线 */
+.clinical-edit-mockup__curr-remarks {
+  border-right: 1px solid #e4eaf4;
+  padding-right: clamp(0.65rem, 1.8vw, 0.9rem);
+  margin-right: clamp(0.15rem, 0.8vw, 0.35rem);
+  box-sizing: border-box;
+}
+.clinical-edit-mockup__remarks-label {
+  font-size: var(--exr-font-body);
+  font-weight: 600;
+  color: #555;
+}
+.clinical-edit-mockup__remarks-text {
+  font-size: var(--exr-font-body);
+  color: #333;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 查看态：医生建议正文与诊断「屈光不正」只读一致 */
+.clinical-view-mockup .clinical-edit-mockup__remarks-text {
+  font-family: "SimSun", "宋体", serif;
+  font-size: var(--exr-font-body);
+  font-weight: 600;
+  color: #333;
+  line-height: 1.35;
+}
+/* 与 PatientStyleTwo .diagnosis-dx-input（屈光不正）完全一致：宋体、--exr-font-body、600、#333、行高 1.35 */
+.clinical-edit-mockup__remarks-input-wrap {
+  width: 100%;
+  max-width: 100%;
+  font-size: var(--exr-font-body, 11px);
+}
+
+/* 备注区：无整体外框；快捷词与文本域上下排列 */
+.clinical-edit-mockup__remarks-box {
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.clinical-edit-mockup__remarks-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 0 0 6px;
+  border: none;
+  background: transparent;
+}
+
+/* 快捷词条：无边框、小尺寸、浅底文字按钮 */
+.clinical-edit-mockup__remarks-quick-btn {
+  margin: 0;
+  padding: 1px 5px;
+  font-size: 10px;
+  line-height: 1.35;
+  border: none;
+  border-radius: 3px;
+  background: #f0f0f0;
+  color: #555;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.clinical-edit-mockup__remarks-quick-btn:hover {
+  background: #e8e8e8;
+  color: #224b96;
+}
+
+.clinical-edit-mockup__remarks-quick-btn:active {
+  background: #dedede;
+  color: #1a3d7a;
+}
+
+.clinical-edit-mockup__remarks-input {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* 去掉整体外框后：文本域保留浅色边线便于辨认 */
+.clinical-edit-mockup__remarks-box .clinical-edit-mockup__remarks-input :deep(textarea.ant-input) {
+  border: 1px solid #e8e8e8 !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+  resize: vertical;
+}
+
+.clinical-edit-mockup__remarks-input-wrap :deep(.ant-input),
+.clinical-edit-mockup__remarks-input :deep(textarea.ant-input) {
+  padding: 2px 8px 6px !important;
+  font-family: "SimSun", "宋体", serif !important;
+  font-size: var(--exr-font-body, 11px) !important;
+  font-weight: 600 !important;
+  color: #333 !important;
+  line-height: 1.35 !important;
+}
+.clinical-edit-mockup__remarks-input :deep(textarea.ant-input::placeholder) {
+  font-family: "SimSun", "宋体", serif !important;
+  color: #bfbfbf !important;
+}
+.clinical-edit-mockup__remarks-input :deep(textarea.ant-input::-webkit-input-placeholder) {
+  font-family: "SimSun", "宋体", serif !important;
+  color: #bfbfbf !important;
+}
+.clinical-edit-mockup__remarks-input :deep(textarea.ant-input::-moz-placeholder) {
+  font-family: "SimSun", "宋体", serif !important;
+  color: #bfbfbf !important;
+  opacity: 1;
+}
+.clinical-edit-mockup :deep(.ant-picker),
+.clinical-edit-mockup :deep(.ant-picker-input > input) {
+  font-size: var(--exr-font-body) !important;
+}
+/* 下次复查：与「检查间隔」行同字号；日期框更小一号 */
+.clinical-edit-mockup__review-date-group :deep(.ant-picker) {
+  display: inline-flex;
+  align-items: center;
+  width: 108px;
+  min-width: 108px;
+  max-width: 108px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+.clinical-edit-mockup__review-date-group :deep(.ant-picker-input) {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+/* 单行 input：line-height 与可视高度一致，避免字体贴顶 */
+.clinical-edit-mockup__review-date-group :deep(.ant-picker-input > input) {
+  font-size: 12px !important;
+  color: #333 !important;
+  width: 100%;
+  height: 20px !important;
+  min-height: 20px !important;
+  max-height: 20px !important;
+  line-height: 20px !important;
+  padding: 0 2px !important;
+  margin: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  text-align: left;
+  vertical-align: middle;
+}
+.clinical-edit-mockup__review-date-group :deep(.ant-picker-suffix) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  margin-inline-start: 2px;
+  padding-inline-end: 0;
+  line-height: 1;
+}
+.clinical-edit-mockup__review-date-group :deep(.anticon-calendar) {
+  display: block;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.clinical-edit-mockup :deep(.ant-select),
+.clinical-edit-mockup :deep(.ant-select-selection-item) {
+  font-size: var(--exr-font-body) !important;
+}
+
+/* 预约医生：标签用 interval-label；下拉与日期选择器同尺寸（须放在全局 ant-select 之后） */
+.clinical-edit-mockup__dates--under-review :deep(.clinical-edit-mockup__appointment-doctor-select.ant-select) {
+  width: 108px !important;
+  min-width: 108px;
+  max-width: 108px;
+  font-size: 12px !important;
+}
+
+.clinical-edit-mockup__dates--under-review :deep(.clinical-edit-mockup__appointment-doctor-select .ant-select-selector) {
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 4px !important;
+  box-sizing: border-box;
+}
+
+.clinical-edit-mockup__dates--under-review
+  :deep(.clinical-edit-mockup__appointment-doctor-select .ant-select-selection-item),
+.clinical-edit-mockup__dates--under-review
+  :deep(.clinical-edit-mockup__appointment-doctor-select .ant-select-selection-placeholder) {
+  font-size: 12px !important;
+  line-height: 22px !important;
+  color: #333 !important;
+}
+
+.clinical-edit-mockup__dates--under-review :deep(.clinical-edit-mockup__appointment-doctor-select .ant-select-selection-item) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clinical-edit-mockup__dates--under-review :deep(.clinical-edit-mockup__appointment-doctor-select .ant-select-arrow) {
+  font-size: 12px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+}
+
+.clinical-edit-mockup__dates--under-review :deep(.clinical-edit-mockup__appointment-doctor-select .anticon) {
+  font-size: 12px;
 }
 
 // 主标题
@@ -1447,7 +2469,7 @@ const handleSyncPreviousTreatment = async () => {
 }
 
 .section-title {
-  font-size: 18px;
+  font-size: var(--exr-font-section-title);
   font-weight: 600;
   color: #224b96;
   margin: 0;
@@ -1548,7 +2570,7 @@ const handleSyncPreviousTreatment = async () => {
 .section-toggle-icon {
   margin-left: auto;
   color: #666;
-  font-size: 14px;
+  font-size: 13px;
   flex-shrink: 0;
   cursor: pointer;
 }
@@ -1653,9 +2675,9 @@ const handleSyncPreviousTreatment = async () => {
 }
 
 .instruction-label {
-  font-size: clamp(0.75rem, 1.5vw, 0.8125rem);
+  font-size: var(--exr-font-body);
   font-weight: 600;
-  color: #224b96;
+  color: #555;
   margin-bottom: 0;
   white-space: nowrap;
   margin-right: clamp(0.2rem, 0.5vw, 0.25rem);
@@ -1664,7 +2686,7 @@ const handleSyncPreviousTreatment = async () => {
 }
 
 .instruction-value {
-  font-size: clamp(0.75rem, 1.5vw, 0.8125rem);
+  font-size: var(--exr-font-body);
   line-height: 1.5;
   color: #333;
   white-space: nowrap;
@@ -1679,13 +2701,14 @@ const handleSyncPreviousTreatment = async () => {
   min-width: 0;
 }
 
-// 4. 诊疗方案
+// 4. 诊疗方案（与下方医生建议之间的分割线）
 .treatment-plan-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e4eaf4;
   width: 100%;
   max-width: 100%;
   background: transparent !important;
@@ -1693,61 +2716,320 @@ const handleSyncPreviousTreatment = async () => {
   // 收缩状态缩小间距（优先级最高）
   &.collapsed {
     margin-bottom: 2px !important;
-    padding-bottom: 0 !important;
+    padding-bottom: 8px !important;
     gap: 0 !important;
-  }
-  
-  &:not(:last-child) {
-    border-bottom: 1px solid #f0f2f5;
   }
 }
 
-.treatment-plan-table {
+/* 诊疗方案 Rx：行式（标签 | 选择 | 眼别 | 备注） */
+.treatment-plan-rx {
+  /* 本块内略收紧字号与控件尺寸 */
+  --exr-font-treatment-plan: 10px;
+  /* 与下拉层同宽（dropdownMatchSelectWidth），需能完整显示 0.01% / 短选项 */
+  --exr-treatment-select-width: 100px;
   width: 100%;
-  border-collapse: collapse;
-  font-size: clamp(0.75rem, 1.5vw, 0.9375rem);
-  margin-bottom: 16px;
-  
-  th, td {
-    padding: 10px 12px;
-    text-align: center;
-    border: 1px solid #e0e6f5;
+  font-size: var(--exr-font-treatment-plan);
+  margin-bottom: 0;
+
+  &__title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    margin-bottom: 4px;
+    min-height: 0;
   }
-  
-  th {
-    background: linear-gradient(135deg, rgba(34, 75, 150, 0.08) 0%, rgba(234, 240, 255, 0.6) 100%);
-    color: #224b96;
+
+  &__title {
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 0;
+    font-size: var(--exr-font-body);
+    line-height: 1.35;
+  }
+
+  &__scheme-btn {
+    position: relative;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    margin: 0;
+    height: 20px;
+    padding: 0 9px;
+    cursor: pointer;
+    overflow: hidden;
+    border-radius: 999px;
+    border: 1px solid #9aa3ad;
+    background: #fff;
+    color: #555;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    vertical-align: middle;
+    z-index: 1;
+    transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  &__scheme-btn:hover {
+    background: #224b96;
+    border-color: #224b96;
+  }
+
+  &__scheme-btn-text {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateX(0);
+    transition: all 0.3s ease;
+  }
+
+  &__scheme-btn-hover-content {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: #fff;
+    opacity: 0;
+    transform: translateX(18px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+
+  &__scheme-btn-arrow {
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  &__scheme-btn:hover &__scheme-btn-text {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+
+  &__scheme-btn:hover &__scheme-btn-hover-content {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  &__rx {
+    color: #555;
     font-weight: 600;
   }
 
-  td.item-label {
-    background: linear-gradient(135deg, rgba(34, 75, 150, 0.05) 0%, rgba(234, 240, 255, 0.4) 100%);
+  /* 各行相对「诊疗方案 Rx」标题向右缩进两格（与诊断列表一致） */
+  &__row {
+    display: grid;
+    grid-template-columns: 4.75rem minmax(0, 1fr) auto minmax(72px, 1.1fr);
+    gap: 4px 6px;
+    align-items: center;
+    padding: 4px 0 4px 2em;
+    box-sizing: border-box;
+  }
+
+  &__selected-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    padding: 4px 0;
+    align-items: start;
+  }
+
+  &__selected-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  &__selected-idx {
+    flex-shrink: 0;
+    color: #000;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  &__selected-text {
+    min-width: 0;
+    width: auto;
+    max-width: none;
+    border-bottom: none;
+    color: #000;
+    font-family: "SimSun", "宋体", serif;
+    font-size: var(--exr-font-treatment-plan);
+    font-weight: 400;
+    line-height: 1.4;
+    padding-bottom: 2px;
+    white-space: nowrap;
+  }
+
+  &__selected-chip {
+    border: 1px solid #d4def1;
+    background: #f8fbff;
+    color: #555;
+    font-family: "SimSun", "宋体", serif;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 11px;
+    line-height: 1.45;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    white-space: normal;
+    text-align: left;
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__selected-chip:hover {
+    background: #f4f4f4;
+    border-color: #cccccc;
+  }
+
+  &__selected-chip--readonly {
+    cursor: default;
+    pointer-events: none;
+  }
+
+  &__selected-chip--readonly:hover {
+    background: #f8fbff;
+    border-color: #d4def1;
+  }
+
+  &__selected-empty {
+    color: #999;
+    font-size: var(--exr-font-treatment-plan);
+    line-height: 1.4;
+  }
+
+  &__selected-remove {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #ff4d4f;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 0.15s ease;
+  }
+
+  &__selected-remove:hover {
+    background: #fff1f0;
+  }
+
+  &--view &__row {
+    border-bottom: 1px solid #f0f2f5;
+  }
+
+  &__label {
     color: #333;
     font-weight: 500;
-    text-align: center;
+    text-align: left;
   }
-  
-  td {
+
+  &__value-cell {
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
     color: #333;
-    border: 1px solid #f0f2f5;
-    border-top: none;
-    line-height: 1.3;
   }
-  
-  tbody tr {
-    transition: background-color 0.2s ease;
-    
-    &:hover {
-      background-color: rgba(34, 75, 150, 0.04) !important;
-    }
+
+  &__mono {
+    font-size: var(--exr-font-treatment-plan);
+    white-space: nowrap;
   }
-  
-  tbody tr:nth-child(even) {
-    background: #ffffff;
+
+  &__eye-scope {
+    flex-shrink: 0;
   }
-  
-  tbody tr:nth-child(odd) {
-    background: #fafbff;
+
+  &__scope-badge {
+    font-size: 11px;
+    color: #224b96;
+    padding: 0 4px;
+    white-space: nowrap;
+  }
+
+  &__remark-input {
+    border-bottom: 1px solid #d9d9d9 !important;
+    border-radius: 0 !important;
+    padding-left: 0 !important;
+    background: transparent !important;
+  }
+
+  &__remark-view {
+    font-size: var(--exr-font-treatment-plan);
+    color: #666;
+    min-width: 0;
+    text-align: left;
+    word-break: break-word;
+  }
+
+  &__selects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  &__select {
+    min-width: 72px;
+    max-width: 100%;
+  }
+
+  &__select--narrow {
+    width: var(--exr-treatment-select-width) !important;
+    min-width: 0;
+  }
+
+  :deep(.ant-select) {
+    width: var(--exr-treatment-select-width) !important;
+    min-width: 0 !important;
+    max-width: var(--exr-treatment-select-width);
+  }
+  :deep(.ant-select:not(.ant-select-customize-input) .ant-select-selector) {
+    min-height: 20px !important;
+    height: 20px !important;
+    padding: 0 4px !important;
+  }
+  :deep(.ant-select-selection-item),
+  :deep(.ant-select-selection-placeholder) {
+    line-height: 18px !important;
+    font-size: var(--exr-font-treatment-plan) !important;
+  }
+  :deep(.ant-select .ant-select-arrow) {
+    font-size: 10px;
+    right: 6px;
+  }
+  :deep(.ant-select),
+  :deep(.ant-select-selection-item),
+  :deep(.ant-input) {
+    font-size: var(--exr-font-treatment-plan) !important;
+  }
+
+  :deep(.ant-radio-button-wrapper) {
+    padding-inline: 5px !important;
+    padding-block: 0 !important;
+    font-size: var(--exr-font-treatment-plan) !important;
+    line-height: 18px !important;
+    height: 20px !important;
+    min-height: 20px !important;
   }
 }
 
@@ -1761,6 +3043,19 @@ const handleSyncPreviousTreatment = async () => {
   
   .instructions-advice-row {
     flex-direction: column;
+  }
+
+  .clinical-edit-mockup__remarks {
+    flex-direction: column;
+  }
+
+  .clinical-edit-mockup__curr-remarks {
+    border-right: none;
+    padding-right: 0;
+    margin-right: 0;
+    border-bottom: 1px solid #e4eaf4;
+    padding-bottom: 10px;
+    margin-bottom: 6px;
   }
   
 }
@@ -1781,5 +3076,120 @@ const handleSyncPreviousTreatment = async () => {
   .page-one-container {
     max-height: 277mm; // A4高度297mm - 上下边距20mm
   }
+}
+</style>
+
+<style lang="scss">
+/* 诊疗方案下拉：比窄触发器更宽，便于完整显示选项（dropdownMatchSelectWidth=false） */
+.treatment-plan-rx-dropdown.ant-select-dropdown {
+  min-width: 152px !important;
+  max-width: min(92vw, 360px);
+
+  .ant-select-item-option-content {
+    white-space: nowrap;
+  }
+}
+
+/* 方案选择弹窗（内容在 Modal 内，非 scoped） */
+.scheme-plan-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.scheme-plan-modal__row {
+  display: grid;
+  grid-template-columns: 7rem 9.25rem minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: center;
+}
+
+.scheme-plan-modal__eye {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.scheme-plan-modal__eye-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0 2px;
+  font-size: 11px;
+  line-height: 22px;
+  min-height: 24px;
+  border: none;
+  border-right: 1px solid #d9d9d9;
+  background: #fff;
+  color: #555;
+  cursor: pointer;
+  text-align: center;
+  box-sizing: border-box;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.scheme-plan-modal__eye-btn:last-child {
+  border-right: none;
+}
+
+.scheme-plan-modal__eye-btn:hover {
+  color: #224b96;
+  background: #f5f8ff;
+}
+
+.scheme-plan-modal__eye-btn--active {
+  background: #224b96;
+  color: #fff;
+}
+
+.scheme-plan-modal__eye-btn--active:hover {
+  background: #1a3d7a;
+  color: #fff;
+}
+
+.scheme-plan-modal__row--active {
+  background: #f7fbff;
+  border: 1px solid #d9e7fa;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.scheme-plan-modal__label {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.scheme-plan-modal__select {
+  width: 156px;
+  max-width: 100%;
+}
+
+.scheme-plan-modal__select--span2 {
+  grid-column: 3 / 5;
+}
+
+.scheme-plan-modal :deep(.ant-select-selector) {
+  min-height: 26px !important;
+  height: 26px !important;
+  padding: 0 8px !important;
+}
+
+.scheme-plan-modal :deep(.ant-select-selection-item),
+.scheme-plan-modal :deep(.ant-select-selection-placeholder),
+.scheme-plan-modal :deep(.ant-select-arrow) {
+  font-size: 12px !important;
+}
+
+.scheme-plan-modal :deep(.ant-select-selection-item),
+.scheme-plan-modal :deep(.ant-select-selection-placeholder) {
+  line-height: 24px !important;
 }
 </style>

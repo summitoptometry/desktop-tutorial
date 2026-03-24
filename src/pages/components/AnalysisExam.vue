@@ -1,14 +1,37 @@
 <template>
   <div class="analysis-exam-container">
     <div class="analysis-content">
-      <!-- 标题已由 PatientStyleTwo 统一显示，这里隐藏内部标题 -->
-      <!-- <div class="analysis-header">
-        <h3>结果分析</h3>
-        <p class="analysis-description">基于检查数据进行智能分析和案例匹配</p>
-      </div> -->
-      
+      <!-- 子标签：分析结果在前，匹配参数在后（打印时两块均输出，无标签条） -->
+      <div
+        v-if="viewMode !== 'print' && !hideMainTabs"
+        class="analysis-main-tabs-row"
+      >
+        <div class="analysis-main-tabs" role="tablist" aria-label="结果分析">
+          <button
+            type="button"
+            role="tab"
+            class="analysis-main-tab-item"
+            :class="{ active: analysisMainTab === 'results' }"
+            :aria-selected="analysisMainTab === 'results'"
+            @click="analysisMainTab = 'results'"
+          >
+            分析结果
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="analysis-main-tab-item"
+            :class="{ active: analysisMainTab === 'params' }"
+            :aria-selected="analysisMainTab === 'params'"
+            @click="analysisMainTab = 'params'"
+          >
+            匹配参数设置
+          </button>
+        </div>
+      </div>
+
       <!-- 匹配参数设置区域 -->
-      <div class="params-section">
+      <div class="params-section" v-show="viewMode === 'print' || analysisMainTab === 'params'">
         <div class="params-card">
           <div class="card-header">
             <div class="card-title">
@@ -333,7 +356,7 @@
       </div>
 
       <!-- 分析结果区域 -->
-      <div class="results-section">
+      <div class="results-section" v-show="viewMode === 'print' || analysisMainTab === 'results'">
         <!-- 分页导航 -->
         <div class="pagination-nav" v-if="analysisStats && analysisStats.totalCases > 0">
           <div class="pagination-tabs">
@@ -726,8 +749,30 @@ const props = defineProps({
   patientInfo: {
     type: Object,
     default: () => ({})
+  },
+  viewMode: {
+    type: String,
+    default: 'view'
+  },
+  initialMainTab: {
+    type: String,
+    default: 'results' // 'results' | 'params'
+  },
+  hideMainTabs: {
+    type: Boolean,
+    default: false
   }
 })
+
+const normalizeMainTab = (tab) => (tab === 'params' ? 'params' : 'results')
+const analysisMainTab = ref(normalizeMainTab(props.initialMainTab))
+
+watch(
+  () => props.initialMainTab,
+  (newTab) => {
+    analysisMainTab.value = normalizeMainTab(newTab)
+  }
+)
 
 // 响应式数据
 const isLoading = ref(false)
@@ -3379,6 +3424,66 @@ watch(() => props.isDualScreen, (newIsDualScreen) => {
   
   .axial-arrow {
     transform: rotate(90deg);
+  }
+}
+
+/* 结果分析：与视功能子标签一致的顶栏按钮 */
+.analysis-main-tabs-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.analysis-main-tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(34, 75, 150, 0.25);
+    border-radius: 2px;
+  }
+}
+
+.analysis-main-tab-item {
+  flex: 0 1 auto;
+  padding: 5px 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #224b96;
+  background: linear-gradient(135deg, rgba(34, 75, 150, 0.08) 0%, rgba(234, 240, 255, 0.6) 100%);
+  border: 1px solid #e0e6f5;
+  border-radius: 6px;
+  border-left: 3px solid #b8c9e8;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: #224b96;
+    background: linear-gradient(135deg, rgba(34, 75, 150, 0.12) 0%, rgba(234, 240, 255, 0.85) 100%);
+  }
+
+  &.active {
+    color: #fff;
+    background: #224b96;
+    border-color: #224b96;
+    border-left-color: #224b96;
   }
 }
 </style>

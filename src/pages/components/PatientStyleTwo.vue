@@ -1,137 +1,69 @@
 <template>
-  <div class="style-two-root" ref="rootWrapper">
-    <!-- 顶部栏：左右比例与下方记录列表/检查详情一致，左患者信息居左，右区两行按钮均居右 -->
+  <div
+    class="style-two-root"
+    ref="rootWrapper"
+    :class="{ 'style-two-root--edit': viewMode === 'edit' }"
+  >
+    <!-- 顶部栏：患者基本信息 + 右侧多患者标签（与 Main 子标签同步，最多5个、按打开时间排序） -->
     <div class="top-bar-unified">
-      <div class="top-bar-left">
-        <div class="top-bar-info-inner">
-          <div class="info-row">
-            <span class="info-item"><span class="info-label">姓名</span><span class="info-colon">：</span><span class="info-value">{{ patientInfo?.name || '-' }}</span></span>
-            <span class="info-item"><span class="info-label">性别</span><span class="info-colon">：</span><span class="info-value">{{ formatGender(patientInfo?.gender) }}</span></span>
-            <span class="info-item"><span class="info-label">出生年月</span><span class="info-colon">：</span><span class="info-value">{{ formatBirthDate(patientInfo?.birthDate) }}</span></span>
-          </div>
-          <div class="info-row">
-            <span class="info-item"><span class="info-label">年龄</span><span class="info-colon">：</span><span class="info-value">{{ calculateAge(patientInfo?.birthDate) }}</span></span>
-            <span class="info-item"><span class="info-label">患者编号</span><span class="info-colon">：</span><span class="info-value info-value-id">{{ getPatientId() }}</span></span>
-            <span class="info-item"><span class="info-label">档案编号</span><span class="info-colon">：</span><span class="info-value info-value-id">{{ getArchiveId() }}</span></span>
+      <div class="top-bar-unified__inner">
+        <div class="top-bar-left top-bar-left--grow">
+          <div class="top-bar-info-inner">
+            <div class="info-row">
+              <span class="info-item"><span class="info-label">姓名</span><span class="info-colon">：</span><span class="info-value">{{ patientInfo?.name || '-' }}</span></span>
+              <span class="info-item"><span class="info-label">性别</span><span class="info-colon">：</span><span class="info-value">{{ formatGender(patientInfo?.gender) }}</span></span>
+              <span class="info-item"><span class="info-label">出生年月</span><span class="info-colon">：</span><span class="info-value">{{ formatBirthDate(patientInfo?.birthDate) }}</span></span>
+              <span class="info-item"><span class="info-label">患者编号</span><span class="info-colon">：</span><span class="info-value info-value-id">{{ getPatientId() }}</span></span>
+              <span class="info-item"><span class="info-label">档案编号</span><span class="info-colon">：</span><span class="info-value info-value-id">{{ getArchiveId() }}</span></span>
+              <span class="info-item"><span class="info-label">年龄</span><span class="info-colon">：</span><span class="info-value">{{ calculateAge(patientInfo?.birthDate) }}</span></span>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="top-bar-right">
-        <div class="top-bar-actions">
-          <a-button 
-            v-if="selectedRecordId"
-            class="action-btn-text"
-            :type="activeAction === 'edit' ? 'primary' : 'default'"
-            size="small"
-            @click="handleEditCurrentRecord"
+        <div
+          v-if="patientHomeTagBar.visible"
+          class="top-bar-patient-tags"
+          role="tablist"
+          aria-label="已打开的患者主页"
+        >
+          <button
+            v-for="sub in patientHomeTagBar.list"
+            :key="sub.id"
+            type="button"
+            role="tab"
+            class="patient-tag-chip"
+            :class="{ 'patient-tag-chip--active': sub.id === patientHomeTagBar.activeId }"
+            :aria-selected="sub.id === patientHomeTagBar.activeId"
+            @click="patientHomeTagBar.switchTo(sub.id)"
           >
-            <template #icon><EditOutlined /></template>
-            编辑
-          </a-button>
-          <a-button 
-            v-if="selectedRecordId"
-            class="action-btn-text"
-            :type="activeAction === 'save' ? 'primary' : 'default'"
-            size="small"
-            :disabled="!editingRecordId"
-            @click="handleSaveCurrentRecord"
-          >
-            <template #icon><SaveOutlined /></template>
-            保存
-          </a-button>
-          <a-button class="action-btn-text" type="default" size="small" @click="handleAddRecord">
-            <template #icon><PlusOutlined /></template>
-            新增
-          </a-button>
-          <a-button 
-            class="action-btn-text"
-            :type="activeAction === 'refresh' ? 'primary' : 'default'"
-            size="small"
-            @click="handleRefresh"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </a-button>
-          <a-button 
-            v-if="selectedRecordId"
-            class="action-btn-text"
-            :type="chartVisible ? 'primary' : 'default'"
-            size="small"
-            @click="handleOpenChart"
-          >
-            <template #icon><FundProjectionScreenOutlined /></template>
-            图表
-          </a-button>
-          <a-button 
-            v-if="selectedRecordId"
-            class="action-btn-text"
-            :type="activeAction === 'print' ? 'primary' : 'default'"
-            size="small"
-            @click="handlePrintExaminationReport"
-          >
-            <template #icon><PrinterOutlined /></template>
-            打印
-          </a-button>
-        </div>
-        <div v-if="selectedRecordId" class="top-bar-nav-buttons">
-          <a-button 
-            v-for="nav in visibleNavButtons" 
-            :key="nav.key"
-            class="top-bar-nav-btn"
-            :type="activeNavButton === nav.key ? 'primary' : 'default'"
-            @click="handleNavButtonClick(nav.key)"
-          >
-            {{ nav.title }}
-          </a-button>
+            <span class="patient-tag-chip__name">{{ sub.title || '患者' }}</span>
+            <span
+              class="patient-tag-chip__close"
+              role="button"
+              tabindex="0"
+              title="关闭"
+              @click.stop="patientHomeTagBar.close(sub.id)"
+              @keydown.enter.prevent="patientHomeTagBar.close(sub.id)"
+              @keydown.space.prevent="patientHomeTagBar.close(sub.id)"
+            >×</span>
+          </button>
         </div>
       </div>
     </div>
     
     <div class="style-two-layout" ref="layoutRef">
-    <aside class="style-two-side">
-      <!-- 上：诊断记录（横向日期条 + 单条展示，无分页） -->
-      <div class="side-panel side-panel-diagnosis">
-        <div class="side-panel-title">
-          <span>诊断记录</span>
-          <a-button type="link" size="small" @click="openDiagnosisModal()" class="side-panel-add-btn">新增</a-button>
-        </div>
-        <template v-if="diagnosisRecords.length === 0">
-          <div class="diagnosis-empty">暂无诊断记录</div>
-        </template>
-        <template v-else>
-          <div class="diagnosis-date-bar">
-            <div
-              v-for="(item, index) in diagnosisRecords"
-              :key="item.id"
-              :class="['diagnosis-date-chip', { active: selectedDiagnosisDate === item.diagnosis_date }]"
-              @click="selectedDiagnosisDate = item.diagnosis_date"
-            >
-              {{ diagnosisSequenceLabel(index) }}
-            </div>
-          </div>
-          <div class="diagnosis-list" ref="diagnosisListRef">
-            <div v-if="selectedDiagnosisRecord" class="diagnosis-entry">
-              <div class="diagnosis-entry-row diagnosis-entry-date">{{ formatDate(selectedDiagnosisRecord.diagnosis_date) }}</div>
-              <div class="diagnosis-entry-row diagnosis-entry-detail">{{ diagnosisDetailDisplay(selectedDiagnosisRecord.diagnosis_detail) }}</div>
-              <div class="diagnosis-entry-row diagnosis-entry-remarks-line">
-                备注：<span v-if="selectedDiagnosisRecord.right_eye_remark">右眼（{{ selectedDiagnosisRecord.right_eye_remark }}）</span><span v-if="selectedDiagnosisRecord.left_eye_remark">左眼（{{ selectedDiagnosisRecord.left_eye_remark }}）</span>
-              </div>
-              <div class="diagnosis-entry-actions">
-                <a-button type="text" size="small" @click.stop="openDiagnosisModal(selectedDiagnosisRecord)" title="编辑">
-                  <EditOutlined style="font-size: 12px; color: #1890ff;" />
-                </a-button>
-                <a-button type="text" size="small" danger @click.stop="handleDeleteDiagnosis(selectedDiagnosisRecord)" title="删除">
-                  <DeleteOutlined style="font-size: 12px;" />
-                </a-button>
-              </div>
-            </div>
-          </div>
-        </template>
-      </div>
-
-      <!-- 下：检查记录列表（显示约 5 条，内部滚动） -->
+    <div
+      class="style-two-exam-flyout"
+      :class="{ 'style-two-exam-flyout--open': examFlyoutOpen }"
+      @mouseenter="examFlyoutHovered = true"
+      @mouseleave="onExamFlyoutMouseLeave"
+    >
+    <aside class="style-two-side style-two-exam-flyout__aside">
+      <!-- 右侧：检查记录列表悬浮抽屉（主区在左） -->
       <div class="side-panel side-panel-examination">
-        <div class="side-panel-title">检查记录</div>
+        <div class="side-panel-title">
+          <span>检查记录</span>
+          <a-button type="default" size="small" class="side-panel-add-btn side-panel-add-btn--examination" @click="handleAddRecord">新增检查记录</a-button>
+        </div>
         <div class="style-two-date-panel">
           <div class="style-two-date-list" ref="dateListRef">
             <div
@@ -144,7 +76,10 @@
               <template v-if="entry">
                 <!-- 第一行：检查日期、眼轴对比、功能按钮 -->
                 <div class="entry-row-1">
-                  <span class="entry-date">{{ formatDate(entry.record.examination_date) }}</span>
+                  <span class="entry-date">
+                    {{ formatDate(entry.record.examination_date) }}
+                    <span v-if="entry.dxRxTag" class="entry-date__dxrx">{{ entry.dxRxTag }}</span>
+                  </span>
                   <div class="entry-axial-comparison">
                     <span class="comp-label">上次:</span>
                     <span class="comp-value">
@@ -213,9 +148,19 @@
                   <span class="row-content">{{ entry.examinationItems }}</span>
                 </div>
 
-                <!-- 第三行：诊疗方案 -->
+                <!-- 第三行：诊疗方案（优先与「诊疗方案 Rx」方案选择一致；否则沿用旧版左右眼字段） -->
                 <div class="entry-row-3">
-                  <div v-if="entry.treatmentPlanRight || entry.treatmentPlanLeft" class="treatment-plan-content">
+                  <div v-if="entry.treatmentSchemeLines?.length" class="treatment-scheme-rx-card">
+                    <div
+                      v-for="(line, sIdx) in entry.treatmentSchemeLines"
+                      :key="`scheme-${entry.record.id}-${sIdx}`"
+                      class="treatment-scheme-rx-card__line"
+                    >
+                      <span class="treatment-scheme-rx-card__idx">{{ sIdx + 1 }}、</span>
+                      <span class="treatment-scheme-rx-card__chip">{{ line }}</span>
+                    </div>
+                  </div>
+                  <div v-else-if="entry.treatmentPlanRight || entry.treatmentPlanLeft" class="treatment-plan-content">
                     <div v-if="entry.treatmentPlanRight" class="treatment-eye-item treatment-eye-right">
                       <span class="eye-label-large">右</span>
                       <span class="treatment-content" v-html="entry.treatmentPlanRight"></span>
@@ -236,60 +181,108 @@
         </div>
       </div>
     </aside>
-
-    <!-- 诊断记录新增/编辑弹窗 -->
-    <a-modal
-      v-model:visible="diagnosisModalVisible"
-      :title="editingDiagnosisId ? '编辑诊断记录' : '新增诊断记录'"
-      :maskClosable="false"
-      :confirmLoading="diagnosisSubmitLoading"
-      @ok="submitDiagnosisForm"
-      @cancel="closeDiagnosisModal"
+    <button
+      type="button"
+      class="style-two-exam-flyout__handle"
+      :class="{ 'style-two-exam-flyout__handle--pinned': examFlyoutPinned }"
+      :aria-expanded="examFlyoutOpen"
+      :aria-pressed="examFlyoutPinned"
+      aria-label="检查记录：在右侧悬停展开，点击固定或收起"
+      @click.stop="toggleExamFlyoutPin"
     >
-      <a-form :model="diagnosisForm" layout="vertical">
-        <a-form-item label="诊断日期" required>
-          <a-date-picker
-            v-model:value="diagnosisForm.diagnosis_date"
-            style="width: 100%"
-            value-format="YYYY-MM-DD"
-            format="YYYY-MM-DD"
-            placeholder="请选择诊断日期"
-          />
-        </a-form-item>
-        <a-form-item label="诊断详情" required>
-          <a-textarea
-            v-model:value="diagnosisForm.diagnosis_detail"
-            placeholder="请输入诊断详情"
-            :rows="4"
-            allow-clear
-          />
-        </a-form-item>
-        <a-form-item label="右眼备注">
-          <a-textarea
-            v-model:value="diagnosisForm.right_eye_remark"
-            placeholder="可选"
-            :rows="2"
-            allow-clear
-          />
-        </a-form-item>
-        <a-form-item label="左眼备注">
-          <a-textarea
-            v-model:value="diagnosisForm.left_eye_remark"
-            placeholder="可选"
-            :rows="2"
-            allow-clear
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+      <span class="style-two-exam-flyout__grip" aria-hidden="true" />
+    </button>
+    </div>
 
-    <main class="style-two-main" ref="mainScrollRef">
-      <div v-if="selectedRecordId" class="style-two-content">
-        <div class="style-two-pages-wrapper" ref="a4ScrollContainer">
+    <main class="style-two-main style-two-main--full" ref="mainScrollRef">
+      <div class="style-two-content style-two-content--split">
+        <div class="style-two-main-split">
+          <div class="style-two-main-toolbar">
+            <div class="style-two-main-toolbar__nav-wrap">
+              <nav
+                v-if="selectedRecordId && viewMode !== 'print'"
+                class="style-two-exam-nav"
+                aria-label="检查模块导航"
+              >
+                <span class="style-two-exam-nav__exam-date">
+                  检查日期：{{ formatDate((viewMode === 'edit' && editingRecord && editingRecord.id === currentRecord?.id ? editingRecord : currentRecord)?.examination_date) }}
+                </span>
+                <button
+                  v-for="item in examNavItems"
+                  :key="item.key"
+                  type="button"
+                  class="exam-nav-btn"
+                  :class="{
+                    'exam-nav-btn--active': selectedExamNavTab === item.key,
+                    'exam-nav-btn--dim': !navTabHasData(item.key, currentRecord) && selectedExamNavTab !== item.key
+                  }"
+                  @click="onExamNavTabClick(item.key)"
+                >
+                  {{ item.title }}
+                </button>
+              </nav>
+            </div>
+            <div class="top-bar-actions style-two-main-toolbar__actions">
+              <!-- 选中记录、详情页展开后显示；排在刷新之前 -->
+              <template v-if="selectedRecordId && viewMode !== 'print'">
+                <a-button
+                  class="action-btn-text"
+                  :type="viewMode === 'edit' ? 'primary' : 'default'"
+                  size="small"
+                  @click="handleExamNavTabEdit(selectedExamNavTab)"
+                >
+                  <template #icon><EditOutlined /></template>
+                  编辑
+                </a-button>
+                <a-button
+                  class="action-btn-text"
+                  :type="activeAction === 'save' ? 'primary' : 'default'"
+                  size="small"
+                  :disabled="!editingRecordId"
+                  :loading="activeAction === 'save'"
+                  @click="handleExamNavTabSave"
+                >
+                  <template #icon><SaveOutlined /></template>
+                  保存
+                </a-button>
+              </template>
+              <a-button
+                class="action-btn-text"
+                :type="activeAction === 'refresh' ? 'primary' : 'default'"
+                size="small"
+                @click="handleRefresh"
+              >
+                <template #icon><ReloadOutlined /></template>
+                刷新
+              </a-button>
+              <a-button
+                v-if="selectedRecordId"
+                class="action-btn-text"
+                :type="chartVisible ? 'primary' : 'default'"
+                size="small"
+                @click="handleOpenChart"
+              >
+                <template #icon><FundProjectionScreenOutlined /></template>
+                图表
+              </a-button>
+              <a-button
+                v-if="selectedRecordId"
+                class="action-btn-text"
+                :type="activeAction === 'print' ? 'primary' : 'default'"
+                size="small"
+                @click="handlePrintExaminationReport"
+              >
+                <template #icon><PrinterOutlined /></template>
+                打印
+              </a-button>
+            </div>
+          </div>
+          <div class="style-two-result-area" ref="a4ScrollContainer">
+        <div class="style-two-pages-wrapper">
           <div class="style-two-continuous-page" :style="a4ScaleStyle">
             <div class="style-two-page-content" ref="contentRef" :style="a4ContentScaleStyle">
               <!-- 打印模式专用：页眉仅标题 + Logo；患者基本信息放正文最先 -->
-              <div v-if="viewMode === 'print'" class="print-report-header">
+              <div v-if="viewMode === 'print' && selectedRecordId" class="print-report-header">
                 <div class="print-header-top">
                   <h1 class="print-report-title">检查报告</h1>
                   <img 
@@ -301,7 +294,7 @@
                   />
                 </div>
               </div>
-              <div v-if="viewMode === 'print'" class="print-report-patient">
+              <div v-if="viewMode === 'print' && selectedRecordId" class="print-report-patient">
                 <div class="print-patient-row">
                   <span>姓名：{{ patientInfo?.name || '-' }}</span>
                   <span>性别：{{ patientInfo?.gender || '-' }}</span>
@@ -314,57 +307,273 @@
                   <span>下次复查日期：{{ formatPrintDate(getNextReviewDate(currentRecord)) }}</span>
                 </div>
               </div>
-              <!-- 第一页：医生建议/备注、诊疗方案 -->
-              <div 
-                v-show="!selectedNavSection || selectedNavSection === 'doctor-instructions' || selectedNavSection === 'treatment-plan'"
-                class="style-two-page-section"
+              <!-- 诊断 + 医生建议 + 诊疗方案（合并为一块）；局部编辑时仅「诊断和诊疗方案」标签下显示 -->
+              <div
+                v-show="viewMode !== 'print' && showMergedClinicalShell"
+                id="style-two-section-diagnosis"
+                class="style-two-page-section style-two-merged-clinical"
               >
-                <PatientStyleTwoPageOne
-                  :patient-info="patientInfo"
-                  :current-record="viewMode === 'edit' && editingRecord ? editingRecord : currentRecord"
+                <template v-if="selectedRecordId && showMergedClinicalShell && (viewMode !== 'view' || selectedExamNavTab === 'clinical')">
+                  <div
+                    v-show="showMergedClinicalShell && (viewMode !== 'view' || selectedExamNavTab === 'clinical')"
+                    class="style-two-merged-clinical__page-one"
+                  >
+                    <PatientStyleTwoPageOne
+                      ref="clinicalPageOneRef"
+                      :patient-info="patientInfo"
+                      :current-record="viewMode === 'edit' && editingRecord && effectiveClinicalViewMode === 'edit' ? editingRecord : currentRecord"
+                      :previous-record="previousRecord"
+                      :examination-records="examinationRecords"
+                      :view-mode="effectiveClinicalViewMode"
+                      :section-expanded="sectionExpanded"
+                      :print-selected-sections="printSelectedSections"
+                      :show-only-section="null"
+                      :diagnosis-sync-active="syncPrevDiagnosisActive"
+                      @toggle-section="toggleSection"
+                      @update-record="handleUpdateRecord"
+                      @sync-previous-diagnosis="handleSyncPreviousDiagnosis"
+                    >
+                      <template #diagnosis>
+                        <div
+                          v-show="viewMode !== 'print' && showMergedClinicalShell"
+                          class="style-two-merged-clinical__diagnosis"
+                        >
+                            <div class="side-panel-title style-two-merged-clinical__subhead style-two-merged-clinical__subhead--dx-mockup">
+                            <span class="style-two-merged-clinical__dx-title">诊断 Dx：</span>
+                            <a-button
+                              v-if="effectiveClinicalViewMode === 'edit'"
+                              type="default"
+                              size="small"
+                              class="side-panel-add-btn side-panel-add-btn--diagnosis"
+                              :disabled="diagnosisAddLoading"
+                              @click="addDiagnosisDraftRow"
+                            >
+                              新增诊断
+                            </a-button>
+                          </div>
+                          <div
+                            ref="diagnosisListRef"
+                            class="diagnosis-inline-wrap"
+                            :class="{ 'diagnosis-inline-wrap--edit-mockup': effectiveClinicalViewMode === 'edit' }"
+                          >
+                            <!-- 查看模式：只读列表（诊断随当前检查记录，不单独选日期） -->
+                            <template v-if="effectiveClinicalViewMode === 'view'">
+                              <div
+                                v-for="(rec, idx) in diagnosisRecordsForCurrentExam"
+                                :key="rec.id ?? `diag-${idx}-${rec.diagnosis_date}`"
+                                class="diagnosis-inline-row diagnosis-inline-row--readonly"
+                              >
+                                <span class="col-idx">{{ idx + 1 }}</span>
+                                <div class="col-text diagnosis-readonly-cell">
+                                  <div class="diagnosis-readonly-text">{{ diagnosisDetailDisplay(rec.diagnosis_detail) }}</div>
+                                </div>
+                                <span class="col-act" />
+                              </div>
+                              <div v-if="diagnosisRecordsForCurrentExam.length === 0" class="diagnosis-empty-inline">暂无诊断记录</div>
+                            </template>
+                            <!-- 编辑模式 -->
+                            <template v-else-if="effectiveClinicalViewMode === 'edit'">
+                              <div class="diagnosis-dx-edit">
+                                <div
+                                  v-for="(rec, idx) in diagnosisRecordsForCurrentExam"
+                                  :key="rec.id ?? `diag-${idx}-${rec.diagnosis_date}`"
+                                  class="diagnosis-dx-line"
+                                >
+                                  <span class="diagnosis-dx-idx">{{ idx + 1 }}、</span>
+                                  <div class="diagnosis-dx-input-cell">
+                                    <a-input
+                                      v-model:value="rec.diagnosis_detail"
+                                      :bordered="false"
+                                      placeholder="诊断内容"
+                                      :maxlength="2000"
+                                      class="diagnosis-dx-input"
+                                    />
+                                  </div>
+                                  <div class="diagnosis-dx-actions-box" aria-label="诊断行操作">
+                                    <div class="diagnosis-dx-tail">
+                                      <button
+                                        v-if="showDiagnosisLinePlus(idx, null)"
+                                        type="button"
+                                        class="diagnosis-dx-action diagnosis-dx-action--add"
+                                        :disabled="diagnosisAddLoading"
+                                        title="增加"
+                                        @click="addDiagnosisDraftRow"
+                                      >
+                                        <PlusOutlined />
+                                      </button>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      class="diagnosis-dx-action diagnosis-dx-action--delete"
+                                      @click.stop="handleDeleteDiagnosis(rec)"
+                                      title="删除"
+                                    >
+                                      <MinusOutlined />
+                                    </button>
+                                  </div>
+                                </div>
+                                <div
+                                  v-for="(draft, dIdx) in diagnosisDraftLines"
+                                  :key="draft.tempId"
+                                  class="diagnosis-dx-line"
+                                >
+                                  <span class="diagnosis-dx-idx">{{ diagnosisRecordsForCurrentExam.length + dIdx + 1 }}、</span>
+                                  <div class="diagnosis-dx-input-cell">
+                                    <a-input
+                                      v-model:value="draft.diagnosis_detail"
+                                      :bordered="false"
+                                      placeholder="诊断内容"
+                                      :maxlength="2000"
+                                      class="diagnosis-dx-input"
+                                    />
+                                  </div>
+                                  <div class="diagnosis-dx-actions-box" aria-label="诊断行操作">
+                                    <div class="diagnosis-dx-tail">
+                                      <button
+                                        v-if="showDiagnosisLinePlus(null, dIdx)"
+                                        type="button"
+                                        class="diagnosis-dx-action diagnosis-dx-action--add"
+                                        :disabled="diagnosisAddLoading"
+                                        title="增加"
+                                        @click="addDiagnosisDraftRow"
+                                      >
+                                        <PlusOutlined />
+                                      </button>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      class="diagnosis-dx-action diagnosis-dx-action--delete"
+                                      @click.stop="removeDiagnosisDraftRow(draft)"
+                                      title="删除此行"
+                                    >
+                                      <MinusOutlined />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </template>
+                          </div>
+                        </div>
+                      </template>
+                    </PatientStyleTwoPageOne>
+                  </div>
+                </template>
+              </div>
+
+              <template v-if="selectedRecordId">
+              <div
+                v-if="selectedExamNavTab === 'history' && viewMode !== 'print'"
+                id="style-two-section-history-records"
+                class="style-two-page-section style-two-history-wrap"
+              >
+                <div class="style-two-history-card">
+                  <div class="style-two-history-table-wrap">
+                    <table class="style-two-history-table">
+                      <colgroup>
+                        <col class="col-date" />
+                        <col class="col-eye" />
+                        <col class="col-axial" />
+                        <col class="col-trend" />
+                        <col class="col-avgk" />
+                        <col class="col-dk" />
+                        <col class="col-ratio" />
+                        <col class="col-uva" />
+                        <col class="col-subjective" />
+                        <col class="col-corrected" />
+                        <col class="col-diagnosis" />
+                        <col class="col-plan" />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th>日期</th>
+                          <th>眼别</th>
+                          <th>眼轴</th>
+                          <th>趋势</th>
+                          <th>MeanK</th>
+                          <th>ΔK</th>
+                          <th>轴率比</th>
+                          <th>裸眼视力</th>
+                          <th>主觉验光</th>
+                          <th>矫正视力</th>
+                          <th>诊断</th>
+                          <th>诊疗方案</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="row in historyTabRows" :key="row.recordId">
+                          <td>{{ row.date }}</td>
+                          <td class="style-two-history-table__eye-cell">
+                            <div class="style-two-history-table__eye-split">
+                              <span>右</span>
+                              <span>左</span>
+                            </div>
+                          </td>
+                          <td>{{ row.axialLength }}</td>
+                          <td class="style-two-history-table__trend-cell" v-html="row.axialTrend"></td>
+                          <td>{{ row.avgK }}</td>
+                          <td>{{ row.deltaK }}</td>
+                          <td>{{ row.axialRatio }}</td>
+                          <td class="style-two-history-table__uva-cell" v-html="row.uva"></td>
+                          <td>{{ row.subjectiveRefraction }}</td>
+                          <td class="style-two-history-table__uva-cell" v-html="row.correctedVision"></td>
+                          <td>{{ row.diagnosis }}</td>
+                          <td>{{ row.treatmentPlan }}</td>
+                        </tr>
+                        <tr v-if="historyTabRows.length === 0">
+                          <td colspan="12" class="style-two-history-table__empty">暂无历史记录</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              <!-- 视光检查：纵向单页连续展示（避免与下方分块重复挂载） -->
+              <div
+                v-if="selectedExamNavTab === 'exam-results' && viewMode !== 'print'"
+                id="style-two-section-exam-results-unified"
+                class="style-two-page-section style-two-exam-results-unified-wrap"
+              >
+                <ExamResultsUnifiedStyleTwo
+                  :record="viewMode === 'edit' && editingRecord && editingRecord.id === currentRecord?.id ? editingRecord : currentRecord"
                   :previous-record="previousRecord"
                   :examination-records="examinationRecords"
-                  :view-mode="viewMode"
-                  :section-expanded="sectionExpanded"
-                  :print-selected-sections="printSelectedSections"
-                  :show-only-section="selectedNavSection === 'doctor-instructions' ? 'doctor-instructions' : (selectedNavSection === 'treatment-plan' ? 'treatment-plan' : null)"
-                  :enable-collapse="!selectedNavSection"
+                  :patient-id="patientId"
+                  :patient-info="patientInfo"
+                  :routine-view-mode="effectiveSectionViewMode('routine')"
+                  :biometry-view-mode="effectiveSectionViewMode('biometry')"
+                  :functional-view-mode="effectiveSectionViewMode('functional')"
                   @toggle-section="toggleSection"
                   @update-record="handleUpdateRecord"
+                  @refresh="fetchPatientData"
                 />
               </div>
-              
               <!-- 其他页面内容 -->
               <template v-for="page in styleTwoPages" :key="page.key">
                 <div 
-                  v-if="viewMode === 'edit' || (viewMode !== 'view' && viewMode !== 'print') || hasPageData(page.key, currentRecord)"
-                  v-show="viewMode === 'edit' || ((viewMode !== 'print' || page.sections.some(section => printSelectedSections.includes(section.key))) && (shouldShowSection(page.key) || page.sections.some(section => shouldShowSection(section.key))))"
+                  v-if="viewMode === 'edit'
+                    ? (scopedEditNavTab === null || shouldShowSection(page.key) || page.sections.some((section) => shouldShowSection(section.key)))
+                    : hasPageData(page.key, currentRecord)"
+                  v-show="((viewMode === 'edit' && scopedEditNavTab === null) || ((viewMode !== 'print' || page.sections.some(section => printSelectedSections.includes(section.key))) && (shouldShowSection(page.key) || page.sections.some(section => shouldShowSection(section.key))))) && !(selectedExamNavTab === 'exam-results' && viewMode !== 'print' && ['page-2', 'page-3'].includes(page.key))"
                   class="style-two-page-section"
                 >
+                  <template v-for="section in page.sections" :key="section.key">
                   <section
-                    v-for="section in page.sections"
-                    :key="section.key"
-                    :ref="(el) => setSectionRef(section.key, el)"
+                    v-if="!(section.key === 'analysis' && selectedExamNavTab === 'related' && viewMode !== 'print')"
                     :id="`style-two-section-${section.key}`"
                     class="style-two-section"
-                    v-show="(viewMode !== 'print' || printSelectedSections.includes(section.key)) && shouldShowSection(section.key)"
+                    v-show="(viewMode !== 'print' || printSelectedSections.includes(section.key)) && shouldShowSection(section.key) && !(selectedExamNavTab === 'exam-results' && viewMode !== 'print' && ['routine', 'biometry', 'functional'].includes(section.key))"
                   >
                     <!-- 板块标题：在查看模式下显示标题，在报告模式（selectedNavSection为null）下不显示标题 -->
                     <!-- 结果分析始终显示标题 -->
                     <div 
-                      v-if="section.key === 'analysis' || (!['routine', 'functional', 'img', 'biometry'].includes(section.key) && (viewMode === 'view' ? selectedNavSection : true))"
+                      v-if="(section.key === 'analysis' && effectiveSectionViewMode(section.key) !== 'view') || (!['routine', 'functional', 'img', 'biometry', 'analysis'].includes(section.key) && (viewMode === 'view' ? false : true))"
                       class="style-two-section-header"
                       :class="{ 'analysis-header': section.key === 'analysis' }"
-                      @click="section.key === 'analysis' && toggleSection('analysis')"
                     >
                       <template v-if="section.key !== 'analysis'">
                         <ImgIcon class="section-icon" :title="section.title" />
                       </template>
                       <span class="section-title">{{ section.title }}</span>
-                      <span v-if="section.key === 'analysis'" class="section-toggle-icon">
-                        <UpOutlined v-if="sectionExpanded.analysis" />
-                        <DownOutlined v-else />
-                      </span>
                     </div>
                     <!-- 板块内容显示逻辑 -->
                     <!-- 编辑模式：直接显示 -->
@@ -375,24 +584,24 @@
                     <div 
                       v-if="viewMode === 'edit' || 
                             (viewMode === 'print' && printSelectedSections.includes(section.key)) ||
-                            (viewMode === 'view' && shouldShowSection(section.key) && (section.key !== 'analysis' || selectedNavSection === 'analysis' || sectionExpanded.analysis))"
-                      v-show="section.key !== 'analysis' || selectedNavSection === 'analysis' || sectionExpanded.analysis"
+                            (viewMode === 'view' && shouldShowSection(section.key) && (section.key !== 'analysis' || selectedExamNavTab === 'related' || section.key === 'analysis'))"
+                      v-show="section.key !== 'analysis' || selectedExamNavTab === 'related' || viewMode === 'print' || (viewMode !== 'view' && scopedEditNavTab === null)"
                       class="style-two-section-body"
                       :style="viewMode === 'print' && printSelectedSections.includes(section.key) ? { display: 'block !important', visibility: 'visible !important', opacity: '1 !important' } : {}"
                     >
                       <component
                         :is="section.component"
-                        :record="viewMode === 'edit' && editingRecord ? editingRecord : currentRecord"
+                        :record="viewMode === 'edit' && editingRecord && effectiveSectionViewMode(section.key) === 'edit' ? editingRecord : currentRecord"
                         :previous-record="previousRecord"
                         :examination-records="examinationRecords"
                         :is-dual-screen="false"
                         :patient-id="patientId"
                         :patient-info="patientInfo"
-                        :view-mode="viewMode"
+                        :view-mode="effectiveSectionViewMode(section.key)"
                         :section-expanded="sectionExpanded"
-                        :show-only-section="(selectedNavSection && ['routine', 'vision', 'objective-refraction', 'subjective-refraction'].includes(selectedNavSection) && section.key === 'routine') ? selectedNavSection : ((selectedNavSection === 'functional' && section.key === 'functional') ? 'functional' : ((selectedNavSection === 'other-related' && section.key === 'functional') ? 'other-related' : ((selectedNavSection && ['img-topography', 'img-fundus', 'img-oct', 'img-other'].includes(selectedNavSection) && section.key === 'img') ? selectedNavSection : null)))"
-                        :is-report-mode="viewMode === 'view' && !selectedNavSection"
-                        :enable-collapse="!selectedNavSection"
+                        :show-only-section="componentShowOnlySection(section.key)"
+                        :is-report-mode="false"
+                        :enable-collapse="effectiveSectionViewMode(section.key) === 'edit'"
                         @refresh="fetchPatientData"
                         @toggle-section="toggleSection"
                         @update-record="handleUpdateRecord"
@@ -402,19 +611,26 @@
                       />
                     </div>
                   </section>
+                  </template>
+                </div>
+              </template>
+              </template>
+              <template v-else-if="!selectedRecordId">
+                <div class="style-two-pick-record-hint">
+                  <div v-if="examinationRecords && examinationRecords.length === 0" class="style-two-pick-record-hint__inner">
+                    <p class="style-two-pick-record-hint__title">该患者暂无检查记录</p>
+                    <p class="style-two-pick-record-hint__sub">请点击顶部「新增」创建第一条检查记录</p>
+                  </div>
+                  <div v-else class="style-two-pick-record-hint__inner">
+                    <p class="style-two-pick-record-hint__title">请悬停或点击右侧标识展开检查记录</p>
+                    <p class="style-two-pick-record-hint__sub">展开后选择记录查看详情；点击标识可固定面板</p>
+                  </div>
                 </div>
               </template>
             </div>
           </div>
         </div>
-      </div>
-      <div v-else class="style-two-empty">
-        <div v-if="examinationRecords && examinationRecords.length === 0" style="text-align: center; padding: 40px;">
-          <p style="font-size: 16px; color: #999; margin-bottom: 16px;">该患者暂无检查记录</p>
-          <p style="font-size: 14px; color: #ccc;">请点击"新增检查"按钮创建第一条检查记录</p>
-        </div>
-        <div v-else style="text-align: center; padding: 40px;">
-          <p style="font-size: 16px; color: #999;">请选择左侧检查记录以查看详情</p>
+          </div>
         </div>
       </div>
       
@@ -586,15 +802,16 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount, onActivated, onDeactivated, watch, nextTick, inject, unref } from 'vue';
 import dayjs from 'dayjs';
 import { message, Modal } from 'ant-design-vue';
 import { initChart, axialLengthOption } from '@/utils/echarts';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import ImgIcon from './ImgIcon.vue';
-import { DeleteOutlined, EditOutlined, SaveOutlined, UpOutlined, DownOutlined, PlusOutlined, ReloadOutlined, FundProjectionScreenOutlined, PrinterOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons-vue';
+import { DeleteOutlined, PlusOutlined, MinusOutlined, EditOutlined, SaveOutlined, UpOutlined, DownOutlined, ReloadOutlined, FundProjectionScreenOutlined, PrinterOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons-vue';
 import PatientStyleTwoPageOne from './PatientStyleTwoPageOne.vue';
+import ExamResultsUnifiedStyleTwo from './ExamResultsUnifiedStyleTwo.vue';
 import ChartModalStyleTwo from './ChartModalStyleTwo.vue';
 import ExaminationReportPreview from './ExaminationReportPreview.vue';
 import { fetchDiagnosisList, createDiagnosis, updateDiagnosis, deleteDiagnosis } from '@/api/diagnosis';
@@ -663,11 +880,11 @@ const emit = defineEmits([
   'open-add-modal',
   'toggle-style',
   'edit-current-record',
-  'refresh-data'
+  'refresh-data',
+  /** 保存成功后把完整字段合并回父级 examinationRecords（避免接口未回传调节灵敏度「通过情况」等导致查看页为空） */
+  'patch-examination-record'
 ]);
 
-// 使用普通对象存 section DOM 引用，避免 ref 回调内写 reactive 触发循环重渲染
-const sectionRefs = {};
 const editingRecordId = ref(null); // 当前正在编辑的记录ID
 const editingRecord = ref(null); // 当前正在编辑的记录数据
 const a4ScrollContainer = ref(null);
@@ -675,30 +892,161 @@ const dateListRef = ref(null);
 const mainScrollRef = ref(null);
 const layoutRef = ref(null);
 const diagnosisListRef = ref(null); // 诊断记录列表滚动容器
+/** 诊断/诊疗方案页（PatientStyleTwoPageOne），保存前同步 treatment_scheme_selection */
+const clinicalPageOneRef = ref(null);
 
-// 诊断记录
-const diagnosisRecords = ref([]);
-const diagnosisModalVisible = ref(false);
-const editingDiagnosisId = ref(null); // 编辑中的诊断记录 id
-const diagnosisForm = ref({
-  diagnosis_date: null,
-  diagnosis_detail: '',
-  right_eye_remark: '',
-  left_eye_remark: ''
-});
-const diagnosisSubmitLoading = ref(false);
-// 当前选中的诊断日期，用于横向日期条切换；无分页，只展示 1 条
-const selectedDiagnosisDate = ref(null);
-const selectedDiagnosisRecord = computed(() => {
-  const list = diagnosisRecords.value;
-  if (!list.length) return null;
-  const date = selectedDiagnosisDate.value;
-  if (date) {
-    const found = list.find(r => r.diagnosis_date === date);
-    if (found) return found;
+/** Main.vue provide：患者列表下多开的患者主页子标签 */
+const patientHomeSubTabsBridgeRef = inject('patientHomeSubTabsBridge', null);
+
+/** 患者信息行右侧标签条：最多5个，顺序与打开时间一致（先打开在左）；超出部分由 Main 侧已截断 */
+const patientHomeTagBar = computed(() => {
+  const bridgeRaw = patientHomeSubTabsBridgeRef ? unref(patientHomeSubTabsBridgeRef) : null;
+  if (!bridgeRaw?.visible || !bridgeRaw.subTabs?.length) {
+    return {
+      visible: false,
+      list: [],
+      activeId: '',
+      switchTo() {},
+      close() {}
+    };
   }
-  return list[0] || null;
+  const list = bridgeRaw.subTabs.slice(0, 5);
+  return {
+    visible: true,
+    list,
+    activeId: bridgeRaw.activeSubTabId,
+    switchTo: bridgeRaw.switchTo,
+    close: bridgeRaw.close
+  };
 });
+
+// 诊断记录（列表内联编辑 + 草稿行：下划线输入，行尾 + 追加）
+const diagnosisRecords = ref([]);
+const diagnosisAddLoading = ref(false);
+/** 未落库草稿行（仅当前检查日期下） */
+const diagnosisDraftLines = ref([]);
+
+/** 从与当前检查相对应的上一条检查记录（previousRecord）同步诊断：开关式；再次点击用备份还原 */
+const syncPrevDiagnosisActive = ref(false);
+const diagnosisSyncBackup = ref(null);
+
+function makeDiagnosisDraftTempId() {
+  return `diag-draft-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function ensureDiagnosisDraftSeedRow() {
+  if (effectiveClinicalViewMode.value !== 'edit') return;
+  if (diagnosisRecordsForCurrentExam.value.length > 0) return;
+  if (diagnosisDraftLines.value.length > 0) return;
+  diagnosisDraftLines.value.push({
+    tempId: makeDiagnosisDraftTempId(),
+    diagnosis_detail: ''
+  });
+}
+
+function resetDiagnosisDraftLines() {
+  diagnosisDraftLines.value = [];
+  nextTick(() => ensureDiagnosisDraftSeedRow());
+}
+
+function addDiagnosisDraftRow() {
+  diagnosisDraftLines.value.push({
+    tempId: makeDiagnosisDraftTempId(),
+    diagnosis_detail: ''
+  });
+}
+
+function removeDiagnosisDraftRow(draft) {
+  const i = diagnosisDraftLines.value.findIndex((d) => d.tempId === draft.tempId);
+  if (i >= 0) diagnosisDraftLines.value.splice(i, 1);
+  ensureDiagnosisDraftSeedRow();
+}
+
+/** 编辑模式下始终允许追加诊断行 */
+function showDiagnosisLinePlus(savedIdx, draftIdx) {
+  void savedIdx;
+  void draftIdx;
+  return effectiveClinicalViewMode.value === 'edit';
+}
+
+/** 与检查记录「保存」一并提交：更新已有诊断行 + 新建草稿行（按 1、2、3… 顺序落库） */
+async function persistAllDiagnosesForSave() {
+  if (props.patientId == null || props.patientId === '') return true;
+  const date = getDiagnosisDateForCurrentExam();
+  if (!date) {
+    message.warning('请先确定当前检查记录的检查日期');
+    return false;
+  }
+  const saved = diagnosisRecordsForCurrentExam.value;
+  const drafts = diagnosisDraftLines.value;
+  const hasSavedEdits = saved.some((r) => r.id != null && String(r.diagnosis_detail ?? '').trim() !== '');
+  const hasDraftCreates = drafts.some((d) => String(d.diagnosis_detail ?? '').trim() !== '');
+  if (!hasSavedEdits && !hasDraftCreates) {
+    return true;
+  }
+  diagnosisAddLoading.value = true;
+  try {
+    for (const rec of saved) {
+      if (rec.id == null) continue;
+      const detail = String(rec.diagnosis_detail ?? '').trim();
+      if (!detail) continue;
+      await updateDiagnosis(
+        props.patientId,
+        rec.id,
+        buildDiagnosisPayloadForApi({
+          diagnosis_date: date,
+          diagnosis_detail: rec.diagnosis_detail,
+          eye_side: 'both'
+        })
+      );
+    }
+
+    const draftDetails = drafts
+      .map((d) => String(d.diagnosis_detail ?? '').trim())
+      .filter((t) => t !== '');
+
+    // 后端可能限制“同一日期仅一条诊断记录”。
+    // 若当日已有记录，则把新增草稿并入当日首条记录，避免“当天已有诊断记录”报错。
+    if (draftDetails.length > 0) {
+      const anchorSaved = saved.find((r) => r.id != null) || null;
+      if (anchorSaved) {
+        const baseDetail = String(anchorSaved.diagnosis_detail ?? '').trim();
+        const mergedDetail = [baseDetail, ...draftDetails].filter(Boolean).join('\n');
+        await updateDiagnosis(
+          props.patientId,
+          anchorSaved.id,
+          buildDiagnosisPayloadForApi({
+            diagnosis_date: date,
+            diagnosis_detail: mergedDetail,
+            eye_side: 'both'
+          })
+        );
+      } else {
+        for (const detail of draftDetails) {
+          await createDiagnosis(
+            props.patientId,
+            buildDiagnosisPayloadForApi({
+              diagnosis_date: date,
+              diagnosis_detail: detail,
+              eye_side: 'both'
+            })
+          );
+        }
+      }
+    }
+    await loadDiagnosisList();
+    diagnosisDraftLines.value = [];
+    await nextTick();
+    ensureDiagnosisDraftSeedRow();
+    return true;
+  } catch (e) {
+    message.error(e?.message || '诊断保存失败');
+    await loadDiagnosisList();
+    return false;
+  } finally {
+    diagnosisAddLoading.value = false;
+  }
+}
 
 // 诊断记录：将日期统一为 YYYY-MM-DD，便于比较与展示
 function normalizeDiagnosisDate(val) {
@@ -719,36 +1067,161 @@ const loadDiagnosisList = async () => {
     const { data } = await fetchDiagnosisList(props.patientId);
     const raw = Array.isArray(data) ? data : [];
     // 标准化每条记录的 diagnosis_date 为 YYYY-MM-DD，避免后端格式不一致导致选中/展示异常
-    diagnosisRecords.value = raw.map(r => ({
-      ...r,
-      diagnosis_date: normalizeDiagnosisDate(r.diagnosis_date) || r.diagnosis_date
-    }));
+    diagnosisRecords.value = raw.map(r => {
+      const detail = flattenDiagnosisDetailForEdit(r.diagnosis_detail);
+      return {
+        ...r,
+        diagnosis_date: normalizeDiagnosisDate(r.diagnosis_date) || r.diagnosis_date,
+        diagnosis_detail: detail,
+        eye_side: inferDiagnosisEyeSide({ ...r, diagnosis_detail: detail })
+      };
+    });
     diagnosisRecords.value.sort((a, b) => new Date(b.diagnosis_date || 0) - new Date(a.diagnosis_date || 0));
-    const list = diagnosisRecords.value;
-    if (list.length > 0) {
-      const firstDate = list[0].diagnosis_date;
-      const stillExists = selectedDiagnosisDate.value && list.some(r => r.diagnosis_date === selectedDiagnosisDate.value);
-      if (!stillExists) selectedDiagnosisDate.value = firstDate;
-    } else {
-      selectedDiagnosisDate.value = null;
-    }
   } catch (e) {
     console.warn('[PatientStyleTwo] 加载诊断记录失败', e);
     diagnosisRecords.value = [];
   }
 };
 
-// 诊断记录序号标签：最早的一条为诊断一，依次诊断二、诊断三…（列表已按日期倒序，index 0 为最新）
-const diagnosisSequenceLabel = (index) => {
-  const list = diagnosisRecords.value;
-  const n = list.length - index;
-  const chars = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
-  if (n <= 0) return '诊断';
-  if (n <= 10) return `诊断${chars[n]}`;
-  if (n < 20) return `诊断十${chars[n - 10]}`;
-  if (n < 100) return `诊断${chars[Math.floor(n / 10)]}十${chars[n % 10] || ''}`;
-  return `诊断${n}`;
-};
+// 旧版 JSON 诊断详情转为可编辑纯文本
+function flattenDiagnosisDetailForEdit(detail) {
+  if (detail == null || detail === '') return '';
+  let str = String(detail).trim();
+  if (!str) return '';
+  if (str.startsWith('[')) {
+    try {
+      const arr = JSON.parse(str);
+      if (Array.isArray(arr) && arr.length > 0) {
+        const first = arr[0];
+        if (first && first.freeText) return String(first.freeText);
+        if (first && first.mode === 'free') return String(first.freeText || '');
+      }
+    } catch (_) {}
+  }
+  return str;
+}
+
+function inferDiagnosisEyeSide(rec) {
+  if (rec.eye_side === 'both' || rec.eye_side === 'right' || rec.eye_side === 'left') {
+    return rec.eye_side;
+  }
+  const r = String(rec.right_eye_remark || '').trim();
+  const l = String(rec.left_eye_remark || '').trim();
+  if (r && !l) return 'right';
+  if (l && !r) return 'left';
+  return 'both';
+}
+
+/** 当前选中的检查记录（编辑中取 editingRecord） */
+function getActiveExamRecordForDiagnosis() {
+  if (viewMode.value === 'edit' && editingRecord.value && editingRecord.value.id === props.currentRecord?.id) {
+    return editingRecord.value;
+  }
+  return props.currentRecord;
+}
+
+/** 诊断日期与接口字段：对应当前检查记录的检查日期 */
+function getDiagnosisDateForCurrentExam() {
+  const rec = getActiveExamRecordForDiagnosis();
+  const raw = rec?.examination_date;
+  if (!raw) return null;
+  const d = dayjs(raw);
+  return d.isValid() ? d.format('YYYY-MM-DD') : normalizeDiagnosisDate(raw);
+}
+
+/** 仅展示与当前检查日期一致的诊断（诊断挂在每条检查记录下） */
+const diagnosisRecordsForCurrentExam = computed(() => {
+  const target = getDiagnosisDateForCurrentExam();
+  if (!target) return [];
+  return diagnosisRecords.value.filter((r) => {
+    const rd = normalizeDiagnosisDate(r.diagnosis_date) || r.diagnosis_date;
+    return rd === target;
+  });
+});
+
+function handleSyncPreviousDiagnosis() {
+  const pr = props.previousRecord;
+  if (!pr?.examination_date) {
+    message.warning('无与当前检查相对应的上一条检查记录');
+    return;
+  }
+  const targetDate = getDiagnosisDateForCurrentExam();
+  if (!targetDate) {
+    message.warning('请先确定当前检查日期');
+    return;
+  }
+  const prevDate = normalizeDiagnosisDate(pr.examination_date);
+  if (!prevDate) {
+    message.warning('相对应的上一条检查日期无效');
+    return;
+  }
+  const prevRows = diagnosisRecords.value.filter(
+    (r) => normalizeDiagnosisDate(r.diagnosis_date) === prevDate
+  );
+  const prevTexts = prevRows.map((r) => String(r.diagnosis_detail ?? ''));
+
+  if (!syncPrevDiagnosisActive.value) {
+    const saved = diagnosisRecordsForCurrentExam.value;
+    diagnosisSyncBackup.value = {
+      savedDetails: saved.map((r) => r.diagnosis_detail),
+      drafts: diagnosisDraftLines.value.map((d) => ({
+        tempId: d.tempId,
+        diagnosis_detail: d.diagnosis_detail
+      }))
+    };
+
+    diagnosisDraftLines.value = [];
+    prevTexts.forEach((text, i) => {
+      if (i < saved.length) {
+        saved[i].diagnosis_detail = text;
+      } else {
+        diagnosisDraftLines.value.push({
+          tempId: makeDiagnosisDraftTempId(),
+          diagnosis_detail: text
+        });
+      }
+    });
+    for (let i = prevTexts.length; i < saved.length; i++) {
+      saved[i].diagnosis_detail = '';
+    }
+    ensureDiagnosisDraftSeedRow();
+    syncPrevDiagnosisActive.value = true;
+  } else {
+    const b = diagnosisSyncBackup.value;
+    if (b) {
+      const savedNow = diagnosisRecordsForCurrentExam.value;
+      b.savedDetails.forEach((detail, i) => {
+        if (savedNow[i]) savedNow[i].diagnosis_detail = detail;
+      });
+      diagnosisDraftLines.value = b.drafts.map((d) => ({
+        tempId: d.tempId,
+        diagnosis_detail: d.diagnosis_detail
+      }));
+      ensureDiagnosisDraftSeedRow();
+    }
+    diagnosisSyncBackup.value = null;
+    syncPrevDiagnosisActive.value = false;
+  }
+}
+
+watch(
+  () => [props.currentRecord?.id, props.previousRecord?.id],
+  () => {
+    syncPrevDiagnosisActive.value = false;
+    diagnosisSyncBackup.value = null;
+  }
+);
+
+function buildDiagnosisPayloadForApi(partial) {
+  const eye = partial.eye_side || 'both';
+  return {
+    diagnosis_date: partial.diagnosis_date,
+    diagnosis_detail: String(partial.diagnosis_detail ?? '').trim(),
+    right_eye_remark: '',
+    left_eye_remark: '',
+    eye_side: eye
+  };
+}
 
 // 诊断详情列表展示：纯文本；旧版为 JSON 时显示简短提示
 function diagnosisDetailDisplay(detail) {
@@ -769,8 +1242,46 @@ function diagnosisDetailDisplay(detail) {
   return str;
 }
 
+// 右侧检查记录：悬浮抽屉（悬停展开，点击手柄固定/收起）
+const examFlyoutHovered = ref(false);
+const examFlyoutPinned = ref(false);
+const examFlyoutOpen = computed(() => examFlyoutHovered.value || examFlyoutPinned.value);
+
+function onExamFlyoutMouseLeave() {
+  if (!examFlyoutPinned.value) examFlyoutHovered.value = false;
+}
+
+function toggleExamFlyoutPin() {
+  examFlyoutPinned.value = !examFlyoutPinned.value;
+}
+
 // 模式管理：查看模式、编辑模式、打印排版模式
 const viewMode = ref('view'); // 'view', 'edit', 'print'
+/** 非 scoped 样式用：编辑模式下隐藏 Main 外层 .tab-content-scroll 等滚动条 */
+const PATIENT_STYLE_TWO_EDIT_MODE_CLASS = 'patient-style-two-edit-mode';
+
+function syncEditModeHtmlClass() {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  if (viewMode.value === 'edit') {
+    root.classList.add(PATIENT_STYLE_TWO_EDIT_MODE_CLASS);
+  } else {
+    root.classList.remove(PATIENT_STYLE_TWO_EDIT_MODE_CLASS);
+  }
+}
+
+watch(viewMode, syncEditModeHtmlClass, { immediate: true });
+
+/* keep-alive：离开患者标签时务必去掉 html 类，否则会误隐藏其它页的滚动条 */
+onActivated(syncEditModeHtmlClass);
+onDeactivated(() => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.classList.remove(PATIENT_STYLE_TWO_EDIT_MODE_CLASS);
+  }
+});
+
+/** 非 null：工具栏/子标签发起的「局部编辑」，仅对应 exam 主标签内容可改；null：整页编辑（如左侧记录列表点编辑） */
+const scopedEditNavTab = ref(null);
 
 // 板块展开/收起状态（按副标题划分）- 默认全收缩
 const sectionExpanded = ref({
@@ -779,19 +1290,16 @@ const sectionExpanded = ref({
   'routine': false,                 // 基础检查 - 默认收缩
   'vision': false,                  // 视力检查 - 默认收缩
   'objective-refraction': false,    // 电脑验光检查 - 默认收缩
-  'subjective-refraction': false,   // 主观验光检查 - 默认收缩
+  'subjective-refraction': false,   // 主觉验光检查 - 默认收缩
   'functional': false,              // 视功能检查 - 默认收缩（总标题，不影响子项目）
   'eye-position': false,            // 眼位和聚散检查 - 默认收缩
   'ac-aca': false,                  // AC/A和CA/C检查 - 默认收缩
   'accommodation': false,           // 调节检查 - 默认收缩
-  'other-related': false,           // 其他相关检查 - 默认收缩
-  'synoptophore': false,            // 同视机检查 - 默认收缩
   'img-topography': false,          // 角膜地形图检查 - 默认收缩
   'img-fundus': false,              // 眼底照相检查 - 默认收缩
   'img-oct': false,                 // 眼底OCT检查 - 默认收缩
   'img-other': false,               // 其他检查 - 默认收缩
-  'biometry': false,                // 生物测量仪检查 - 默认收缩
-  'analysis': false                 // 结果分析 - 默认不展开，仅点击「查找相似案例」时加载
+  'biometry': false                 // 生物测量仪检查 - 默认收缩
 });
 
 // 切换板块展开/收起状态
@@ -895,6 +1403,8 @@ const debugContainerHeights = () => {
 
 onMounted(() => {
   console.log('[PatientStyleTwo] 风格2页面挂载，当前页:', props.datePage, '记录数量:', props.sortedRecords.length);
+  // 进入患者主页时，强制显示首页（历史记录）
+  selectedExamNavTab.value = 'history';
   loadSystemSettings();
   // 暴露调试函数到 window，在患者主页打开后可在控制台执行: window.debugPatientHeights()
   window.debugPatientHeights = debugContainerHeights;
@@ -952,7 +1462,7 @@ onMounted(() => {
       main.scrollTop = Math.max(0, Math.min(newTop, main.scrollHeight - main.clientHeight));
       scrolled = true;
     }
-    // 左侧栏（诊断+检查记录）：滚动检查记录列表；支持鼠标在左侧任意位置时滚动
+    // 右侧悬浮检查记录：滚动列表；支持鼠标在抽屉面板内任意位置时滚动
     const inLeftCol = leftCol && leftCol.contains(target);
     if (list && (list.contains(target) || inLeftCol) && list.scrollHeight > list.clientHeight) {
       const newTop = list.scrollTop + e.deltaY;
@@ -972,6 +1482,9 @@ watch(() => [props.currentRecord?.id, props.selectedRecordId], () => {
 });
 
 onBeforeUnmount(() => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.classList.remove(PATIENT_STYLE_TWO_EDIT_MODE_CLASS);
+  }
   delete window.debugPatientHeights;
   // 清理 ResizeObserver
   if (resizeObserver) {
@@ -987,6 +1500,22 @@ onBeforeUnmount(() => {
   }
 });
 
+onActivated(() => {
+  // keep-alive 场景下再次进入患者主页，也强制显示首页（历史记录）
+  selectedExamNavTab.value = 'history';
+});
+
+watch(() => props.patientId, (newId) => {
+  if (newId != null && newId !== '') {
+    loadDiagnosisList();
+  } else {
+    diagnosisRecords.value = [];
+  }
+}, { immediate: true });
+
+// 查看模式顶部主标签
+const selectedExamNavTab = ref('history');
+
 watch(() => props.selectedRecordId, (newVal) => {
   if (newVal) {
     console.log('[PatientStyleTwo] 当前选中记录ID:', newVal);
@@ -995,237 +1524,11 @@ watch(() => props.selectedRecordId, (newVal) => {
   }
 });
 
-watch(() => props.patientId, (newId) => {
-  if (newId != null && newId !== '') {
-    loadDiagnosisList();
-  } else {
-    diagnosisRecords.value = [];
-    selectedDiagnosisDate.value = null;
+watch(selectedExamNavTab, (newTab) => {
+  if (viewMode.value === 'edit' && scopedEditNavTab.value !== null) {
+    scopedEditNavTab.value = newTab;
   }
-}, { immediate: true });
-
-const setSectionRef = (key, el) => {
-  if (el) {
-    sectionRefs[key] = el;
-  } else {
-    delete sectionRefs[key];
-  }
-};
-
-// 内容导航按钮配置
-const contentNavButtons = [
-  { key: 'doctor-instructions', title: '医生建议/备注' },
-  { key: 'treatment-plan', title: '诊疗方案' },
-  { key: 'routine', title: '基础检查' },
-  { key: 'vision', title: '视力检查' },
-  { key: 'objective-refraction', title: '客观验光检查' },
-  { key: 'subjective-refraction', title: '主观验光检查' },
-  { key: 'biometry', title: '生物测量检查' },
-  { key: 'functional', title: '视功能检查' },
-  { key: 'other-related', title: '其他相关检查' },
-  { key: 'img-topography', title: '角膜地形图检查' },
-  { key: 'img-fundus', title: '眼底照相检查' },
-  { key: 'img-oct', title: 'OCT检查' },
-  { key: 'img-other', title: '其他检查' },
-  { key: 'analysis', title: '结果分析' }
-];
-
-// 当前激活的导航按钮
-const activeNavButton = ref(null);
-
-// 当前选中的导航按钮（用于控制内容显示）
-const selectedNavSection = ref(null);
-
-// 根据数据过滤可见的导航按钮
-const visibleNavButtons = computed(() => {
-  if (!props.currentRecord) return contentNavButtons;
-  
-  return contentNavButtons.filter(nav => {
-    // 医生建议、诊疗方案和结果分析始终显示
-    if (nav.key === 'doctor-instructions' || nav.key === 'treatment-plan' || nav.key === 'analysis') {
-      return true;
-    }
-    
-    // 对于 routine 相关的按钮，检查是否有基础检查数据
-    if (nav.key === 'routine') {
-      return hasSectionData('routine', props.currentRecord);
-    }
-    
-    // 对于 vision、objective-refraction、subjective-refraction，它们都在 routine 中
-    // 需要检查对应的子 section 是否有数据
-    if (nav.key === 'vision') {
-      return hasSectionData('vision', props.currentRecord);
-    }
-    if (nav.key === 'objective-refraction') {
-      return hasSectionData('objective-refraction', props.currentRecord);
-    }
-    if (nav.key === 'subjective-refraction') {
-      return hasSectionData('subjective-refraction', props.currentRecord);
-    }
-    
-    // 对于其他检查，使用 hasSectionData 判断
-    return hasSectionData(nav.key, props.currentRecord);
-  });
 });
-
-// 处理导航按钮点击
-const handleNavButtonClick = (key) => {
-  // 如果点击的是当前已选中的按钮，则取消选中（显示所有内容）
-  if (selectedNavSection.value === key) {
-    selectedNavSection.value = null;
-    activeNavButton.value = null;
-  } else {
-    selectedNavSection.value = key;
-    activeNavButton.value = key;
-    scrollToSection(key);
-  }
-};
-
-// 判断某个 section 是否应该显示
-const shouldShowSection = (sectionKey) => {
-  // 编辑模式下，显示所有板块，不管有没有数据
-  if (viewMode.value === 'edit') {
-    return true;
-  }
-  
-  // 如果没有选中任何导航按钮，显示所有内容（但需要通过hasPageData和hasSectionData验证）
-  if (!selectedNavSection.value) {
-    // 结果分析始终显示（只要有检查记录）
-    if (sectionKey === 'analysis') {
-      return true;
-    }
-    // 对于复合section（routine, functional, img, biometry），需要检查对应的page是否有数据
-    if (sectionKey === 'img') {
-      return hasPageData('page-5', props.currentRecord);
-    }
-    if (sectionKey === 'routine') {
-      return hasPageData('page-2', props.currentRecord);
-    }
-    if (sectionKey === 'functional') {
-      return hasPageData('page-4', props.currentRecord);
-    }
-    if (sectionKey === 'biometry') {
-      return hasPageData('page-3', props.currentRecord);
-    }
-    // 对于其他section，使用hasSectionData判断
-    return hasSectionData(sectionKey, props.currentRecord);
-  }
-  
-  // 特殊处理：routine 页面包含多个子 section
-  // 如果选中的是 routine 的子 section (vision, objective-refraction, subjective-refraction)
-  // 则 routine 页面应该显示，但只显示对应的子 section（通过 showOnlySection prop 控制）
-  if (sectionKey === 'routine') {
-    return ['routine', 'vision', 'objective-refraction', 'subjective-refraction'].includes(selectedNavSection.value);
-  }
-  
-  // 特殊处理：functional 页面包含多个子 section
-  // 如果选中的是 functional，显示所有 functional 的子 section（眼位、AC/A、调节、同视机，但不包括 other-related，因为它有单独的按钮）
-  // 如果选中的是 other-related，只显示 other-related（通过 showOnlySection prop 控制）
-  if (sectionKey === 'functional') {
-    if (selectedNavSection.value === 'functional') {
-      return true; // 显示所有 functional 内容（不包括 other-related）
-    }
-    return selectedNavSection.value === 'other-related';
-  }
-  
-  // 特殊处理：img 页面包含多个子 section
-  // 如果选中的是 img 的子 section (img-topography, img-fundus, img-oct, img-other)
-  // 则 img 页面应该显示，但只显示对应的子 section（通过 showOnlySection prop 控制）
-  if (sectionKey === 'img') {
-    return ['img-topography', 'img-fundus', 'img-oct', 'img-other'].includes(selectedNavSection.value);
-  }
-  
-  // 特殊处理：结果分析始终显示（只要有检查记录）
-  if (sectionKey === 'analysis') {
-    return selectedNavSection.value === 'analysis' || !selectedNavSection.value;
-  }
-  
-  // 如果选中了某个导航按钮，只显示对应的 section
-  return selectedNavSection.value === sectionKey;
-};
-
-const scrollToSection = (key) => {
-  // 等待 DOM 更新
-  nextTick(() => {
-    // 查找实际的滚动容器
-    const scrollContainer = document.querySelector('.style-two-main') || document.documentElement;
-    if (!scrollContainer) {
-      console.warn('[PatientStyleTwo] 滚动容器未找到');
-      return;
-    }
-    
-    // 先尝试使用 ref
-    let target = sectionRefs[key];
-    
-    // 如果 ref 不存在，尝试通过选择器查找
-    if (!target) {
-      // 对于第一页的板块（医嘱、诊疗方案）
-      if (key === 'doctor-instructions') {
-        target = document.querySelector('.doctor-instructions-section');
-      } else if (key === 'treatment-plan') {
-        target = document.querySelector('.treatment-plan-section');
-      } else if (key === 'analysis') {
-        // 结果分析：通过 section ID 查找
-        target = document.querySelector('#style-two-section-analysis');
-        if (!target) {
-          // 如果找不到，尝试通过类名查找
-          target = document.querySelector('.analysis-exam-container');
-        }
-      } else {
-        // 对于其他板块，尝试在子组件中查找
-        const sectionMap = {
-          'routine': '.routine-exam-style-two .section-block:first-child',
-          'vision': '.routine-exam-style-two .section-block:nth-child(2)',
-          'objective-refraction': '.routine-exam-style-two .section-block:nth-child(3)',
-          'subjective-refraction': '.routine-exam-style-two .section-block:nth-child(4)',
-          'functional': '.functional-exam-style-two',
-          'eye-position': '.functional-exam-style-two .section-block:first-child',
-          'ac-aca': '.functional-exam-style-two .section-block:nth-child(2)',
-          'accommodation': '.functional-exam-style-two .section-block:nth-child(3)',
-          'other-related': '.functional-exam-style-two .section-block:nth-child(4)',
-          'synoptophore': '.functional-exam-style-two .section-block:nth-child(5)',
-          'img-topography': '.img-exam-style-two .section-block:first-child',
-          'img-fundus': '.img-exam-style-two .section-block:nth-child(2)',
-          'img-oct': '.img-exam-style-two .img-oct-section, .img-exam-style-two [data-section-key="img-oct"]',
-          'img-other': '.img-exam-style-two .img-other-section, .img-exam-style-two [data-section-key="img-other"]',
-          'biometry': '.biometry-exam-style-two .section-block'
-        };
-        const selector = sectionMap[key];
-        if (selector) {
-          target = document.querySelector(selector);
-        }
-      }
-    }
-    
-    if (target) {
-      console.log('[PatientStyleTwo] 快速定位滚动到 section:', key, 'target:', target);
-      
-      // 使用 scrollIntoView 方法，指定滚动容器
-      try {
-        // 计算目标元素相对于滚动容器的位置
-        const containerRect = scrollContainer.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
-        // 减去导航按钮栏的高度作为偏移（约60-70px）
-        const scrollTop = scrollContainer.scrollTop + (targetRect.top - containerRect.top) - 70;
-        
-        scrollContainer.scrollTo({ 
-          top: Math.max(0, scrollTop), 
-          behavior: 'smooth' 
-        });
-      } catch (e) {
-        console.warn('[PatientStyleTwo] 滚动失败:', e);
-        // 备用方案：使用 scrollIntoView
-        target.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-          inline: 'nearest'
-        });
-      }
-    } else {
-      console.warn('[PatientStyleTwo] 无法找到目标板块:', key);
-    }
-  });
-};
 
 const formatNumber = (value) => {
   if (value === null || value === undefined || value === '') return '--';
@@ -1321,8 +1624,19 @@ const getExaminationItems = (record) => {
       hasFieldValue(record.near_subjective_both_old_vision)) {
     items.push('视力检查');
   }
-  
-  // 3. 客观验光
+
+  // 3. 生物测量检查（紧跟视力检查）
+  if (hasFieldValue(record.right_eye_axial_length) || hasFieldValue(record.left_eye_axial_length) ||
+      hasFieldValue(record.right_eye_k1) || hasFieldValue(record.left_eye_k1) ||
+      hasFieldValue(record.right_eye_k2) || hasFieldValue(record.left_eye_k2) ||
+      hasFieldValue(record.right_anterior_chamber_depth) || hasFieldValue(record.left_anterior_chamber_depth) ||
+      hasFieldValue(record.right_lens_thickness) || hasFieldValue(record.left_lens_thickness) ||
+      hasFieldValue(record.right_vitreous_space_thickness) || hasFieldValue(record.left_vitreous_space_thickness) ||
+      hasFieldValue(record.right_oct_fovea) || hasFieldValue(record.left_oct_fovea)) {
+    items.push('生物测量');
+  }
+
+  // 4. 电脑验光检查
   const hasObjectiveData = hasFieldValue(record.objective_right_spherical) || hasFieldValue(record.objective_left_spherical) ||
       hasFieldValue(record.objective_right_cylindrical) || hasFieldValue(record.objective_left_cylindrical) ||
       hasFieldValue(record.objective_right_axis) || hasFieldValue(record.objective_left_axis) ||
@@ -1332,10 +1646,10 @@ const getExaminationItems = (record) => {
       hasFieldValue(record.pupillary_objective_right_cylindrical) || hasFieldValue(record.pupillary_objective_left_cylindrical) ||
       hasFieldValue(record.pupillary_objective_right_axis) || hasFieldValue(record.pupillary_objective_left_axis);
   if (hasObjectiveData || hasPupillaryObjectiveData) {
-    items.push(hasPupillaryObjectiveData ? '客观验光（散瞳）' : '客观验光');
+    items.push(hasPupillaryObjectiveData ? '电脑验光检查（散瞳）' : '电脑验光检查');
   }
   
-  // 4. 主观验光
+  // 5. 主觉验光
   const hasSubjectiveData = hasFieldValue(record.subjective_right_spherical) || hasFieldValue(record.subjective_left_spherical) ||
       hasFieldValue(record.subjective_right_cylindrical) || hasFieldValue(record.subjective_left_cylindrical) ||
       hasFieldValue(record.subjective_right_axis) || hasFieldValue(record.subjective_left_axis) ||
@@ -1344,10 +1658,10 @@ const getExaminationItems = (record) => {
       hasFieldValue(record.pupillary_subjective_right_cylindrical) || hasFieldValue(record.pupillary_subjective_left_cylindrical) ||
       hasFieldValue(record.pupillary_subjective_right_axis) || hasFieldValue(record.pupillary_subjective_left_axis);
   if (hasSubjectiveData || hasPupillarySubjectiveData) {
-    items.push(hasPupillarySubjectiveData ? '主观验光（散瞳）' : '主观验光');
+    items.push(hasPupillarySubjectiveData ? '主觉验光检查（散瞳）' : '主觉验光检查');
   }
   
-  // 5. 视功能检查（眼位、聚散、调节）
+  // 6. 视功能检查（眼位、聚散、调节）
   if (hasFieldValue(record.pli_exo_distance_lateral_phoria) || hasFieldValue(record.plo_eso_distance_lateral_phoria) ||
       hasFieldValue(record.pli_exo_near_lateral_phoria) || hasFieldValue(record.plo_eso_near_lateral_phoria) ||
       hasFieldValue(record.fusional_convergence_distance_blur) || hasFieldValue(record.fusional_convergence_near_blur) ||
@@ -1363,21 +1677,10 @@ const getExaminationItems = (record) => {
     items.push('视功能');
   }
   
-  // 6. 其他相关检查
+  // 7. 其他相关检查
   if (hasFieldValue(record.worth_4_type) || hasFieldValue(record.stereopsis_testing) ||
       hasFieldValue(record.aniseikonia) || hasFieldValue(record.alternate_cover_test)) {
     items.push('其他相关检查');
-  }
-  
-  // 7. 生物测量检查
-  if (hasFieldValue(record.right_eye_axial_length) || hasFieldValue(record.left_eye_axial_length) ||
-      hasFieldValue(record.right_eye_k1) || hasFieldValue(record.left_eye_k1) ||
-      hasFieldValue(record.right_eye_k2) || hasFieldValue(record.left_eye_k2) ||
-      hasFieldValue(record.right_anterior_chamber_depth) || hasFieldValue(record.left_anterior_chamber_depth) ||
-      hasFieldValue(record.right_lens_thickness) || hasFieldValue(record.left_lens_thickness) ||
-      hasFieldValue(record.right_vitreous_space_thickness) || hasFieldValue(record.left_vitreous_space_thickness) ||
-      hasFieldValue(record.right_oct_fovea) || hasFieldValue(record.left_oct_fovea)) {
-    items.push('生物测量');
   }
   
   // 8. 影像检查（分别显示：角膜地形图、眼底照相、OCT）
@@ -1453,6 +1756,180 @@ const getExaminationItems = (record) => {
   
   return items.length > 0 ? items.join('、') : '无';
 };
+
+// 视觉训练字段值 → 列表卡片展示文案（与 formatTreatmentPlan 一致）
+const VISUAL_TRAINING_LABELS = { '0': '斜视训练', '1': '弱视训练', '2': '近视训练' };
+const labelVisualTrainingForCard = (val) => {
+  if (val == null || val === '' || val === 'none' || val === '否') return '';
+  const key = String(val);
+  return VISUAL_TRAINING_LABELS[key] ?? key;
+};
+
+const joinTreatmentItemsForCard = (parts) => {
+  if (parts.length === 0) return '';
+  if (parts.length <= 2) return parts.join(' ');
+  return `${parts.slice(0, 2).join(' ')}<br class="treatment-line-break" />${parts.slice(2).join(' ')}`;
+};
+
+/** 与 PatientStyleTwoPageOne「诊疗方案 Rx」selectedSchemeDisplayList 同口径：从 treatment_scheme_selection 解析出展示行 */
+const SCHEME_CARD_ROW_LABELS = {
+  frameGlasses: '框架眼镜',
+  contactLens: '角膜接触镜',
+  lowIntensityRed: '低强度红光',
+  visualTraining: '视觉训练',
+  physicalTherapy: '物理治疗',
+  drugTherapy: '药物治疗'
+};
+const SCHEME_CARD_EYE_LABELS = { both: '双眼', right: '右眼', left: '左眼' };
+
+function buildTreatmentSchemeLinesFromRecord(record) {
+  if (!record?.treatment_scheme_selection) return null;
+  try {
+    const raw = record.treatment_scheme_selection;
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const draft = data?.draft || {};
+    const eyeScope = data?.eyeScope || {};
+    const defs = [
+      { key: 'frameGlasses', detailKey: 'frameGlassesDetail' },
+      { key: 'contactLens', detailKey: 'contactLensDetail' },
+      { key: 'lowIntensityRed', detailKey: 'lowIntensityRedDetail' },
+      { key: 'visualTraining' },
+      { key: 'physicalTherapy' },
+      { key: 'drugTherapy', detailKey: 'drugTherapyDetail' }
+    ];
+    const lines = [];
+    defs.forEach(({ key, detailKey }) => {
+      const value = draft[key];
+      if (value == null || String(value).trim() === '') return;
+      const detail = detailKey ? draft[detailKey] : '';
+      const label = SCHEME_CARD_ROW_LABELS[key] || key;
+      const base = detail ? `${label}：${value}（${detail}）` : `${label}：${value}`;
+      const eyeKey = eyeScope[key];
+      const eyeSuffix =
+        eyeKey && SCHEME_CARD_EYE_LABELS[eyeKey] ? ` · ${SCHEME_CARD_EYE_LABELS[eyeKey]}` : '';
+      lines.push(`${base}${eyeSuffix}`);
+    });
+    return lines.length ? lines : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 历史记录「诊疗方案」缩写：眼别 + 有第三项（括号内 detail）则显示第三项，否则显示第二项（主选项 value）。
+ * 低强度红光、药物治疗：眼别 + 第二项 + （第三项），第三项缺时只显示第二项。
+ */
+function buildHistoryShortTreatmentPlanFromRecord(record) {
+  if (!record?.treatment_scheme_selection) return null;
+  try {
+    const raw = record.treatment_scheme_selection;
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const draft = data?.draft || {};
+    const eyeScope = data?.eyeScope || {};
+    const defs = [
+      { key: 'frameGlasses', detailKey: 'frameGlassesDetail' },
+      { key: 'contactLens', detailKey: 'contactLensDetail' },
+      { key: 'lowIntensityRed', detailKey: 'lowIntensityRedDetail' },
+      { key: 'visualTraining' },
+      { key: 'physicalTherapy' },
+      { key: 'drugTherapy', detailKey: 'drugTherapyDetail' }
+    ];
+    const parts = [];
+    defs.forEach(({ key, detailKey }) => {
+      const value = draft[key];
+      if (value == null || String(value).trim() === '') return;
+      const valStr = String(value).trim();
+      const detailRaw = detailKey ? draft[detailKey] : '';
+      const detail =
+        detailRaw != null && String(detailRaw).trim() !== '' ? String(detailRaw).trim() : '';
+      const eyeKey = eyeScope[key];
+      const eyeLabel = eyeKey && SCHEME_CARD_EYE_LABELS[eyeKey] ? SCHEME_CARD_EYE_LABELS[eyeKey] : '';
+
+      if (key === 'lowIntensityRed' || key === 'drugTherapy') {
+        const body = detail ? `${valStr}（${detail}）` : valStr;
+        parts.push(`${eyeLabel}${body}`);
+      } else {
+        const body = detail || valStr;
+        parts.push(`${eyeLabel}${body}`);
+      }
+    });
+    if (!parts.length) return null;
+    return parts.join('\n');
+  } catch {
+    return null;
+  }
+}
+
+/** 检查记录日期行：Dx / Rx 提示（与上一条时间更早的检查记录比较「变化」） */
+const LEGACY_TX_FP_KEYS = [
+  'right_atropine',
+  'left_atropine',
+  'right_glasses',
+  'right_glasses_pp',
+  'left_glasses',
+  'left_glasses_pp',
+  'right_hg',
+  'right_hg_dw',
+  'left_hg',
+  'left_hg_dw',
+  'right_visual_training',
+  'left_visual_training',
+  'right_physiotherapy',
+  'left_physiotherapy'
+];
+
+function getExaminationDateKeyForDxRx(record) {
+  if (!record?.examination_date) return '';
+  const d = dayjs(record.examination_date);
+  return d.isValid() ? d.format('YYYY-MM-DD') : normalizeDiagnosisDate(record.examination_date) || '';
+}
+
+function hasDiagnosisForExamRecord(record) {
+  const target = getExaminationDateKeyForDxRx(record);
+  if (!target) return false;
+  return diagnosisRecords.value.some((r) => {
+    const rd = normalizeDiagnosisDate(r.diagnosis_date) || r.diagnosis_date;
+    const rn =
+      normalizeDiagnosisDate(rd) || (dayjs(rd).isValid() ? dayjs(rd).format('YYYY-MM-DD') : String(rd));
+    return rn === target && String(r.diagnosis_detail ?? '').trim() !== '';
+  });
+}
+
+function hasTreatmentContentForDxRx(record) {
+  if (!record) return false;
+  if (buildTreatmentSchemeLinesFromRecord(record)?.length) return true;
+  return LEGACY_TX_FP_KEYS.some((k) => {
+    const v = record[k];
+    if (v == null || v === '') return false;
+    const s = String(v).trim();
+    return s !== '' && s !== 'none' && s !== '否';
+  });
+}
+
+function getTreatmentFingerprintForDxRx(record) {
+  if (!record) return '';
+  const raw = record.treatment_scheme_selection;
+  if (raw != null && String(raw).trim() !== '') {
+    return `s:${String(raw)}`;
+  }
+  return `l:${LEGACY_TX_FP_KEYS.map((k) => String(record[k] ?? '')).join('|')}`;
+}
+
+/** 相对上一条检查：诊疗有内容且与上一条不同（或无上一条）则提示 Rx */
+function showRxBadgeForExamEntry(record, previousRecord) {
+  if (!hasTreatmentContentForDxRx(record)) return false;
+  if (!previousRecord) return true;
+  return getTreatmentFingerprintForDxRx(record) !== getTreatmentFingerprintForDxRx(previousRecord);
+}
+
+/** 日期后拼接：Dx、Rx 或 Dx/Rx */
+function buildDxRxTag(record, previousRecord) {
+  const parts = [];
+  if (hasDiagnosisForExamRecord(record)) parts.push('Dx');
+  if (showRxBadgeForExamEntry(record, previousRecord)) parts.push('Rx');
+  if (!parts.length) return '';
+  return parts.join('/');
+}
 
 // 格式化诊疗方案（简化版，只显示大项名称）
 const formatTreatmentPlanSimple = (currentRecord, previousRecord) => {
@@ -1535,19 +2012,21 @@ const formatTreatmentPlanSimple = (currentRecord, previousRecord) => {
       treatments.push(`<span class="treatment-deleted">${prevHGText}</span>`);
     }
     
-    // 视觉训练：只显示"视训"（值为否或空则不显示）
+    // 视觉训练：按选项显示（0/1/2 映射，其余原样）
     const visualTraining = getFieldValue(`${eye}_visual_training`);
     const prevVisualTraining = previousRecord ? (previousRecord[`${eye}_visual_training`] || (previousRecord.patient && previousRecord.patient[`${eye}_visual_training`]) || (previousRecord.treatment && previousRecord.treatment[`${eye}_visual_training`])) : undefined;
+    const vtLabel = labelVisualTrainingForCard(visualTraining);
+    const prevVtLabel = labelVisualTrainingForCard(prevVisualTraining);
     if (visualTraining && visualTraining !== 'none' && visualTraining !== '否') {
       if (!prevVisualTraining || prevVisualTraining === 'none' || prevVisualTraining === '否') {
-        treatments.push(`<span class="treatment-new">视训</span>`);
+        treatments.push(`<span class="treatment-new">${vtLabel}</span>`);
       } else if (prevVisualTraining !== visualTraining) {
-        treatments.push(`<span class="treatment-deleted">视训</span> <span class="treatment-new">视训</span>`);
+        treatments.push(`<span class="treatment-deleted">${prevVtLabel}</span> <span class="treatment-new">${vtLabel}</span>`);
       } else {
-        treatments.push('视训');
+        treatments.push(vtLabel);
       }
     } else if (prevVisualTraining && prevVisualTraining !== 'none' && prevVisualTraining !== '否') {
-      treatments.push(`<span class="treatment-deleted">视训</span>`);
+      treatments.push(`<span class="treatment-deleted">${prevVtLabel}</span>`);
     }
     
     // 理疗：只显示"理疗"（值为否或空则不显示）
@@ -1565,7 +2044,7 @@ const formatTreatmentPlanSimple = (currentRecord, previousRecord) => {
       treatments.push(`<span class="treatment-deleted">理疗</span>`);
     }
     
-    return treatments.length > 0 ? treatments.join(' ') : '';
+    return joinTreatmentItemsForCard(treatments);
   };
   
   return {
@@ -1752,13 +2231,16 @@ const dateEntries = computed(() => {
     
     // 格式化诊疗方案（简化版，只显示大项）
     const treatmentPlan = formatTreatmentPlanSimple(record, previousRecord);
-    
+    const treatmentSchemeLines = buildTreatmentSchemeLinesFromRecord(record) || [];
+
     return {
       record,
       metrics,
       examinationItems,
+      treatmentSchemeLines,
       treatmentPlanRight: treatmentPlan.right,
-      treatmentPlanLeft: treatmentPlan.left
+      treatmentPlanLeft: treatmentPlan.left,
+      dxRxTag: buildDxRxTag(record, previousRecord)
     };
   }).filter(entry => entry !== null); // 过滤掉null值（兼容性处理）
 });
@@ -1901,7 +2383,7 @@ const handleNextPage = () => {
 };
 const handleSelectRecord = (recordId) => {
   console.log('[PatientStyleTwo] 点击选择检查记录ID:', recordId);
-  
+
   // 如果当前处于编辑模式，且切换到了不同的记录
   if (viewMode.value === 'edit' && editingRecordId.value !== null && editingRecordId.value !== recordId) {
     console.log('[PatientStyleTwo] 编辑模式下切换记录，取消旧记录编辑，进入新记录编辑');
@@ -1909,17 +2391,17 @@ const handleSelectRecord = (recordId) => {
     editingRecordId.value = null;
     editingRecord.value = null;
     // 注意：不改变 viewMode，保持编辑模式
-    
+
     // 选中新记录
     emit('select-record', recordId);
-    
+
     // 等待记录切换后，自动进入新记录的编辑状态
     nextTick(() => {
       // 找到新记录
       const newRecord = props.examinationRecords.find(r => r.id === recordId);
       if (newRecord) {
-        // 进入新记录的编辑状态
-        handleEditRecord(newRecord);
+        // 进入新记录的编辑状态（保持局部/整页编辑范围与切换前一致）
+        handleEditRecord(newRecord, scopedEditNavTab.value);
       }
       // 滚动到该记录位置
       scrollToSelectedRecord(recordId);
@@ -1927,7 +2409,7 @@ const handleSelectRecord = (recordId) => {
   } else {
     // 非编辑模式或选择相同记录，正常处理
     emit('select-record', recordId);
-    
+
     // 选中记录后，滚动到该记录位置（如果不在可见区域）
     nextTick(() => {
       scrollToSelectedRecord(recordId);
@@ -1974,83 +2456,11 @@ const handleDeleteRecord = (recordId) => {
   emit('delete-record', recordId);
 };
 
-// 诊断记录：打开新增/编辑弹窗
-const openDiagnosisModal = (record = null) => {
-  if (record) {
-    editingDiagnosisId.value = record.id;
-    let detailText = record.diagnosis_detail != null ? String(record.diagnosis_detail) : '';
-    if (detailText.startsWith('[')) {
-      try {
-        const arr = JSON.parse(detailText);
-        if (Array.isArray(arr) && arr.length > 0 && arr[0] && arr[0].freeText) {
-          detailText = arr[0].freeText;
-        }
-      } catch (_) {}
-    }
-    diagnosisForm.value = {
-      diagnosis_date: record.diagnosis_date || null,
-      diagnosis_detail: detailText,
-      right_eye_remark: record.right_eye_remark != null ? String(record.right_eye_remark) : '',
-      left_eye_remark: record.left_eye_remark != null ? String(record.left_eye_remark) : ''
-    };
-  } else {
-    editingDiagnosisId.value = null;
-    diagnosisForm.value = {
-      diagnosis_date: dayjs().format('YYYY-MM-DD'),
-      diagnosis_detail: '',
-      right_eye_remark: '',
-      left_eye_remark: ''
-    };
-  }
-  diagnosisModalVisible.value = true;
-};
-
-const closeDiagnosisModal = () => {
-  diagnosisModalVisible.value = false;
-  editingDiagnosisId.value = null;
-  diagnosisForm.value = { diagnosis_date: null, diagnosis_detail: '', right_eye_remark: '', left_eye_remark: '' };
-};
-
-// 诊断记录：提交表单（新增或更新）
-const submitDiagnosisForm = async () => {
-  const { diagnosis_date, diagnosis_detail, right_eye_remark, left_eye_remark } = diagnosisForm.value;
-  if (!diagnosis_date) {
-    message.warning('请选择诊断日期');
-    return;
-  }
-  if (!String(diagnosis_detail || '').trim()) {
-    message.warning('请填写诊断详情');
-    return;
-  }
-  const payload = {
-    diagnosis_date,
-    diagnosis_detail: String(diagnosis_detail).trim(),
-    right_eye_remark: String(right_eye_remark || '').trim(),
-    left_eye_remark: String(left_eye_remark || '').trim()
-  };
-  diagnosisSubmitLoading.value = true;
-  try {
-    if (editingDiagnosisId.value) {
-      await updateDiagnosis(props.patientId, editingDiagnosisId.value, payload);
-      message.success('诊断记录已更新');
-    } else {
-      await createDiagnosis(props.patientId, payload);
-      message.success('诊断记录已添加');
-    }
-    closeDiagnosisModal();
-    await loadDiagnosisList();
-  } catch (e) {
-    message.error(e?.message || '操作失败');
-  } finally {
-    diagnosisSubmitLoading.value = false;
-  }
-};
-
 // 诊断记录：删除
 const handleDeleteDiagnosis = (item) => {
   Modal.confirm({
     title: '确认删除',
-    content: '确定要删除这条诊断记录吗？',
+    content: '确定要删除这条诊断吗？',
     okText: '确定',
     okType: 'danger',
     cancelText: '取消',
@@ -2069,18 +2479,7 @@ const handleDeleteDiagnosis = (item) => {
 // 激活状态管理
 const activeAction = ref(null);
 
-// 编辑当前选中的检查记录
-const handleEditCurrentRecord = () => {
-  activeAction.value = 'edit';
-  if (!props.selectedRecordId) {
-    message.warning('请先选择一条检查记录');
-    activeAction.value = null;
-    return;
-  }
-  emit('edit-current-record');
-};
-
-// 保存当前编辑的检查记录
+// 保存当前编辑的检查记录（诊断区等子区域「确认」按钮）
 const handleSaveCurrentRecord = async () => {
   if (!editingRecordId.value) {
     message.warning('没有正在编辑的记录');
@@ -2113,7 +2512,7 @@ const handleRefresh = () => {
 };
 
 
-const handleEditRecord = (record) => {
+const handleEditRecord = (record, navEditScope = null) => {
   console.log('[PatientStyleTwo] 请求编辑检查记录:', record);
   console.log('[PatientStyleTwo] 当前 editingRecordId:', editingRecordId.value);
   
@@ -2126,6 +2525,7 @@ const handleEditRecord = (record) => {
   editingRecordId.value = record.id;
   editingRecord.value = JSON.parse(JSON.stringify(record));
   viewMode.value = 'edit';
+  scopedEditNavTab.value = navEditScope;
   // 清空预删除列表（切换记录时重置）
   pendingDeleteImageIds.value = [];
   pendingDeleteOldImages.value = [];
@@ -2173,7 +2573,16 @@ const handleSaveRecord = async (record) => {
       message.error('缺少患者ID，无法保存');
       return;
     }
-    
+
+    const diagnosisSaved = await persistAllDiagnosesForSave();
+    if (!diagnosisSaved) {
+      return;
+    }
+
+    // 确保诊疗方案 JSON 已写入 editForm 并 merge 到 editingRecord（避免 watch 时序导致保存体缺少该字段）
+    await clinicalPageOneRef.value?.syncSchemeSelectionToEditForm?.();
+    await nextTick();
+
     // 构造保存数据
     const saveData = {
       ...editingRecord.value,
@@ -2508,6 +2917,9 @@ const handleSaveRecord = async (record) => {
       }
       
       message.success('保存成功');
+
+      // 立即合并到父级当前检查记录，查看页可显示调节灵敏度「通过情况」等（接口列表若未带回这些字段，仍可在刷新前展示）
+      emit('patch-examination-record', cleanedSaveData);
       
       // 同步 sessionStorage
       try {
@@ -2535,12 +2947,16 @@ const handleSaveRecord = async (record) => {
       } catch (e) {
         console.error('同步 sessionStorage 失败:', e);
       }
+
+      syncPrevDiagnosisActive.value = false;
+      diagnosisSyncBackup.value = null;
       
       // 先重置编辑状态，避免组件渲染错误
       editingRecordId.value = null;
       editingRecord.value = null;
+      scopedEditNavTab.value = null;
       viewMode.value = 'view';
-      activeAction.value = null; // 重置按钮激活状态，使编辑按钮颜色回到原状态
+      activeAction.value = null; // 重置工具栏按钮高亮（如刷新/打印）
       // 保存后所有板块收缩
       Object.keys(sectionExpanded.value).forEach(key => {
         sectionExpanded.value[key] = false;
@@ -2598,8 +3014,11 @@ const handleUpdateRecord = (updatedFields) => {
 
 const handleCancelEdit = () => {
   console.log('[PatientStyleTwo] 取消编辑');
+  syncPrevDiagnosisActive.value = false;
+  diagnosisSyncBackup.value = null;
   editingRecordId.value = null;
   editingRecord.value = null;
+  scopedEditNavTab.value = null;
   viewMode.value = 'view';
   activeAction.value = null; // 清除按钮激活状态
   // 清空预删除列表
@@ -2627,11 +3046,176 @@ const printSectionOptions = [
   { key: 'treatment-plan', title: '诊疗方案' },
   { key: 'routine', title: '基础检查' },
   { key: 'vision', title: '视力检查' },
-  { key: 'objective-refraction', title: '客观验光' },
-  { key: 'subjective-refraction', title: '主观验光' },
-  { key: 'functional', title: '视功能检查' },
-  { key: 'biometry', title: '生物测量仪检查' }
+  { key: 'biometry', title: '生物测量仪检查' },
+  { key: 'objective-refraction', title: '电脑验光检查' },
+  { key: 'subjective-refraction', title: '主觉验光检查' },
+  { key: 'functional', title: '视功能检查' }
 ];
+
+// 右侧主区顶部：主标签（子模块由各自组件内标题区分）
+const examNavItems = [
+  { key: 'history', title: '历史记录' },
+  { key: 'exam-results', title: '视光检查' },
+  { key: 'related', title: '相关检查诊断' },
+  { key: 'imaging', title: '影像检查' },
+  { key: 'clinical', title: '诊断和诊疗方案' }
+];
+
+const formatHistoryPair = (rightVal, leftVal, formatter = (v) => String(v), unit = '') => {
+  const rightRaw = formatter(rightVal);
+  const leftRaw = formatter(leftVal);
+  const right = rightRaw == null || rightRaw === '' ? '-' : String(rightRaw);
+  const left = leftRaw == null || leftRaw === '' ? '-' : String(leftRaw);
+  if (right === '-' && left === '-') return '-\n-';
+  const rightText = right === '-' ? '-' : `${right}${unit}`;
+  const leftText = left === '-' ? '-' : `${left}${unit}`;
+  return `${rightText}\n${leftText}`;
+};
+
+const formatAxialTrendCellHtml = (currentVal, previousVal) => {
+  if (currentVal == null || currentVal === '' || previousVal == null || previousVal === '') return '-';
+  const current = Number(currentVal);
+  const previous = Number(previousVal);
+  if (Number.isNaN(current) || Number.isNaN(previous)) return '-';
+  const delta = current - previous;
+  if (Math.abs(delta) < 0.005) return '-';
+  const absText = Math.abs(delta).toFixed(2);
+  if (delta > 0) return `<span class="style-two-history-trend--up">↑${absText}</span>`;
+  return `<span class="style-two-history-trend--down">↓${absText}</span>`;
+};
+
+const formatAxialTrendPairHtml = (record, previousRecord) => {
+  const right = formatAxialTrendCellHtml(record?.right_eye_axial_length, previousRecord?.right_eye_axial_length);
+  const left = formatAxialTrendCellHtml(record?.left_eye_axial_length, previousRecord?.left_eye_axial_length);
+  if (right === '-' && left === '-') return '-<br/>-';
+  return `${right}<br/>${left}`;
+};
+
+const formatVisionValueForSup = (value) => {
+  if (value === null || value === undefined || value === '') return '';
+  const num = Number(value);
+  if (Number.isNaN(num)) return '';
+  const twoDecimalStr = num.toFixed(2);
+  if (twoDecimalStr.endsWith('0')) return num.toFixed(1);
+  return twoDecimalStr;
+};
+
+const formatVisionCellHtmlForHistory = (record, fieldPrefix) => {
+  const valuePart = formatVisionValueForSup(record?.[fieldPrefix]);
+  if (!valuePart) return '-';
+  const sign = record?.[`${fieldPrefix}_sign`] === '-' ? '-' : '+';
+  const level = record?.[`${fieldPrefix}_level`];
+  const levelText = level == null || level === '' ? '' : String(level).trim();
+  if (levelText) return `${valuePart}<sup>${sign}${levelText}</sup>`;
+  if (sign === '-') return `${valuePart}<sup>-</sup>`;
+  return valuePart;
+};
+
+const formatVisionPairHtmlForHistory = (record, rightKey, leftKey) => {
+  const rightHtml = formatVisionCellHtmlForHistory(record, rightKey);
+  const leftHtml = formatVisionCellHtmlForHistory(record, leftKey);
+  if (rightHtml === '-' && leftHtml === '-') return '-<br/>-';
+  return `${rightHtml}<br/>${leftHtml}`;
+};
+
+const stripHtmlTagsForHistory = (text) => {
+  if (text == null || text === '') return '';
+  return String(text)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim();
+};
+
+const historyDiagnosisMap = computed(() => {
+  const map = new Map();
+  (diagnosisRecords.value || []).forEach((item) => {
+    const dateKey = normalizeDiagnosisDate(item?.diagnosis_date);
+    if (!dateKey) return;
+    const detail = diagnosisDetailDisplay(item?.diagnosis_detail);
+    if (!detail || detail === '-') return;
+    if (!map.has(dateKey)) map.set(dateKey, []);
+    map.get(dateKey).push(detail);
+  });
+  return map;
+});
+
+const historyTabRows = computed(() => {
+  const records = [...(Array.isArray(props.sortedRecords) ? props.sortedRecords : [])]
+    .filter((item) => item && typeof item === 'object');
+  if (!records.length) return [];
+  records.sort((a, b) => {
+    const ta = dayjs(a?.examination_date).valueOf();
+    const tb = dayjs(b?.examination_date).valueOf();
+    const va = Number.isFinite(ta) ? ta : 0;
+    const vb = Number.isFinite(tb) ? tb : 0;
+    return vb - va;
+  });
+  return records.map((record, index) => {
+    try {
+      const previous = records[index + 1] || null;
+      const dateKey = normalizeDiagnosisDate(record?.examination_date);
+      const diagnosisText = dateKey ? (historyDiagnosisMap.value.get(dateKey) || []).join('；') : '';
+      const treatmentShortPlan = buildHistoryShortTreatmentPlanFromRecord(record);
+      const treatmentSimple = formatTreatmentPlanSimple(record, previous) || {};
+      const treatmentFallbackLines = [treatmentSimple.right, treatmentSimple.left]
+        .map((t) => stripHtmlTagsForHistory(t))
+        .filter(Boolean);
+      return {
+        recordId: record?.id ?? `history-${index}`,
+        date: formatDate(record?.examination_date),
+        eyeSide: '右\n左',
+        axialLength: formatHistoryPair(record?.right_eye_axial_length, record?.left_eye_axial_length, printFormatValue, 'mm'),
+        axialTrend: formatAxialTrendPairHtml(record, previous),
+        avgK: formatHistoryPair(
+          printCalculateAvgK(record?.right_eye_k1, record?.right_eye_k2),
+          printCalculateAvgK(record?.left_eye_k1, record?.left_eye_k2),
+          printFormatValue,
+          'D'
+        ),
+        deltaK: formatHistoryPair(
+          printCalculateDeltaK(record?.right_eye_k1, record?.right_eye_k2),
+          printCalculateDeltaK(record?.left_eye_k1, record?.left_eye_k2),
+          printFormatValue,
+          'D'
+        ),
+        axialRatio: formatHistoryPair(
+          printCalculateAxialRatio(record?.right_eye_axial_length, record?.right_eye_k1, record?.right_eye_k2),
+          printCalculateAxialRatio(record?.left_eye_axial_length, record?.left_eye_k1, record?.left_eye_k2),
+          printFormatValue
+        ),
+        uva: formatVisionPairHtmlForHistory(record, 'uva_right_vision', 'uva_left_vision'),
+        subjectiveRefraction: formatHistoryPair(
+          printFormatPrescription(record?.subjective_right_spherical, record?.subjective_right_spherical_sign, record?.subjective_right_cylindrical, record?.subjective_right_axis),
+          printFormatPrescription(record?.subjective_left_spherical, record?.subjective_left_spherical_sign, record?.subjective_left_cylindrical, record?.subjective_left_axis),
+          (v) => v
+        ),
+        correctedVision: formatVisionPairHtmlForHistory(record, 'subjective_right_old_vision', 'subjective_left_old_vision'),
+        diagnosis: diagnosisText || '--',
+        treatmentPlan: treatmentShortPlan
+          ? treatmentShortPlan
+          : (treatmentFallbackLines.join('\n') || '--')
+      };
+    } catch (e) {
+      console.warn('[PatientStyleTwo] 历史记录行渲染失败', e, record);
+      return {
+        recordId: record?.id ?? `history-${index}`,
+        date: formatDate(record?.examination_date),
+        eyeSide: '右\n左',
+        axialLength: '--',
+        axialTrend: '--',
+        avgK: '--',
+        deltaK: '--',
+        axialRatio: '--',
+        uva: '--',
+        subjectiveRefraction: '--',
+        correctedVision: '--',
+        diagnosis: '--',
+        treatmentPlan: '--'
+      };
+    }
+  });
+});
 
 // 打开PDF导出选择对话框
 const handlePrintReport = () => {
@@ -2975,11 +3559,10 @@ const calculateAge = (birthDate) => {
 };
 
 const pageLayoutConfig = [
-  { key: 'page-2', sections: ['routine'] },
-  { key: 'page-3', sections: ['biometry'] },
-  { key: 'page-4', sections: ['functional'] },
-  { key: 'page-5', sections: ['img'] },
-  { key: 'page-6', sections: ['analysis'] }
+  { key: 'page-2', sections: ['routine', 'biometry'] },
+  { key: 'page-3', sections: ['functional'] },
+  { key: 'page-4', sections: ['img'] },
+  { key: 'page-5', sections: ['analysis'] }
 ];
 
 const styleTwoSectionList = computed(() => props.styleTwoSections || []);
@@ -3331,7 +3914,7 @@ const printCalculateCorrectedIOP = (iop, cct) => {
   if (isNaN(i) || isNaN(c)) return null;
   return i - (c - 520) / 40;
 };
-// 与 BiometryExamStyleTwo 一致：ΔK、avK、轴率比、近视临界点
+// 与 BiometryExamStyleTwo 一致：ΔK、avK、轴率比、参考临界值
 const printCalculateDeltaK = (k1, k2) => { if (!k1 || !k2) return null; return (Number(k2) - Number(k1)).toFixed(2); };
 const printCalculateAvgK = (k1, k2) => { if (!k1 || !k2) return null; return ((Number(k1) + Number(k2)) / 2).toFixed(2); };
 const printCalculateAxialRatio = (axialLength, k1, k2) => {
@@ -3346,6 +3929,8 @@ const printCalculateCriticalPoint = (k1, k2) => {
   return (23.5 - (avgK - 43) / 2.5).toFixed(2);
 };
 const printFormatValue = (v) => { if (v == null || v === '') return '-'; const n = Number(v); return isNaN(n) ? '-' : (Number.isInteger(n) ? String(n) : Number(n).toFixed(2)); };
+/** 角膜厚度等整数 μm */
+const printFormatInt = (v) => { if (v == null || v === '') return '-'; const n = Number(v); return isNaN(n) ? '-' : String(Math.round(n)); };
 // 打印时判断“无数据”：用于隐藏无检查数据的行，避免报告出现大量 “-”
 const isPrintValueEmpty = (v) => { if (v == null || v === '') return true; const s = String(v).trim(); return s === '' || s === '-'; };
 // 视力：与页面一致只显示数值部分（不打上标）
@@ -3364,24 +3949,42 @@ const printParseEyePositionValue = (exoValue, esoValue) => {
   }
   return 0;
 };
+const printHasHorizontalEyePositionInput = (exoValue, esoValue) => {
+  const hasExo = exoValue !== null && exoValue !== undefined && exoValue !== '';
+  const hasEso = esoValue !== null && esoValue !== undefined && esoValue !== '';
+  if (!hasExo && !hasEso) return false;
+  if (hasExo) {
+    const n = typeof exoValue === 'number' ? exoValue : parseFloat(String(exoValue).replace(/^\+/, ''));
+    if (!isNaN(n)) return true;
+  }
+  if (hasEso) {
+    const n = typeof esoValue === 'number' ? esoValue : parseFloat(String(esoValue).replace(/^\+/, ''));
+    if (!isNaN(n)) return true;
+  }
+  return false;
+};
+/** 与 FunctionalExamStyleTwo 一致：仅当 5m/40cm 水平眼位与主觉验光瞳距均有时才计算；瞳距只用 subjective_both_pupil_distance */
 const printCalculatedACARatio = (record) => {
-  if (!record) return '-';
-  const pd = record.subjective_both_pupil_distance ?? record.objective_pupil_distance ?? record.vaec_both_pupil_distance;
-  if (pd == null || pd === '') return '-';
+  if (!record) return '';
+  if (!printHasHorizontalEyePositionInput(record.pli_exo_distance_lateral_phoria, record.plo_eso_distance_lateral_phoria)) return '';
+  if (!printHasHorizontalEyePositionInput(record.pli_exo_near_lateral_phoria, record.plo_eso_near_lateral_phoria)) return '';
+  const pd = record.subjective_both_pupil_distance;
+  if (pd == null || pd === '') return '';
   const pdNum = parseFloat(pd);
-  if (isNaN(pdNum)) return '-';
+  if (isNaN(pdNum)) return '';
   const farVal = printParseEyePositionValue(record.pli_exo_distance_lateral_phoria, record.plo_eso_distance_lateral_phoria);
   const nearVal = printParseEyePositionValue(record.pli_exo_near_lateral_phoria, record.plo_eso_near_lateral_phoria);
   const result = pdNum / 10 + (nearVal - farVal) / 2.5;
-  return isNaN(result) ? '-' : result.toFixed(1);
+  return isNaN(result) ? '' : result.toFixed(1);
 };
+/** 参考值：有主觉瞳距时为数值；无则为公式文案 PD/10 */
 const printCalculatedACARatioRef = (record) => {
   if (!record) return 'PD/10';
-  const pd = record.subjective_both_pupil_distance ?? record.objective_pupil_distance ?? record.vaec_both_pupil_distance;
+  const pd = record.subjective_both_pupil_distance;
   if (pd == null || pd === '') return 'PD/10';
   const pdNum = parseFloat(pd);
   if (isNaN(pdNum)) return 'PD/10';
-  return (pdNum / 10).toFixed(1) + '△/D';
+  return (pdNum / 10).toFixed(1);
 };
 const printFormatEyePositionCell = (exo, eso) => {
   if (exo != null && exo !== '') {
@@ -3395,10 +3998,11 @@ const printFormatEyePositionCell = (exo, eso) => {
   return '-';
 };
 const printFormatVerticalCell = (dir, val) => {
-  const hasDir = dir != null && dir !== '' && dir !== '正位';
+  const shortDir = dir === '右高' ? '右' : dir === '左高' ? '左' : dir;
+  const hasDir = shortDir != null && shortDir !== '' && shortDir !== '正位';
   const v = val != null && val !== '' ? parseFloat(val) : null;
-  if (hasDir && v != null && !isNaN(v)) return `${dir}${v}△`;
-  if (hasDir) return dir;
+  if (hasDir && v != null && !isNaN(v)) return `${shortDir}${v}△`;
+  if (hasDir) return shortDir;
   return '-';
 };
 const buildFunctionalPrintHtml = (record) => {
@@ -3411,10 +4015,10 @@ const buildFunctionalPrintHtml = (record) => {
   let html = '';
   // 1. 眼位和聚散检查（与原页一致；预览智能隐藏：仅保留至少有一列有值的行，全为"-"的行不显示）
   const eyePosRowsAll = [
-    ['5m水平眼位', printFormatEyePositionCell(record.pli_exo_distance_lateral_phoria, record.plo_eso_distance_lateral_phoria), fmt(record.fusional_convergence_distance_blur), fmt(record.fusional_convergence_distance_break), fmt(record.fusional_convergence_distance_recovery), fmt(record.fusional_disvergence_distance_blur), fmt(record.fusional_disvergence_distance_break), fmt(record.fusional_disvergence_distance_recovery)],
-    ['40cm水平眼位', printFormatEyePositionCell(record.pli_exo_near_lateral_phoria, record.plo_eso_near_lateral_phoria), fmt(record.fusional_convergence_near_blur), fmt(record.fusional_convergence_near_break), fmt(record.fusional_convergence_near_recovery), fmt(record.fusional_disvergence_near_blur), fmt(record.fusional_disvergence_near_break), fmt(record.fusional_disvergence_near_recovery)],
-    ['5m垂直眼位', printFormatVerticalCell(record.vertical_eye_position_far ?? record.fusional_convergence_distance_vertical_direction ?? record.far_vertical_eye_direction, record.vertical_eye_position_far_value ?? record.far_vertical_eye_break), '-', fmt(record.fusional_vertical_up_distance_break ?? record.fusional_convergence_distance_vertical_break), fmt(record.fusional_vertical_up_distance_recovery ?? record.fusional_convergence_distance_vertical_recovery), '-', fmt(record.fusional_vertical_down_distance_break ?? record.fusional_disvergence_distance_vertical_break), fmt(record.fusional_vertical_down_distance_recovery ?? record.fusional_disvergence_distance_vertical_recovery)],
-    ['40cm垂直眼位', printFormatVerticalCell(record.vertical_eye_position_near ?? record.fusional_convergence_near_vertical_direction ?? record.near_vertical_eye_direction, record.vertical_eye_position_near_value ?? record.near_vertical_eye_break), '-', fmt(record.fusional_vertical_up_near_break ?? record.fusional_convergence_near_vertical_break), fmt(record.fusional_vertical_up_near_recovery ?? record.fusional_convergence_near_vertical_recovery), '-', fmt(record.fusional_vertical_down_near_break ?? record.fusional_disvergence_near_vertical_break), fmt(record.fusional_vertical_down_near_recovery ?? record.fusional_disvergence_near_vertical_recovery)]
+    ['5m水平眼位/△（内/外）', printFormatEyePositionCell(record.pli_exo_distance_lateral_phoria, record.plo_eso_distance_lateral_phoria), fmt(record.fusional_convergence_distance_blur), fmt(record.fusional_convergence_distance_break), fmt(record.fusional_convergence_distance_recovery), fmt(record.fusional_disvergence_distance_blur), fmt(record.fusional_disvergence_distance_break), fmt(record.fusional_disvergence_distance_recovery)],
+    ['40cm水平眼位/△（内/外）', printFormatEyePositionCell(record.pli_exo_near_lateral_phoria, record.plo_eso_near_lateral_phoria), fmt(record.fusional_convergence_near_blur), fmt(record.fusional_convergence_near_break), fmt(record.fusional_convergence_near_recovery), fmt(record.fusional_disvergence_near_blur), fmt(record.fusional_disvergence_near_break), fmt(record.fusional_disvergence_near_recovery)],
+    ['5m垂直眼位/△（高位）', printFormatVerticalCell(record.vertical_eye_position_far ?? record.fusional_convergence_distance_vertical_direction ?? record.far_vertical_eye_direction, record.vertical_eye_position_far_value ?? record.far_vertical_eye_break), '-', fmt(record.fusional_vertical_up_distance_break ?? record.fusional_convergence_distance_vertical_break), fmt(record.fusional_vertical_up_distance_recovery ?? record.fusional_convergence_distance_vertical_recovery), '-', fmt(record.fusional_vertical_down_distance_break ?? record.fusional_disvergence_distance_vertical_break), fmt(record.fusional_vertical_down_distance_recovery ?? record.fusional_disvergence_distance_vertical_recovery)],
+    ['40cm垂直眼位/△（高位）', printFormatVerticalCell(record.vertical_eye_position_near ?? record.fusional_convergence_near_vertical_direction ?? record.near_vertical_eye_direction, record.vertical_eye_position_near_value ?? record.near_vertical_eye_break), '-', fmt(record.fusional_vertical_up_near_break ?? record.fusional_convergence_near_vertical_break), fmt(record.fusional_vertical_up_near_recovery ?? record.fusional_convergence_near_vertical_recovery), '-', fmt(record.fusional_vertical_down_near_break ?? record.fusional_disvergence_near_vertical_break), fmt(record.fusional_vertical_down_near_recovery ?? record.fusional_disvergence_near_vertical_recovery)]
   ];
   const hasDataCell = (c) => { const s = (typeof c === 'string' ? c : String(c)).trim(); return s !== '' && s !== '-'; };
   const eyePosRows = eyePosRowsAll.filter(row => row.slice(1).some(hasDataCell));
@@ -3468,8 +4072,13 @@ const buildFunctionalPrintHtml = (record) => {
   const ampStyle = record.accommodation_amplitude_style;
   const ampStr = (ampR != null && ampR !== '' || ampL != null && ampL !== '') ? `右眼：${fmt(ampR)} 左眼：${fmt(ampL)} ${fmt(ampStyle)}` : '-';
   const hasSensVal = (record.accommodation_sensitivity_right_value ?? record.accommodation_sensitivity_right ?? record.accommodation_sensitivity_left_value ?? record.accommodation_sensitivity_left ?? record.accommodation_sensitivity_both_value ?? record.accommodation_sensitivity_both) != null && (record.accommodation_sensitivity_right_value ?? record.accommodation_sensitivity_right ?? record.accommodation_sensitivity_left_value ?? record.accommodation_sensitivity_left ?? record.accommodation_sensitivity_both_value ?? record.accommodation_sensitivity_both) !== '';
-  const sensStr = hasSensVal
-    ? `${fmt(record.accommodation_sensitivity_lens_power ?? record.accommodation_sensitivity_diopter)} ${fmt(record.accommodation_sensitivity_target ?? record.accommodation_sensitivity_vision)} 右眼：${fmt(record.accommodation_sensitivity_right_value ?? record.accommodation_sensitivity_right)} 左眼：${fmt(record.accommodation_sensitivity_left_value ?? record.accommodation_sensitivity_left)} 双眼：${fmt(record.accommodation_sensitivity_both_value ?? record.accommodation_sensitivity_both)}`
+  const hasSensPass = [record.accommodation_sensitivity_pass_right, record.accommodation_sensitivity_pass_left, record.accommodation_sensitivity_pass_both].some((p) => p != null && String(p).trim() !== '');
+  const fmtSensCpm = (v) => {
+    const s = fmt(v);
+    return s === '-' ? '-' : `${s} cpm`;
+  };
+  const sensStr = (hasSensVal || hasSensPass)
+    ? `${hasSensVal ? `${fmt(record.accommodation_sensitivity_lens_power ?? record.accommodation_sensitivity_diopter)} ${fmt(record.accommodation_sensitivity_target ?? record.accommodation_sensitivity_vision)} 右眼：${fmtSensCpm(record.accommodation_sensitivity_right_value ?? record.accommodation_sensitivity_right)} 左眼：${fmtSensCpm(record.accommodation_sensitivity_left_value ?? record.accommodation_sensitivity_left)} 双眼：${fmtSensCpm(record.accommodation_sensitivity_both_value ?? record.accommodation_sensitivity_both)}` : ''}${hasSensPass ? ` 通过：右${fmt(record.accommodation_sensitivity_pass_right)} 左${fmt(record.accommodation_sensitivity_pass_left)} 双${fmt(record.accommodation_sensitivity_pass_both)}` : ''}`.trim() || '-'
     : '-';
   const reactR = record.accommodation_mem_right_value ?? record.fused_cross_cylinder_right;
   const reactL = record.accommodation_mem_left_value ?? record.fused_cross_cylinder_left;
@@ -3477,15 +4086,34 @@ const buildFunctionalPrintHtml = (record) => {
   const signR = record.accommodation_mem_right_sign;
   const signL = record.accommodation_mem_left_sign;
   const signB = record.accommodation_bcc_sign;
-  const fmtReact = (v, sign) => { if (v == null || v === '') return '-'; const n = parseFloat(String(v).replace(/^[+\-]/, '')); return (sign === '-' || (v.toString().startsWith('-')) ? '-' : '+') + (isNaN(n) ? v : n); };
-  const reactStr = [reactR, reactL, reactB].some(x => x != null && x !== '') ? `右眼：${fmtReact(reactR, signR)} 左眼：${fmtReact(reactL, signL)} BCC：${fmtReact(reactB, signB)}` : '-';
+  const txtR = record.accommodation_mem_right_text;
+  const txtL = record.accommodation_mem_left_text;
+  const txtB = record.accommodation_mem_bcc_text;
+  const fmtReact = (v, sign, txt) => {
+    if (txt !== null && txt !== undefined && String(txt).trim() !== '') return String(txt).trim();
+    if (v == null || v === '') return '-';
+    const absNum = typeof v === 'number' ? Math.abs(v) : Math.abs(parseFloat(String(v).replace(/^[+\-]/, '')));
+    if (isNaN(absNum)) return '-';
+    let n;
+    if (sign === '+') n = absNum;
+    else if (sign === '-') n = -absNum;
+    else {
+      const orig = typeof v === 'number' ? v : parseFloat(v);
+      if (isNaN(orig)) return '-';
+      n = orig;
+    }
+    if (n === 0 || Object.is(n, -0)) return Object.is(n, -0) ? '-0' : '+0';
+    const body = parseFloat(Math.abs(n).toPrecision(15)).toString();
+    return (n < 0 ? '-' : '+') + body;
+  };
+  const reactStr = [reactR, reactL, reactB, txtR, txtL, txtB].some((x) => x != null && x !== '') ? `右眼：${fmtReact(reactR, signR, txtR)} 左眼：${fmtReact(reactL, signL, txtL)} BCC：${fmtReact(reactB, signB, txtB)}` : '-';
   const hasAnyAccommodationData = praStr !== '-' || nraStr !== '-' || ampStr !== '-' || sensStr !== '-' || reactStr !== '-';
   if (hasAnyAccommodationData) {
     const accomRowsAll = [
-      ['正相对调节（D）', praStr, '小于-3.00D'],
+      ['正相对调节（D）', praStr, '-2.25D\u2009↑'],
       ['负相对调节（D）', nraStr, '+2.25D±0.25D'],
       ['调节幅度（D）', ampStr, '-'],
-      ['调节灵敏度（cpm）', sensStr, '单眼11cpm 双眼8cpm'],
+      ['调节灵敏度（cpm）', sensStr, '11cpm 8cpm'],
       ['调节反应（D）', reactStr, '+0.50D±0.25D']
     ];
     const accomRows = accomRowsAll.filter(row => { const v = row[1]; return v != null && String(v).trim() !== '' && String(v).trim() !== '-'; });
@@ -3521,11 +4149,11 @@ const PRINT_SECTION_CONFIG = {
     { label: '裸眼视力', rightKey: 'uva_right_vision', leftKey: 'uva_left_vision', format: 'vision' },
     { label: '戴镜视力', rightKey: 'vaec_right_old_vision', leftKey: 'vaec_left_old_vision', format: 'vision' }
   ]},
-  'objective-refraction': { title: '客观验光检查', type: 'table3prescription', thead: ['检查项目', '右眼', '左眼'], rows: (record) => [
+  'objective-refraction': { title: '电脑验光检查', type: 'table3prescription', thead: ['检查项目', '右眼', '左眼'], rows: (record) => [
     { label: '电脑验光', right: printFormatPrescription(record.objective_right_spherical, record.objective_right_spherical_sign, record.objective_right_cylindrical, record.objective_right_axis), left: printFormatPrescription(record.objective_left_spherical, record.objective_left_spherical_sign, record.objective_left_cylindrical, record.objective_left_axis) }
   ]},
-  'subjective-refraction': { title: '主观验光检查', type: 'table3prescription', thead: ['检查项目', '右眼', '左眼'], rows: (record) => [
-    { label: '主观验光', right: printFormatPrescription(record.subjective_right_spherical, record.subjective_right_spherical_sign, record.subjective_right_cylindrical, record.subjective_right_axis), left: printFormatPrescription(record.subjective_left_spherical, record.subjective_left_spherical_sign, record.subjective_left_cylindrical, record.subjective_left_axis) }
+  'subjective-refraction': { title: '主觉验光检查', type: 'table3prescription', thead: ['检查项目', '右眼', '左眼'], rows: (record) => [
+    { label: '主觉验光', right: printFormatPrescription(record.subjective_right_spherical, record.subjective_right_spherical_sign, record.subjective_right_cylindrical, record.subjective_right_axis), left: printFormatPrescription(record.subjective_left_spherical, record.subjective_left_spherical_sign, record.subjective_left_cylindrical, record.subjective_left_axis) }
   ]},
   'functional': { title: '视功能检查', type: 'functional_html', buildHtml: (record) => buildFunctionalPrintHtml(record) },
   'analysis': { title: '结果分析', type: 'analysis_print', contentKey: 'analysis_result' },
@@ -3536,8 +4164,8 @@ const PRINT_SECTION_CONFIG = {
     { label: 'ΔK', right: printCalculateDeltaK(record.right_eye_k1, record.right_eye_k2), left: printCalculateDeltaK(record.left_eye_k1, record.left_eye_k2), unit: 'D' },
     { label: 'avK', right: printCalculateAvgK(record.right_eye_k1, record.right_eye_k2), left: printCalculateAvgK(record.left_eye_k1, record.left_eye_k2), unit: 'D' },
     { label: '轴率比', right: printCalculateAxialRatio(record.right_eye_axial_length, record.right_eye_k1, record.right_eye_k2), left: printCalculateAxialRatio(record.left_eye_axial_length, record.left_eye_k1, record.left_eye_k2), unit: '参考值 ≤3.0' },
-    { label: '近视临界点', right: printCalculateCriticalPoint(record.right_eye_k1, record.right_eye_k2), left: printCalculateCriticalPoint(record.left_eye_k1, record.left_eye_k2), unit: 'mm' },
-    { label: '角膜厚度', right: printFormatValue(record.right_cct), left: printFormatValue(record.left_cct), unit: 'μm' },
+    { label: '参考临界值', right: printCalculateCriticalPoint(record.right_eye_k1, record.right_eye_k2), left: printCalculateCriticalPoint(record.left_eye_k1, record.left_eye_k2), unit: '' },
+    { label: '角膜厚度', right: printFormatInt(record.right_cct), left: printFormatInt(record.left_cct), unit: 'μm' },
     { label: '前房深度', right: printFormatValue(record.right_anterior_chamber_depth), left: printFormatValue(record.left_anterior_chamber_depth), unit: 'mm' },
     { label: '晶体厚度', right: printFormatValue(record.right_lens_thickness), left: printFormatValue(record.left_lens_thickness), unit: 'mm' }
   ]}
@@ -4220,13 +4848,11 @@ const hasPageData = (pageKey, record) => {
   if (!record) return false;
   
   switch (pageKey) {
-    case 'page-2': // routine 页面
-      // routine 包含：基础检查、视力检查、电脑验光检查、主观验光检查
+    case 'page-2': // routine + 生物测量（生物测量紧跟视力检查下方）
       return (
-        // 基础检查（仅身高、体重、眼压；CCT 不参与，与概览一致）
+        // routine：基础检查、视力、电脑验光/主觉验光等同原 page-2
         hasMeaningfulRoutineValue(record.height) || hasMeaningfulRoutineValue(record.weight) ||
         hasMeaningfulRoutineValue(record.right_intraocular_pressure) || hasMeaningfulRoutineValue(record.left_intraocular_pressure) ||
-        // 视力检查
         hasFieldValue(record.right_eye_vision) || hasFieldValue(record.left_eye_vision) ||
         hasFieldValue(record.right_eye_old_vision) || hasFieldValue(record.left_eye_old_vision) ||
         hasFieldValue(record.uva_right_vision) || hasFieldValue(record.uva_left_vision) ||
@@ -4242,7 +4868,6 @@ const hasPageData = (pageKey, record) => {
         hasFieldValue(record.vaec_right_axis) || hasFieldValue(record.vaec_left_axis) ||
         hasFieldValue(record.vaec_both_pupil_distance) ||
         hasFieldValue(record.vaec_right_glasses_type) || hasFieldValue(record.vaec_left_glasses_type) ||
-        // 客观验光检查
         hasFieldValue(record.objective_right_spherical) || hasFieldValue(record.objective_left_spherical) ||
         hasFieldValue(record.objective_right_cylindrical) || hasFieldValue(record.objective_left_cylindrical) ||
         hasFieldValue(record.objective_right_axis) || hasFieldValue(record.objective_left_axis) ||
@@ -4253,7 +4878,6 @@ const hasPageData = (pageKey, record) => {
         hasFieldValue(record.pupillary_objective_right_cylindrical) || hasFieldValue(record.pupillary_objective_left_cylindrical) ||
         hasFieldValue(record.pupillary_objective_right_axis) || hasFieldValue(record.pupillary_objective_left_axis) ||
         hasFieldValue(record.pupillary_objective_right_pupil) || hasFieldValue(record.pupillary_objective_left_pupil) ||
-        // 主观验光检查
         hasFieldValue(record.subjective_right_spherical) || hasFieldValue(record.subjective_left_spherical) ||
         hasFieldValue(record.subjective_right_cylindrical) || hasFieldValue(record.subjective_left_cylindrical) ||
         hasFieldValue(record.subjective_right_axis) || hasFieldValue(record.subjective_left_axis) ||
@@ -4266,11 +4890,8 @@ const hasPageData = (pageKey, record) => {
         hasFieldValue(record.pupillary_subjective_right_spherical) || hasFieldValue(record.pupillary_subjective_left_spherical) ||
         hasFieldValue(record.pupillary_subjective_right_cylindrical) || hasFieldValue(record.pupillary_subjective_left_cylindrical) ||
         hasFieldValue(record.pupillary_subjective_right_axis) || hasFieldValue(record.pupillary_subjective_left_axis) ||
-        hasFieldValue(record.dominant_eye)
-      );
-    case 'page-3': // biometry 页面
-      // biometry 包含：生物测量仪检查
-      return (
+        hasFieldValue(record.dominant_eye) ||
+        // biometry（原 page-3）
         hasFieldValue(record.right_eye_axial_length) || hasFieldValue(record.left_eye_axial_length) ||
         hasFieldValue(record.right_eye_k1) || hasFieldValue(record.left_eye_k1) ||
         hasFieldValue(record.right_eye_k2) || hasFieldValue(record.left_eye_k2) ||
@@ -4280,7 +4901,7 @@ const hasPageData = (pageKey, record) => {
         hasFieldValue(record.right_vitreous_space_thickness) || hasFieldValue(record.left_vitreous_space_thickness) ||
         hasFieldValue(record.right_oct_fovea) || hasFieldValue(record.left_oct_fovea)
       );
-    case 'page-4': // functional 页面
+    case 'page-3': // functional 页面（原 page-4）
       // functional 包含：眼位和聚散检查、调节检查、其他相关检查、同视机检查
       return (
         // 眼位和聚散检查
@@ -4307,10 +4928,10 @@ const hasPageData = (pageKey, record) => {
         hasFieldValue(record.synoptophore_grade_I) || hasFieldValue(record.synoptophore_grade_II) ||
         hasFieldValue(record.synoptophore_grade_III)
       );
-    case 'page-6': // analysis 页面（结果分析）
+    case 'page-5': // analysis 页面（原 page-6）
       // 结果分析页面：只要有检查记录就可以显示，不依赖特定字段
       return true;
-    case 'page-5': { // img 页面
+    case 'page-4': { // img 页面（原 page-5）
       // img 包含：角膜地形图、眼底照相、眼底OCT（包括双眼和多图模式）
       // 检查OCT多图模式
       if (record.images?.oct && Array.isArray(record.images.oct) && record.images.oct.length > 0) {
@@ -4412,7 +5033,7 @@ const hasSectionData = (sectionKey, record) => {
         record.vaec_right_old_vision || record.vaec_left_old_vision
       );
     case 'objective-refraction':
-      // 客观验光检查：有任一客观验光数据就显示
+      // 电脑验光检查：有任一电脑验光数据就显示
       return !!(
         record.objective_right_spherical || record.objective_left_spherical ||
         record.objective_right_cylindrical || record.objective_left_cylindrical ||
@@ -4423,7 +5044,7 @@ const hasSectionData = (sectionKey, record) => {
         record.pupillary_objective_left_spherical
       );
     case 'subjective-refraction':
-      // 主观验光检查：有任一主观验光数据就显示
+      // 主觉验光检查：有任一主觉验光数据就显示
       return !!(
         record.subjective_right_spherical || record.subjective_left_spherical ||
         record.subjective_right_cylindrical || record.subjective_left_cylindrical ||
@@ -4470,15 +5091,27 @@ const hasSectionData = (sectionKey, record) => {
         record.accommodative_facility || record.accommodative_response
       );
     case 'other-related':
-      // 其他相关检查：有任一相关数据就显示
+      // 其他相关检查：综合验光仪 + 四孔灯（任一有值即显示）
       return !!(
-        record.worth_4_type || record.stereopsis_testing || record.aniseikonia ||
-        record.alternate_cover_test
+        hasFieldValue(record.worth_4_type) || hasFieldValue(record.stereopsis_testing) || hasFieldValue(record.aniseikonia) ||
+        hasFieldValue(record.alternate_cover_test) ||
+        // 四孔灯（2m / 40cm / 抑制）
+        hasFieldValue(record.check_distance_2m) || hasFieldValue(record.check_distance_40cm) ||
+        hasFieldValue(record.dominant_eye_color_2m) || hasFieldValue(record.dominant_eye_color_40cm) ||
+        hasFieldValue(record.horizontal_option_2m) || hasFieldValue(record.vertical_option_2m) ||
+        hasFieldValue(record.horizontal_option_40cm) || hasFieldValue(record.vertical_option_40cm) ||
+        hasFieldValue(record.value) ||
+        hasFieldValue(record.right_eye_suppression_type) || hasFieldValue(record.right_eye_suppression_distance) || hasFieldValue(record.right_eye_suppression_direction) ||
+        hasFieldValue(record.left_eye_suppression_type) || hasFieldValue(record.left_eye_suppression_distance) || hasFieldValue(record.left_eye_suppression_direction) ||
+        hasFieldValue(record.alternate_suppression_distance) || hasFieldValue(record.alternate_suppression_direction)
       );
     case 'synoptophore':
       // 同视机检查：有任一同视机数据就显示
       return !!(
-        record.synoptophore_grade_I || record.synoptophore_grade_II || record.synoptophore_grade_III
+        hasFieldValue(record.synoptophore_grade_I) || hasFieldValue(record.synoptophore_grade_II) || hasFieldValue(record.synoptophore_grade_III) ||
+        hasFieldValue(record.synoptophore_level1_sign) || hasFieldValue(record.synoptophore_level1_value) ||
+        hasFieldValue(record.synoptophore_level2_positive) || hasFieldValue(record.synoptophore_level2_negative) ||
+        hasFieldValue(record.synoptophore_level3_stereo) || hasFieldValue(record.synoptophore_level3_value)
       );
     case 'img': {
       // 影像检查：有任一影像数据就显示（包含三个子板块：角膜地形图、眼底照相、眼底OCT）
@@ -4630,6 +5263,252 @@ const hasSectionData = (sectionKey, record) => {
   }
 };
 
+/** 视功能中「检查结果」页：仅眼位/聚散、AC/A、调节（不含其他相关、同视机） */
+function hasFunctionalCoreData(record) {
+  if (!record) return false;
+  return !!(
+    record.eye_position || record.aca_ratio ||
+    record.pli_exo_distance_lateral_phoria || record.plo_eso_distance_lateral_phoria ||
+    record.pli_exo_near_lateral_phoria || record.plo_eso_near_lateral_phoria ||
+    record.fusional_convergence_distance_blur || record.fusional_convergence_near_blur ||
+    record.fusional_convergence_distance_break || record.fusional_convergence_near_break ||
+    record.fusional_convergence_distance_recovery || record.fusional_convergence_near_recovery ||
+    record.fusional_disvergence_distance_blur || record.fusional_disvergence_near_blur ||
+    record.fusional_disvergence_distance_break || record.fusional_disvergence_near_break ||
+    record.fusional_disvergence_distance_recovery || record.fusional_disvergence_near_recovery ||
+    record.positive_relative_accommodation || record.negative_relative_accommodation ||
+    record.positive_relative_accommodation_blur || record.positive_relative_accommodation_recovery ||
+    record.negative_relative_accommodation_blur || record.negative_relative_accommodation_recovery ||
+    record.accommodative_amplitude_right || record.accommodative_amplitude_left ||
+    record.accommodation_amplitude_style ||
+    record.accommodative_facility || record.accommodative_response
+  );
+}
+
+function hasImagingRadiologyData(record) {
+  if (!record) return false;
+  return (
+    hasSectionData('img-topography', record) ||
+    hasSectionData('img-fundus', record) ||
+    hasSectionData('img-oct', record)
+  );
+}
+
+function navTabHasData(tabKey, record) {
+  if (tabKey === 'history') return (props.sortedRecords || []).length > 0;
+  if (tabKey === 'clinical') return true;
+  if (!record) return false;
+  if (tabKey === 'exam-results') {
+    return !!(
+      hasSectionData('routine', record) ||
+      hasSectionData('vision', record) ||
+      hasSectionData('objective-refraction', record) ||
+      hasSectionData('subjective-refraction', record) ||
+      hasFunctionalCoreData(record) ||
+      hasSectionData('biometry', record)
+    );
+  }
+  if (tabKey === 'imaging') {
+    return hasImagingRadiologyData(record) || hasSectionData('img-other', record);
+  }
+  if (tabKey === 'related') {
+    return !!(
+      hasSectionData('other-related', record) ||
+      hasSectionData('synoptophore', record)
+    );
+  }
+  return false;
+}
+
+function componentShowOnlySection(sectionKey) {
+  if (viewMode.value === 'print') return null;
+  // 整页编辑（左侧记录列表）：子组件不裁剪
+  if (viewMode.value === 'edit' && scopedEditNavTab.value == null) return null;
+  if (viewMode.value !== 'view' && viewMode.value !== 'edit') return null;
+
+  const tab = selectedExamNavTab.value;
+  if (sectionKey === 'routine' && tab === 'exam-results') return null;
+  if (sectionKey === 'functional' && tab === 'exam-results') return 'functional-core';
+  if (sectionKey === 'functional' && tab === 'related') return 'related-functional';
+  // 影像检查：角膜地形图、眼底照相、OCT、其他检查（「其他检查」仅在此标签下展示，不出现在「相关检查诊断」）
+  if (sectionKey === 'img' && tab === 'imaging') return 'img-imaging-tab';
+  return null;
+}
+
+/**
+ * 按顶部主标签决定某 section 是否属于当前页。
+ * @param editScoped 工具栏「局部编辑」时为 true：始终展示该标签下的板块（无数据也可录入）；查看模式仍按 hasData 过滤。
+ */
+function shouldShowSectionForNavTab(sectionKey, tab, rec, editScoped = false) {
+  if (tab === 'clinical') {
+    return false;
+  }
+  if (tab === 'exam-results') {
+    if (sectionKey === 'routine' || sectionKey === 'biometry') {
+      return editScoped || hasSectionData(sectionKey, rec);
+    }
+    if (sectionKey === 'functional') {
+      return editScoped || hasFunctionalCoreData(rec);
+    }
+    return false;
+  }
+  if (tab === 'imaging') {
+    if (sectionKey !== 'img') return false;
+    return editScoped || hasImagingRadiologyData(rec) || hasSectionData('img-other', rec);
+  }
+  if (tab === 'related') {
+    if (sectionKey === 'functional') {
+      return editScoped || !!(hasSectionData('other-related', rec) || hasSectionData('synoptophore', rec));
+    }
+    if (sectionKey === 'analysis') {
+      return false;
+    }
+    return false;
+  }
+  return false;
+}
+
+const shouldShowSection = (sectionKey) => {
+  if (viewMode.value === 'print') {
+    return true;
+  }
+  // 整页编辑：挂载全部板块，由子组件内部展示
+  if (viewMode.value === 'edit' && scopedEditNavTab.value == null) {
+    return true;
+  }
+  const editScoped = viewMode.value === 'edit' && scopedEditNavTab.value !== null;
+  return shouldShowSectionForNavTab(sectionKey, selectedExamNavTab.value, props.currentRecord, editScoped);
+};
+
+/** 诊断+医嘱+诊疗方案合并区：查看时仅临床标签；局部编辑时仅当前主标签为临床时显示（避免编辑其他标签时仍出现诊断区） */
+const showMergedClinicalShell = computed(() => {
+  if (viewMode.value === 'print') return false;
+  if (viewMode.value === 'view') {
+    return selectedExamNavTab.value === 'clinical';
+  }
+  if (viewMode.value === 'edit') {
+    if (scopedEditNavTab.value == null) return true;
+    return selectedExamNavTab.value === 'clinical';
+  }
+  return false;
+});
+
+/** 诊断/医嘱/诊疗方案块：在局部编辑且当前不是「诊断」主标签时为只读 */
+const effectiveClinicalViewMode = computed(() => {
+  if (viewMode.value === 'print') return 'print';
+  if (viewMode.value !== 'edit') return viewMode.value;
+  if (scopedEditNavTab.value == null) return 'edit';
+  return scopedEditNavTab.value === 'clinical' ? 'edit' : 'view';
+});
+
+watch(
+  () => [props.currentRecord?.id, props.selectedRecordId],
+  () => {
+    resetDiagnosisDraftLines();
+  }
+);
+
+watch(
+  () => effectiveClinicalViewMode.value,
+  (mode) => {
+    if (mode === 'edit') {
+      nextTick(() => ensureDiagnosisDraftSeedRow());
+    } else {
+      diagnosisDraftLines.value = [];
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => diagnosisRecordsForCurrentExam.value.map((r) => r.id).join(','),
+  () => {
+    if (effectiveClinicalViewMode.value !== 'edit') return;
+    if (diagnosisRecordsForCurrentExam.value.length === 0) {
+      nextTick(() => ensureDiagnosisDraftSeedRow());
+    } else {
+      diagnosisDraftLines.value = diagnosisDraftLines.value.filter(
+        (d) => String(d.diagnosis_detail || '').trim() !== ''
+      );
+    }
+  }
+);
+
+/** 各 section 子组件收到的 view-mode：局部编辑时仅当前主标签下的板块为 edit */
+function effectiveSectionViewMode(sectionKey) {
+  if (viewMode.value === 'print') return 'print';
+  if (viewMode.value !== 'edit') return viewMode.value;
+  if (scopedEditNavTab.value == null) return 'edit';
+  const t = scopedEditNavTab.value;
+  if (t === 'clinical') return 'view';
+  if (t === 'exam-results') {
+    if (sectionKey === 'routine' || sectionKey === 'biometry' || sectionKey === 'functional') return 'edit';
+    return 'view';
+  }
+  if (t === 'imaging') {
+    return sectionKey === 'img' ? 'edit' : 'view';
+  }
+  if (t === 'related') {
+    if (sectionKey === 'functional' || sectionKey === 'analysis') return 'edit';
+    return 'view';
+  }
+  return 'view';
+}
+
+/** 工具栏「编辑」：仅解锁当前主标签对应内容；切换主标签时随 selectedExamNavTab 同步范围 */
+const handleExamNavTabEdit = (key) => {
+  if (key === 'history') {
+    message.info('历史记录标签仅支持查看');
+    return;
+  }
+  if (!props.selectedRecordId || !props.currentRecord?.id) {
+    message.warning('请先选择一条检查记录');
+    return;
+  }
+  onExamNavTabClick(key);
+  if (viewMode.value === 'edit' && editingRecordId.value === props.currentRecord.id) {
+    scopedEditNavTab.value = key;
+    return;
+  }
+  handleEditRecord(props.currentRecord, key);
+};
+
+/** 子标签「保存」：与左侧记录保存一致，提交当前编辑中的整份检查 */
+const handleExamNavTabSave = () => {
+  return handleSaveCurrentRecord();
+};
+
+const onExamNavTabClick = (key) => {
+  selectedExamNavTab.value = key;
+  nextTick(() => {
+    if (key === 'clinical') {
+      document.getElementById('style-two-section-diagnosis')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (key === 'exam-results') {
+      document.getElementById('style-two-section-exam-results-unified')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (key === 'history') {
+      document.getElementById('style-two-section-history-records')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (key === 'imaging') {
+      document.getElementById('style-two-section-img')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (key === 'related') {
+      const rec = props.currentRecord;
+      const funcEl = document.getElementById('style-two-section-functional');
+      if (funcEl && rec && (hasSectionData('other-related', rec) || hasSectionData('synoptophore', rec))) {
+        funcEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      document.getElementById('style-two-section-analysis')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+};
+
 // 根据当前记录数据，过滤出有数据的打印板块选项
 const availablePrintSections = computed(() => {
   if (!props.currentRecord) return [];
@@ -4695,7 +5574,7 @@ const styleTwoPages = computed(() => {
 <style scoped lang="scss">
 /* 患者主页根：固定高度，与 main 可见视窗一致，下缘不超出；顶部与下方共用变量保证总宽一致 */
 .style-two-root {
-  --layout-padding-x: clamp(24px, 3vw, 48px);
+  --layout-padding-x: clamp(18px, 2.5vw, 40px);
   --layout-gap: clamp(8px, 1vw, 14px);
   width: 100%;
   max-width: 100%;
@@ -4747,14 +5626,16 @@ const styleTwoPages = computed(() => {
   background-attachment: fixed;
 }
 
-// 顶部栏：左右比例及间距与下方 style-two-layout 一致
+// 顶部栏：与下方主区同宽对齐（仅患者信息；操作按钮在主区工具栏）
 .top-bar-unified {
   position: sticky;
   top: 0;
   z-index: 100;
   flex-shrink: 0;
-  display: grid;
-  grid-template-columns: clamp(330px, 30vw, 560px) minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
   gap: var(--layout-gap);
   padding: 8px var(--layout-padding-x) 10px;
   margin: 0 0 8px 0;
@@ -4774,53 +5655,146 @@ const styleTwoPages = computed(() => {
   align-items: center;
   justify-content: flex-start;
   min-width: 0;
+  max-width: 100%;
+  overflow: visible;
 }
 
-.top-bar-right {
+.top-bar-unified__inner {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.top-bar-right .top-bar-actions {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.top-bar-right .top-bar-nav-buttons {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  min-width: 0;
+  justify-content: space-between;
+  gap: 10px 14px;
   width: 100%;
 }
 
-.top-bar-nav-buttons::-webkit-scrollbar {
-  height: 3px;
+.top-bar-left--grow {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.top-bar-nav-buttons::-webkit-scrollbar-thumb {
-  background: rgba(34, 75, 150, 0.2);
+.top-bar-patient-tags {
+  flex: 0 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: min(46%, 560px);
+}
+
+.patient-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  max-width: 148px;
+  min-height: 34px;
+  padding: 4px 6px 4px 10px;
+  margin: 0;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  background: #fafafa;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  box-sizing: border-box;
+}
+
+.patient-tag-chip:hover {
+  border-color: #e27244;
+  color: #c45d2e;
+}
+
+.patient-tag-chip--active {
+  background: #e27244;
+  border-color: #c45d2e;
+  color: #fff;
+}
+
+.patient-tag-chip--active:hover {
+  background: #f09060;
+  border-color: #e27244;
+  color: #fff;
+}
+
+.patient-tag-chip__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patient-tag-chip__close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  padding: 0;
   border-radius: 2px;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.8;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
 }
 
-/* 患者基本信息：无底色，两行三列，label 列垂直对齐 */
+.patient-tag-chip__close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.patient-tag-chip--active .patient-tag-chip__close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* 主区：标签行 + 右侧操作按钮（行高略增，内容垂直居中） */
+.style-two-main-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  min-height: 48px;
+  padding: 8px 4px 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(34, 75, 150, 0.12);
+  box-sizing: border-box;
+}
+
+.style-two-main-toolbar__nav-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  align-self: center;
+}
+
+.style-two-main-toolbar__actions {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+}
+
+/* 患者基本信息：单行优先，空间不足时自动换行，禁止压缩导致字叠在一起 */
 .top-bar-info-inner {
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  gap: 6px 48px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: clamp(16px, 2vw, 28px);
+  row-gap: 8px;
   padding: 0;
   margin: 0;
-  align-content: start;
 }
 
 .top-bar-info-inner .info-row {
@@ -4832,7 +5806,10 @@ const styleTwoPages = computed(() => {
   align-items: baseline;
   gap: 0;
   white-space: nowrap;
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .top-bar-info-inner .info-label {
@@ -4843,20 +5820,17 @@ const styleTwoPages = computed(() => {
   font-weight: 400;
 }
 
-/* 每列 label 统一最小宽度，实现垂直对齐：列1 姓名/年龄，列2 性别/患者编号，列3 出生年月/档案编号 */
+/* 六项顺序：姓名、性别、出生年月、患者编号、档案编号、年龄 */
 .top-bar-info-inner .info-item:nth-child(1) .info-label,
-.top-bar-info-inner .info-item:nth-child(4) .info-label {
+.top-bar-info-inner .info-item:nth-child(2) .info-label,
+.top-bar-info-inner .info-item:nth-child(6) .info-label {
   min-width: 2.5em;
   display: inline-block;
 }
-.top-bar-info-inner .info-item:nth-child(2) .info-label,
-.top-bar-info-inner .info-item:nth-child(5) .info-label {
-  min-width: 5em;
-  display: inline-block;
-}
 .top-bar-info-inner .info-item:nth-child(3) .info-label,
-.top-bar-info-inner .info-item:nth-child(6) .info-label {
-  min-width: 5em;
+.top-bar-info-inner .info-item:nth-child(4) .info-label,
+.top-bar-info-inner .info-item:nth-child(5) .info-label {
+  min-width: 4.5em;
   display: inline-block;
 }
 
@@ -4885,20 +5859,23 @@ const styleTwoPages = computed(() => {
   font-size: 13px;
 }
 
-.top-bar-nav-btn,
-.action-btn-text {
+.style-two-main-toolbar__actions .action-btn-text {
   font-size: 13px !important;
-  padding: 0 10px !important;
-  height: 28px !important;
-  line-height: 26px !important;
+  padding: 0 14px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-/* 左右两列区域：无左右 padding，使 aside 左侧、content 右侧与 layout 左右缘对齐，中间间隙不变 */
+/* 主区全宽；右侧检查记录为悬浮抽屉，叠在主区之上 */
 .style-two-layout {
   display: grid;
-  grid-template-columns: clamp(330px, 30vw, 560px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  gap: var(--layout-gap);
+  gap: 0;
   align-items: stretch;
   width: 100% !important;
   max-width: 100% !important;
@@ -4908,6 +5885,89 @@ const styleTwoPages = computed(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  position: relative;
+}
+
+/* 检查记录悬浮抽屉（贴右侧）：默认仅露出手柄，悬停或固定时向左滑出面板 */
+.style-two-exam-flyout {
+  /* 检查记录面板宽度：略加宽，便于两列诊疗方案 chip 与长文案 */
+  --exam-flyout-panel-w: clamp(340px, 38vw, 680px);
+  --exam-flyout-handle-w: 18px;
+  grid-column: 1;
+  grid-row: 1;
+  position: absolute;
+  left: auto;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 55;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: stretch;
+  width: calc(var(--exam-flyout-panel-w) + var(--exam-flyout-handle-w));
+  max-width: min(92vw, calc(var(--exam-flyout-panel-w) + var(--exam-flyout-handle-w)));
+  transform: translateX(var(--exam-flyout-panel-w));
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+  filter: drop-shadow(-4px 0 18px rgba(15, 23, 42, 0.12));
+}
+
+.style-two-exam-flyout--open {
+  transform: translateX(0);
+}
+
+.style-two-exam-flyout__aside.style-two-side {
+  width: var(--exam-flyout-panel-w);
+  flex: 0 0 var(--exam-flyout-panel-w);
+  max-width: var(--exam-flyout-panel-w);
+  border-radius: 0 clamp(10px, 1.2vw, 14px) clamp(10px, 1.2vw, 14px) 0;
+}
+
+.style-two-exam-flyout__handle {
+  flex: 0 0 var(--exam-flyout-handle-w);
+  width: var(--exam-flyout-handle-w);
+  align-self: center;
+  height: 112px;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  background: #1a1a1e;
+  border-radius: 999px 0 0 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-right: none;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.style-two-exam-flyout__handle:hover {
+  background: #242428;
+  box-shadow: -2px 0 14px rgba(0, 0, 0, 0.22);
+}
+
+.style-two-exam-flyout__handle--pinned {
+  background: #224b96;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.style-two-exam-flyout__handle--pinned:hover {
+  background: #2d5cb5;
+}
+
+.style-two-exam-flyout__grip {
+  display: block;
+  width: 3px;
+  height: 32px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.style-two-main--full {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
 }
 
 /* 左侧栏：高度由 grid 限定，不随右侧变高，仅检查记录列表内部滚动 */
@@ -4928,19 +5988,12 @@ const styleTwoPages = computed(() => {
   align-self: stretch;
 }
 
-/* 左侧栏上下分布：诊断记录固定，检查记录列表占据剩余高度并独立滚动 */
+/* 左侧栏：检查记录列表占据全高并独立滚动 */
 .side-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-height: 0;
-}
-.side-panel-diagnosis {
-  flex: 0 1 auto;
-  min-height: 164px; /* 原 140px + 一行（日期行）约 24px */
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 .side-panel-examination {
   flex: 1 1 0;
@@ -4964,48 +6017,28 @@ const styleTwoPages = computed(() => {
   padding: 0 4px;
   font-size: 12px;
 }
-/* 横向日期条：可横向滚动，点击切换当前诊断 */
-.diagnosis-date-bar {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 4px 0 6px;
-  margin: 0 -2px;
+
+/* 左侧「检查记录」同行：标题左对齐，「新增检查记录」靠最右（继承 .side-panel-title 的 space-between） */
+.side-panel-add-btn--examination {
+  padding: 2px 10px !important;
+  margin: 0 !important;
   flex-shrink: 0;
-  scrollbar-width: thin;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #224b96 !important;
+  height: auto !important;
+  min-height: 28px !important;
+  line-height: 1.4 !important;
+  border: 1px solid #224b96 !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  box-shadow: none !important;
 }
-.diagnosis-date-bar::-webkit-scrollbar {
-  height: 4px;
-}
-.diagnosis-date-bar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 2px;
-}
-.diagnosis-date-bar::-webkit-scrollbar-thumb {
-  background: rgba(34, 75, 150, 0.3);
-  border-radius: 2px;
-}
-.diagnosis-date-chip {
-  flex-shrink: 0;
-  padding: 6px 12px;
-  font-size: 12px;
-  color: #5a6c7d;
-  background: #f0f4f8;
-  border-radius: 8px;
-  cursor: pointer;
-  white-space: nowrap;
-  border: 1px solid transparent;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
-}
-.diagnosis-date-chip:hover {
-  background: #e8eef5;
-  color: #224b96;
-}
-.diagnosis-date-chip.active {
-  background: #224b96;
-  color: #fff;
-  border-color: #224b96;
+.side-panel-add-btn--examination:hover,
+.side-panel-add-btn--examination:focus {
+  color: #1890ff !important;
+  border-color: #1890ff !important;
+  background: #f4f8ff !important;
 }
 .diagnosis-list {
   flex: 1 1 0;
@@ -5034,6 +6067,327 @@ const styleTwoPages = computed(() => {
   padding: 16px 0;
   text-align: center;
 }
+
+/* 诊断 + 医生建议 + 诊疗方案合并卡片（字号与 RoutineExamStyleTwo 基础检查一致） */
+.style-two-merged-clinical {
+  --exr-font-body: 11px;
+  --exr-font-table: 12px;
+  --exr-font-section-title: 16px;
+  /* 与 src/assets/styles/exam-sheet.css 视光/检查单表体填写内容一致 */
+  --exr-sheet-font: "PingFang SC", "Microsoft YaHei", sans-serif;
+  --exr-sheet-text: #2a3542;
+  text-align: left;
+  border: 1px solid #e4eaf4;
+  border-radius: 10px;
+  background: #fcfdff;
+  padding: clamp(8px, 1.2vw, 14px) clamp(12px, 1.5vw, 18px) clamp(12px, 1.5vw, 18px);
+  margin-bottom: clamp(12px, 1.5vw, 18px);
+  box-shadow: 0 1px 3px rgba(34, 75, 150, 0.06);
+}
+/* 诊断与下方诊疗方案之间的分割线（与 clinical-edit-mockup 页眉/方案区线条一致） */
+.style-two-merged-clinical__diagnosis:not(:last-child) {
+  padding-bottom: 10px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid #e4eaf4;
+}
+.style-two-merged-clinical__diagnosis {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.style-two-merged-clinical__page-one {
+  min-width: 0;
+}
+.style-two-merged-clinical__subhead:not(.style-two-merged-clinical__subhead--dx-mockup) {
+  border-bottom: 1px solid #e0e6f5;
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+/* 「诊断 Dx：」与上方「距上一条检查间隔时间」行同字号（--exr-font-body） */
+.style-two-merged-clinical__dx-title {
+  font-size: var(--exr-font-body);
+  font-weight: 600;
+  color: #555;
+  line-height: 1.35;
+  font-family: inherit;
+  letter-spacing: normal;
+  flex-shrink: 0;
+}
+
+/* 诊断列表：查看模式三列网格（日期随当前检查记录，不单独列） */
+.diagnosis-inline-wrap {
+  width: 100%;
+  min-width: 0;
+}
+.diagnosis-inline-row {
+  display: grid;
+  grid-template-columns: 30px minmax(160px, 1fr) 52px;
+  gap: 6px 4px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+@media (max-width: 1100px) {
+  .diagnosis-inline-row {
+    grid-template-columns: 28px minmax(120px, 1fr) 44px;
+  }
+}
+.diagnosis-inline-row:last-child {
+  border-bottom: none;
+}
+/* 诊断编辑：诊断 Dx 下「序号、下划线输入、行尾 +」 */
+.diagnosis-dx-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding-top: 0;
+}
+.diagnosis-dx-line {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* + / − 与分隔符：整体外框，与眼别分段按钮风格一致 */
+.diagnosis-dx-actions-box {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  flex-shrink: 0;
+  border: 1px solid #d4dce8;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fcfdff;
+  box-sizing: border-box;
+}
+
+.diagnosis-dx-actions-box .diagnosis-dx-tail {
+  width: auto;
+  min-width: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #e4eaf4;
+  padding: 0 1px;
+  box-sizing: border-box;
+}
+
+.diagnosis-dx-actions-box .diagnosis-dx-action {
+  border-radius: 0;
+  align-self: center;
+}
+
+.diagnosis-dx-action {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  padding: 0;
+}
+
+.diagnosis-dx-action :deep(.anticon),
+.diagnosis-dx-action .anticon {
+  font-size: 8px;
+  line-height: 1;
+}
+
+.diagnosis-dx-action--delete {
+  color: #f05a5c;
+}
+
+.diagnosis-dx-action--delete:hover {
+  background: #fff2f2;
+  border-color: #ffd7d7;
+  color: #e64548;
+}
+
+.diagnosis-dx-action--add {
+  color: #224b96;
+  line-height: 1;
+}
+
+.diagnosis-dx-action--add:hover:not(:disabled) {
+  background: #eef4ff;
+  border-color: #d7e3f8;
+  color: #1b3f82;
+}
+
+.diagnosis-dx-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.diagnosis-dx-idx {
+  flex-shrink: 0;
+  font-size: var(--exr-font-body);
+  font-weight: 600;
+  color: #333;
+  line-height: 1.35;
+}
+/* 下划线约为原先「占满剩余空间」的一半宽度：约 35% 行宽；淡黑色底线 */
+.diagnosis-dx-input-cell {
+  flex: 0 0 35%;
+  max-width: 35%;
+  min-width: 96px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 0 2px 3px;
+  box-sizing: border-box;
+}
+.diagnosis-dx-input.ant-input {
+  padding: 2px 0 !important;
+  font-family: "SimSun", "宋体", serif !important;
+  font-size: var(--exr-font-body) !important;
+  font-weight: 600 !important;
+  color: #333 !important;
+  line-height: 1.35 !important;
+}
+.diagnosis-dx-input.ant-input::placeholder {
+  color: #bfbfbf;
+}
+.diagnosis-dx-tail {
+  flex-shrink: 0;
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 数据行序号列：与只读列表正文同一行垂直居中 */
+.diagnosis-inline-row .col-idx {
+  text-align: center;
+  padding-top: 0;
+  font-size: var(--exr-font-body);
+  font-weight: 400;
+  color: #333;
+  line-height: 1.35;
+}
+/* 编辑行：日期/输入框与只读态正文字体一致 */
+.diagnosis-inline-wrap :deep(.ant-picker) {
+  font-size: var(--exr-font-body);
+}
+.diagnosis-inline-wrap :deep(.ant-picker-input > input) {
+  font-size: var(--exr-font-body) !important;
+  color: #333 !important;
+  line-height: 1.5 !important;
+}
+.diagnosis-inline-wrap :deep(.ant-input),
+.diagnosis-inline-wrap :deep(textarea.ant-input) {
+  font-family: "SimSun", "宋体", serif !important;
+  font-size: var(--exr-font-body) !important;
+  font-weight: 600 !important;
+  color: #333 !important;
+  line-height: 1.35 !important;
+}
+.diagnosis-inline-wrap .col-act {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding-top: 4px;
+}
+
+.diagnosis-inline-row--readonly {
+  font-size: var(--exr-font-body);
+  color: #333;
+  font-family: "SimSun", "宋体", serif;
+  font-weight: 600;
+}
+.diagnosis-readonly-cell {
+  padding-top: 0;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.diagnosis-readonly-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "SimSun", "宋体", serif;
+  font-size: var(--exr-font-body);
+  font-weight: 600;
+  color: #333;
+  line-height: 1.35;
+}
+.diagnosis-empty-inline {
+  text-align: center;
+  color: #999;
+  font-size: var(--exr-font-body);
+  padding: 16px 8px;
+}
+.style-two-merged-clinical__subhead--dx-mockup {
+  align-items: baseline;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+  flex-shrink: 0;
+}
+
+.side-panel-add-btn--diagnosis {
+  padding: 1px 8px !important;
+  height: 24px !important;
+  line-height: 1.2 !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+}
+/* 覆盖全局 .side-panel-title 的下划线区占位 */
+.style-two-merged-clinical__diagnosis > .side-panel-title.style-two-merged-clinical__subhead--dx-mockup {
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+/* 诊断列表相对「诊断 Dx：」标题向右缩进两格（中文排版习惯，约 2em） */
+.style-two-merged-clinical__diagnosis .diagnosis-inline-wrap {
+  flex: 1;
+  min-width: 0;
+  padding-left: 0;
+  box-sizing: border-box;
+}
+
+.style-two-diagnosis-in-main {
+  text-align: left;
+  margin-bottom: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8eef5;
+}
+.style-two-diagnosis-in-main__title {
+  border-bottom: 1px solid #e0e6f5;
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+.diagnosis-list--in-main {
+  min-height: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diagnosis-entry--in-main {
+  margin: 0;
+}
+
+.style-two-pick-record-hint {
+  padding: 24px 16px 40px;
+  text-align: center;
+}
+.style-two-pick-record-hint__title {
+  font-size: 16px;
+  color: #999;
+  margin-bottom: 8px;
+}
+.style-two-pick-record-hint__sub {
+  font-size: 14px;
+  color: #ccc;
+}
+
 .diagnosis-entry {
   border-radius: 8px;
   background: #f8fafc;
@@ -5248,6 +6602,17 @@ const styleTwoPages = computed(() => {
   font-weight: 600;
   color: #224b96;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 6px;
+}
+
+.entry-date__dxrx {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ff4d4f;
+  letter-spacing: 0.02em;
 }
 
 .entry-axial-comparison {
@@ -5321,6 +6686,45 @@ const styleTwoPages = computed(() => {
   max-height: none;
 }
 
+/* 与主区「诊疗方案 Rx」编号列表一致（检查记录卡片第三行）：两列 + 略大字号 */
+.treatment-scheme-rx-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+  width: 100%;
+  align-items: start;
+}
+
+.treatment-scheme-rx-card__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.treatment-scheme-rx-card__idx {
+  flex-shrink: 0;
+  color: #000;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.treatment-scheme-rx-card__chip {
+  border: 1px solid #d4def1;
+  background: #f8fbff;
+  color: #333;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1.45;
+  border-radius: 999px;
+  padding: 3px 10px;
+  word-break: break-word;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1;
+}
+
 .treatment-plan-content {
   display: flex;
   align-items: center;
@@ -5334,7 +6738,7 @@ const styleTwoPages = computed(() => {
 
 .treatment-eye-item {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 6px;
   line-height: 1.6;
   flex: 1;
@@ -5439,23 +6843,20 @@ const styleTwoPages = computed(() => {
 
 // 右侧悬浮窗已移到顶部导航栏，样式已移除
 
-/* 右侧检查详情区域：严格限制在父容器内，超出则本区域内部滚动 */
+/* 右侧检查详情区域：与左侧分栏对齐；有选中记录时由下方结果区滚动 */
 .style-two-main {
-  display: block;
+  display: flex;
+  flex-direction: column;
   width: 100% !important;
   max-width: 100% !important;
   min-height: 0;
   height: 100%;
   max-height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   touch-action: pan-y;
   padding-right: clamp(4px, 0.5vw, 8px);
   box-sizing: border-box;
   position: relative;
-  scroll-behavior: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
   align-self: stretch;
   background: 
     linear-gradient(
@@ -5466,22 +6867,130 @@ const styleTwoPages = computed(() => {
     );
 }
 
-.style-two-main::-webkit-scrollbar {
+.style-two-main > .style-two-empty {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.style-two-main-split {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.style-two-exam-nav {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  border-bottom: none;
+  text-align: left;
+}
+
+.style-two-exam-nav__exam-date {
+  flex-shrink: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: #595959;
+  white-space: nowrap;
+  padding-right: 4px;
+}
+
+.exam-nav-btn {
+  box-sizing: border-box;
+  border: 1px solid #d9d9d9;
+  background: #fff;
+  border-radius: 6px;
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 13px;
+  line-height: 1.35;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  color: #224b96;
+}
+
+.exam-nav-btn--active {
+  border-color: #224b96;
+  background: linear-gradient(135deg, #224b96 0%, #3b6db8 100%);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(34, 75, 150, 0.25);
+}
+
+.exam-nav-btn--dim:not(.exam-nav-btn--active) {
+  color: #bfbfbf;
+  border-color: #e8e8e8;
+  background: #fafafa;
+}
+
+.exam-nav-btn:hover:not(.exam-nav-btn--active) {
+  border-color: #224b96;
+  color: #224b96;
+}
+
+.exam-nav-btn--dim:hover:not(.exam-nav-btn--active) {
+  color: #8c8c8c;
+  border-color: #d9d9d9;
+}
+
+.style-two-result-area {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-right: 2px;
+}
+
+/* 窄屏：允许横向滚动查看宽表（与内层 .exam-sheet-wrap 叠加，避免内容被裁切） */
+@media (max-width: 1199px) {
+  .style-two-result-area {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}
+
+.style-two-result-area::-webkit-scrollbar {
   width: 8px;
 }
 
-.style-two-main::-webkit-scrollbar-track {
+.style-two-result-area::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
 }
 
-.style-two-main::-webkit-scrollbar-thumb {
+.style-two-result-area::-webkit-scrollbar-thumb {
   background: rgba(34, 75, 150, 0.3);
   border-radius: 4px;
 }
 
-.style-two-main::-webkit-scrollbar-thumb:hover {
+.style-two-result-area::-webkit-scrollbar-thumb:hover {
   background: rgba(34, 75, 150, 0.5);
+}
+
+/* 编辑模式：隐藏主内容区右侧滚动条，保留滚轮/触控滚动（与查看/打印区分） */
+.style-two-root--edit .style-two-result-area {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-right: 0;
+}
+
+.style-two-root--edit .style-two-result-area::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .style-two-content {
@@ -5501,6 +7010,20 @@ const styleTwoPages = computed(() => {
   box-shadow: 
     0 4px 20px rgba(34, 75, 150, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.style-two-content.style-two-content--split {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  /* 结果区单独保留居中，导航条左对齐 */
+  text-align: left;
+}
+
+.style-two-content.style-two-content--split .style-two-result-area {
+  text-align: center;
 }
 
 // 内容导航按钮栏
@@ -6023,12 +7546,212 @@ const styleTwoPages = computed(() => {
   height: auto;
   min-height: auto;
   position: relative;
-  /* 整体放大内容 */
-  font-size: 1.15em; // 放大15%
+  /* 大屏略放大；窄屏随视口收缩，避免与缩放表格叠乘后过小或溢出 */
+  font-size: clamp(0.92em, 0.35vw + 0.82rem, 1.15em);
+}
+
+/* 检查结果统一页：不再叠一层 padding（表间距由 ExamResultsUnified 内 --exr-table-gap 控制） */
+.style-two-exam-results-unified-wrap.style-two-page-section {
+  padding-bottom: 0 !important;
+}
+
+.style-two-history-wrap {
+  margin-bottom: 12px;
+}
+
+.style-two-history-card {
+  background: #fff;
+  border: 1px solid #e8edf5;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.style-two-history-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.style-two-history-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-size: 10px;
+  color: #22324d;
+  font-family: "SimSun", "Songti SC", "STSong", serif;
+}
+
+.style-two-history-table col.col-date { width: 88px; }
+.style-two-history-table col.col-eye { width: 32px; }
+.style-two-history-table col.col-axial,
+.style-two-history-table col.col-trend,
+.style-two-history-table col.col-avgk,
+.style-two-history-table col.col-dk,
+.style-two-history-table col.col-ratio,
+.style-two-history-table col.col-uva { width: auto; }
+.style-two-history-table col.col-subjective { width: 132px; }
+.style-two-history-table col.col-corrected { width: auto; }
+.style-two-history-table col.col-diagnosis { width: 100px; }
+.style-two-history-table col.col-plan { width: 200px; }
+
+.style-two-history-table th,
+.style-two-history-table td {
+  border: 1px solid #e7ecf4;
+  padding: 2px 3px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: pre-line;
+  word-break: break-word;
+  line-height: 1.25;
+}
+
+/* 日期列更紧凑，避免占位过宽 */
+.style-two-history-table th:nth-child(1),
+.style-two-history-table td:nth-child(1) {
+  white-space: nowrap;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* 眼轴列加宽，并避免单位 mm 被拆行 */
+.style-two-history-table th:nth-child(3),
+.style-two-history-table td:nth-child(3) {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+/* MeanK / ΔK / 轴率比 / 裸眼视力：按内容紧凑展示 */
+.style-two-history-table th:nth-child(4),
+.style-two-history-table td:nth-child(4),
+.style-two-history-table th:nth-child(5),
+.style-two-history-table td:nth-child(5),
+.style-two-history-table th:nth-child(6),
+.style-two-history-table td:nth-child(6),
+.style-two-history-table th:nth-child(7),
+.style-two-history-table td:nth-child(7),
+.style-two-history-table th:nth-child(8),
+.style-two-history-table td:nth-child(8),
+.style-two-history-table th:nth-child(9),
+.style-two-history-table td:nth-child(9) {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+/* 数据单元格使用换行，确保右/左两行与“眼别”对齐 */
+.style-two-history-table td:nth-child(3),
+.style-two-history-table td:nth-child(4),
+.style-two-history-table td:nth-child(5),
+.style-two-history-table td:nth-child(6),
+.style-two-history-table td:nth-child(7),
+.style-two-history-table td:nth-child(8),
+.style-two-history-table td:nth-child(9) {
+  white-space: pre-line;
+  /* 数字保持原来的无衬线观感 */
+  font-family: "Segoe UI", Arial, sans-serif;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* 矫正视力列：使用数值字体 */
+.style-two-history-table td:nth-child(10) {
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.style-two-history-table th {
+  background: #f7f9fc;
+  font-weight: 600;
+  text-align: center;
+}
+
+.style-two-history-table__empty {
+  text-align: center !important;
+  color: #8a95a8;
+}
+
+.style-two-history-table__uva-cell :deep(sup) {
+  font-size: 0.72em;
+  line-height: 1;
+}
+
+.style-two-history-table__uva-cell {
+  text-align: left !important;
+}
+
+/* 指定列：日期、眼别、裸眼视力、矫正视力 居中 */
+.style-two-history-table td:nth-child(1),
+.style-two-history-table td:nth-child(2),
+.style-two-history-table td:nth-child(8),
+.style-two-history-table td:nth-child(10) {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+/* 日期列：居中 + 使用数值字体 */
+.style-two-history-table td:nth-child(1) {
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.style-two-history-table__eye-cell {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.style-two-history-table__eye-split {
+  height: 100%;
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+}
+
+.style-two-history-table__eye-split > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.style-two-history-table__eye-split > span:first-child {
+  transform: none;
+  padding-top: 1px;
+  padding-bottom: 2px;
+}
+
+.style-two-history-table__eye-split > span:last-child {
+  transform: none;
+  padding-top: 2px;
+  padding-bottom: 1px;
+}
+
+/* 右/左两行之间的虚线分隔：眼别、眼轴、趋势、MeanK、ΔK、轴率比、裸眼视力、主觉验光、矫正视力 */
+.style-two-history-table td:nth-child(2),
+.style-two-history-table td:nth-child(3),
+.style-two-history-table td:nth-child(4),
+.style-two-history-table td:nth-child(5),
+.style-two-history-table td:nth-child(6),
+.style-two-history-table td:nth-child(7),
+.style-two-history-table td:nth-child(8),
+.style-two-history-table td:nth-child(9),
+.style-two-history-table td:nth-child(10) {
+  background-image: linear-gradient(to right, #f1f4fa, #f1f4fa);
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.style-two-history-table :deep(.style-two-history-trend--up) {
+  color: #cf1322;
+  font-weight: 600;
+}
+
+.style-two-history-table :deep(.style-two-history-trend--down) {
+  color: #389e0d;
+  font-weight: 600;
 }
 
 .style-two-page-section {
   width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -6043,7 +7766,7 @@ const styleTwoPages = computed(() => {
   }
   
   // 当包含其他检查组件且它们的 section-block 处于 collapsed 状态时，也缩小间距
-  // 对于 routine，检测第一个 section-block（基础检查）或最后一个 section-block（主观验光检查）是否 collapsed
+  // 对于 routine，检测第一个 section-block（基础检查）或最后一个 section-block（主觉验光检查）是否 collapsed
   &:has(.routine-exam-style-two .section-block:first-child.collapsed),
   &:has(.routine-exam-style-two .section-block:last-child.collapsed),
   &:has(.biometry-exam-style-two .section-block.collapsed),
@@ -6132,7 +7855,7 @@ const styleTwoPages = computed(() => {
   
   // 统一处理：当组件中的 section-block 处于 collapsed 状态时，缩小该 section 的间距
   // 这样不同组件之间的标题栏间距就会保持一致
-  // 对于 routine，检测第一个 section-block（基础检查）或最后一个 section-block（主观验光检查）是否 collapsed
+  // 对于 routine，检测第一个 section-block（基础检查）或最后一个 section-block（主觉验光检查）是否 collapsed
   &:has(.routine-exam-style-two .section-block:first-child.collapsed),
   &:has(.routine-exam-style-two .section-block:last-child.collapsed),
   &:has(.biometry-exam-style-two .section-block.collapsed),
@@ -6587,6 +8310,18 @@ const styleTwoPages = computed(() => {
     display: block;
   }
 
+  .top-bar-patient-tags {
+    display: none !important;
+  }
+
+  .style-two-main-toolbar {
+    display: none !important;
+  }
+
+  .style-two-exam-flyout {
+    display: none !important;
+  }
+
   .style-two-side {
     display: none !important;
   }
@@ -6639,15 +8374,15 @@ const styleTwoPages = computed(() => {
 // 响应式布局 - 大屏幕（1200px以上）
 @media (min-width: 1200px) {
   .style-two-layout {
-    grid-template-columns: clamp(330px, 30vw, 560px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 // 中等屏幕（992px - 1199px）
 @media (max-width: 1199px) and (min-width: 992px) {
   .style-two-layout {
-    grid-template-columns: clamp(280px, 28vw, 480px) minmax(0, 1fr);
-    gap: clamp(10px, 1.2vw, 16px);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
     padding: 0 !important;
   }
   
@@ -6660,13 +8395,17 @@ const styleTwoPages = computed(() => {
   }
 }
 
-// 小屏幕（768px - 991px）- 两列布局
+// 小屏幕（768px - 991px）
 @media (max-width: 991px) and (min-width: 768px) {
   .style-two-layout {
-    grid-template-columns: clamp(240px, 30vw, 360px) minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     width: 100% !important;
     max-width: 100% !important;
     padding: 0 !important;
+  }
+
+  .style-two-exam-flyout {
+    --exam-flyout-panel-w: clamp(300px, 46vw, 520px);
   }
   
   .style-two-side {
@@ -6684,6 +8423,27 @@ const styleTwoPages = computed(() => {
   .style-two-main {
     width: 100% !important;
     max-width: 100% !important;
+  }
+
+  .style-two-main-toolbar {
+    align-items: flex-start;
+  }
+
+  .style-two-main-toolbar__actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .style-two-exam-nav__exam-date {
+    font-size: 14px;
+  }
+
+  .exam-nav-btn {
+    padding: 5px 11px;
+    font-size: 12.5px;
+    min-height: 34px;
   }
 }
 
@@ -6703,12 +8463,42 @@ const styleTwoPages = computed(() => {
     max-width: 100% !important;
     margin: 0 !important;
   }
+
+  .style-two-exam-flyout {
+    grid-column: 1;
+    grid-row: 1;
+    position: relative !important;
+    left: auto;
+    top: auto;
+    bottom: auto;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-direction: column;
+    filter: none;
+    margin-bottom: clamp(10px, 2vw, 16px);
+  }
+
+  .style-two-main--full {
+    grid-row: 2;
+  }
+
+  .style-two-exam-flyout__handle {
+    display: none !important;
+  }
+
+  .style-two-exam-flyout__aside.style-two-side {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
+    border-radius: clamp(10px, 1.2vw, 14px);
+  }
   
   .style-two-side {
     position: relative !important;
     top: 0 !important;
     max-height: none !important;
-    margin-bottom: clamp(10px, 2vw, 16px);
+    margin-bottom: 0;
     width: 100% !important;
     max-width: 100% !important;
   }
@@ -6786,6 +8576,7 @@ const styleTwoPages = computed(() => {
   .style-two-pages-wrapper {
     width: 100% !important;
     max-width: 100% !important;
+    min-width: 0;
   }
   
   .style-two-continuous-page {
@@ -6797,7 +8588,21 @@ const styleTwoPages = computed(() => {
   .style-two-page-content {
     width: 100% !important;
     max-width: 100% !important;
-    padding: clamp(10px, 1.5vw, 12px) clamp(12px, 2vw, 16px) !important;
+    padding: clamp(8px, 2vw, 12px) clamp(10px, 3vw, 14px) !important;
+  }
+
+  .exam-nav-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    min-height: 32px;
+    flex: 1 1 auto;
+    min-width: calc(50% - 6px);
+    justify-content: center;
+  }
+
+  .style-two-exam-nav {
+    gap: 6px;
+    width: 100%;
   }
   
   .top-bar-area {
@@ -6823,6 +8628,47 @@ const styleTwoPages = computed(() => {
   .style-two-page-row {
     gap: clamp(16px, 2vw, 24px);
   }
+}
+</style>
+
+<!-- 非 scoped：编辑模式需隐藏 Main.vue 中 .tab-content-scroll 等外层滚动条（仅患者页编辑时通过 html 类启用） -->
+<style lang="scss">
+html.patient-style-two-edit-mode .main-tab-body-inner .tab-content-scroll {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none;
+}
+
+html.patient-style-two-edit-mode .main-tab-body-inner .tab-content-scroll::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+html.patient-style-two-edit-mode .style-two-result-area {
+  scrollbar-width: none !important;
+  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none !important;
+}
+
+html.patient-style-two-edit-mode .style-two-result-area::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+html.patient-style-two-edit-mode .exam-results-unified.exam-sheet-wrap,
+html.patient-style-two-edit-mode .exam-sheet-wrap {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none;
+}
+
+html.patient-style-two-edit-mode .exam-results-unified.exam-sheet-wrap::-webkit-scrollbar,
+html.patient-style-two-edit-mode .exam-sheet-wrap::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 </style>
 

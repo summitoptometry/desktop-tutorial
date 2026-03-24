@@ -95,7 +95,7 @@ export async function fetchDiagnosisList(patientId) {
 /**
  * 新增诊断记录
  * @param {number|string} patientId
- * @param {{ diagnosis_date: string, diagnosis_detail: string, right_eye_remark?: string, left_eye_remark?: string }} payload
+ * @param {{ diagnosis_date: string, diagnosis_detail: string, right_eye_remark?: string, left_eye_remark?: string, eye_side?: 'both'|'right'|'left' }} payload
  * @returns {Promise<{ data: object }>}
  */
 export async function createDiagnosis(patientId, payload) {
@@ -110,7 +110,8 @@ export async function createDiagnosis(patientId, payload) {
         diagnosis_date: payload.diagnosis_date,
         diagnosis_detail: payload.diagnosis_detail,
         right_eye_remark: payload.right_eye_remark ?? '',
-        left_eye_remark: payload.left_eye_remark ?? ''
+        left_eye_remark: payload.left_eye_remark ?? '',
+        ...(payload.eye_side ? { eye_side: payload.eye_side } : {})
       })
     });
     if (shouldFallbackToLocal(null, res)) {
@@ -122,6 +123,7 @@ export async function createDiagnosis(patientId, payload) {
         diagnosis_detail: payload.diagnosis_detail || '',
         right_eye_remark: payload.right_eye_remark ?? '',
         left_eye_remark: payload.left_eye_remark ?? '',
+        eye_side: payload.eye_side || 'both',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -149,6 +151,7 @@ export async function createDiagnosis(patientId, payload) {
       diagnosis_detail: payload.diagnosis_detail || '',
       right_eye_remark: payload.right_eye_remark ?? '',
       left_eye_remark: payload.left_eye_remark ?? '',
+      eye_side: payload.eye_side || 'both',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -162,7 +165,7 @@ export async function createDiagnosis(patientId, payload) {
  * 更新诊断记录
  * @param {number|string} patientId - 患者ID（用于 localStorage 降级）
  * @param {number|string} id - 诊断记录ID
- * @param {{ diagnosis_date?: string, diagnosis_detail?: string, right_eye_remark?: string, left_eye_remark?: string }} payload
+ * @param {{ diagnosis_date?: string, diagnosis_detail?: string, right_eye_remark?: string, left_eye_remark?: string, eye_side?: 'both'|'right'|'left' }} payload
  * @returns {Promise<{ data: object }>}
  */
 export async function updateDiagnosis(patientId, id, payload) {
@@ -176,7 +179,8 @@ export async function updateDiagnosis(patientId, id, payload) {
         diagnosis_date: payload.diagnosis_date,
         diagnosis_detail: payload.diagnosis_detail,
         right_eye_remark: payload.right_eye_remark,
-        left_eye_remark: payload.left_eye_remark
+        left_eye_remark: payload.left_eye_remark,
+        ...(payload.eye_side != null ? { eye_side: payload.eye_side } : {})
       })
     });
     if (shouldFallbackToLocal(null, res)) {
